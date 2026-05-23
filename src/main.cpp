@@ -1,3 +1,4 @@
+#include "gui/gui.hpp"
 #include "log/log.hpp"
 #include "render/impl/dx11.hpp"
 #include "input/win32.hpp"
@@ -81,7 +82,7 @@ cstd::int32_t main()
 
 	create_rtv();
 
-	const auto renderer = cstd::make_unique<rv::dx11_renderer>(device.value(), context.value());
+	const auto renderer = cstd::make_shared<rv::dx11_renderer>(device.value(), context.value());
 
 	if (!renderer->init())
 	{
@@ -89,6 +90,9 @@ cstd::int32_t main()
 
 		return 1;
 	}
+
+	auto gui_renderer = cstd::make_unique<rv::gui_renderer_impl>(renderer);
+	const auto gui = cstd::make_unique<rv::gui>(cstd::move(gui_renderer));
 
 	// example image loading using stb image
 	// cstd::int32_t img_w, img_h, img_c;
@@ -171,6 +175,8 @@ cstd::int32_t main()
 			{ 0.5f, 0.0f, 1.0f, 1.f },
 			20.f
 		);
+
+		gui->draw_button({ 0.5f, 0.5f }, { 25.f, 25.f }, { 1.f, 0.f, 0.f, 0.5f }, 5.f);
 
 		// red filled rectangle with a really thick shadow
 		renderer->draw_shadow_rect({ 100.f, 350.f }, { 300.f, 500.f }, { 0.f, 0.f, 0.f, 0.6f }, 17.5f, 10.f, 20.f);
