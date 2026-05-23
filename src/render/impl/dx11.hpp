@@ -135,5 +135,6 @@ namespace rv
 		dx11_object<ID3D11BlendState> blend_state_;
 		dx11_object<ID3D11Buffer> buffer_;
 		dx11_object<ID3D11Buffer> index_buffer_;
+		dx11_object<ID3D11Buffer> clip_cbuffer_;
 	};
 }

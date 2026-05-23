@@ -1,6 +1,18 @@
 #include "dx11.hpp"
 #include "../shaders.hpp"
 
+namespace
+{
+	struct alignas(16) clip_cbuffer_data
+	{
+		float clip_min[2];
+		float clip_max[2];
+		float clip_radii[4];
+		float clip_enabled;
+		float padding[3];
+	};
+}
+
 rv::dx11_renderer::dx11_renderer(ID3D11Device* const device, ID3D11DeviceContext* const context) noexcept
 		:	device_(device),
 			context_(context)
@@ -71,6 +83,17 @@ bool rv::dx11_renderer::init_backend() noexcept
 	rasterizer_desc.DepthClipEnable = TRUE;
 
 	if (FAILED(device_->CreateRasterizerState(&rasterizer_desc, rasterizer_state_.release_and_get())))
+	{
+		return false;
+	}
+
+	D3D11_BUFFER_DESC cb_desc = { };
+	cb_desc.ByteWidth = sizeof(clip_cbuffer_data);
+	cb_desc.Usage = D3D11_USAGE_DYNAMIC;
+	cb_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cb_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+	if (FAILED(device_->CreateBuffer(&cb_desc, nullptr, clip_cbuffer_.release_and_get())))
 	{
 		return false;
 	}
@@ -249,13 +272,44 @@ void rv::dx11_renderer::flush_pending_vertices() noexcept
 
 		context_->PSSetShaderResources(0, 1, &shader);
 
+		{
+			clip_cbuffer_data cb_data = { };
+
+			if (batch.clip_rect.has_value())
+			{
+				const auto& clip = batch.clip_rect.value();
+
+				cb_data.clip_min[0] = clip.bounds.min.x;
+				cb_data.clip_min[1] = clip.bounds.min.y;
+				cb_data.clip_max[0] = clip.bounds.max.x;
+				cb_data.clip_max[1] = clip.bounds.max.y;
+				cb_data.clip_enabled = 1.f;
+
+				const float r = clip.rounding;
+				cb_data.clip_radii[0] = (clip.flags & rounding_flags_top_right) ? r : 0.f;
+				cb_data.clip_radii[1] = (clip.flags & rounding_flags_bottom_right) ? r : 0.f;
+				cb_data.clip_radii[2] = (clip.flags & rounding_flags_bottom_left) ? r : 0.f;
+				cb_data.clip_radii[3] = (clip.flags & rounding_flags_top_left) ? r : 0.f;
+			}
+
+			D3D11_MAPPED_SUBRESOURCE cb_resource = { };
+			if (SUCCEEDED(context_->Map(clip_cbuffer_.value(), 0, D3D11_MAP_WRITE_DISCARD, 0, &cb_resource)))
+			{
+				cstd::memcpy(cb_resource.pData, &cb_data, sizeof(cb_data));
+				context_->Unmap(clip_cbuffer_.value(), 0);
+			}
+
+			ID3D11Buffer* cb = clip_cbuffer_.value();
+			context_->PSSetConstantBuffers(0, 1, &cb);
+		}
+
 		if (batch.clip_rect.has_value())
 		{
 			D3D11_RECT rect;
-			rect.left = static_cast<LONG>(batch.clip_rect->min.x);
-			rect.top = static_cast<LONG>(batch.clip_rect->min.y);
-			rect.right = static_cast<LONG>(batch.clip_rect->max.x);
-			rect.bottom = static_cast<LONG>(batch.clip_rect->max.y);
+			rect.left = static_cast<LONG>(batch.clip_rect->bounds.min.x) - 1;
+			rect.top = static_cast<LONG>(batch.clip_rect->bounds.min.y) - 1;
+			rect.right = static_cast<LONG>(batch.clip_rect->bounds.max.x) + 1;
+			rect.bottom = static_cast<LONG>(batch.clip_rect->bounds.max.y) + 1;
 			context_->RSSetScissorRects(1, &rect);
 		}
 		else

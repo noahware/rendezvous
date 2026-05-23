@@ -48,6 +48,23 @@ namespace rv
 		image_shader
 	};
 
+	struct clip_rect_data
+	{
+		rect bounds;
+		float rounding = 0.f;
+		rounding_flags flags = rounding_flags_all;
+
+		bool operator==(const clip_rect_data& other) const
+		{
+			return bounds == other.bounds && rounding == other.rounding && flags == other.flags;
+		}
+
+		bool operator!=(const clip_rect_data& other) const
+		{
+			return !(*this == other);
+		}
+	};
+
 	struct vertex_batch 
 	{
 		cstd::uint32_t vertex_offset;
@@ -56,7 +73,7 @@ namespace rv
 		cstd::uint32_t index_count;
 		shared_ptr_t<texture> texture;
 		shader_type shader;
-		optional_t<rect> clip_rect;
+		optional_t<clip_rect_data> clip_rect;
 	};
 
 	struct state
@@ -76,7 +93,7 @@ namespace rv
 		void begin_frame(vector_2d<float> display_size) noexcept;
 		virtual void end_frame() noexcept = 0;
 
-		void push_clip_rect(position min, position max) noexcept;
+		void push_clip_rect(position min, position max, float rounding = 0.f, rounding_flags flags = rounding_flags_all) noexcept;
 		void pop_clip_rect() noexcept;
 
 		void draw_vertices(span_t<const vertex> vertices, shader_type shader = shader_type::default_shader) noexcept;
@@ -84,6 +101,7 @@ namespace rv
 
 		void draw_rect(position min, position max, color col, float thickness = 1.f, float rounding = 0.f) noexcept;
 		void draw_rect_filled(position min, position max, color col, float rounding = 0.f, rounding_flags flags = rounding_flags_all) noexcept;
+		void draw_rect_filled_multi_color(position min, position max, color col_tl, color col_tr, color col_br, color col_bl, float rounding = 0.f, rounding_flags flags = rounding_flags_all) noexcept;
 		void draw_shadow_rect(position min, position max, color col, float rounding = 0.f, float shadow_blur = 15.f, float shadow_spread = 0.f, rounding_flags flags = rounding_flags_all, bool cut_background = false) noexcept;
 
 		void draw_line(position a, position b, color col, float thickness = 1.f) noexcept;
@@ -143,7 +161,7 @@ namespace rv
 		vector_t<vertex> pending_vertices_ = { };
 		vector_t<cstd::uint32_t> pending_indices_ = { };
 		vector_t<vertex_batch> pending_batches_ = { };
-		vector_t<rect> clip_rects_ = { };
+		vector_t<clip_rect_data> clip_rects_ = { };
 		shared_ptr_t<texture> current_texture_ = { };
 		shared_ptr_t<texture> default_texture_ = { };
 

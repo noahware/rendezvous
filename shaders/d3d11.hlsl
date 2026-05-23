@@ -16,8 +16,48 @@ struct ps_input
     float4 custom_data2 : TEXCOORD2;
 };
 
+cbuffer clip_buffer : register(b0)
+{
+    float2 clip_min;
+    float2 clip_max;
+    float4 clip_radii;
+    float clip_enabled;
+    float3 _padding;
+};
+
 Texture2D textr : register(t0);
 SamplerState samplr : register(s0);
+
+float sd_round_rect(float2 p, float2 b, float4 r)
+{
+    float max_rad = min(b.x, b.y);
+    r = min(r, max_rad);
+
+    float2 s = step(0.0, p);
+    
+    float rad_top = lerp(r.w, r.x, s.x);
+    float rad_bottom = lerp(r.z, r.y, s.x);
+    float rad = lerp(rad_top, rad_bottom, s.y);
+
+    float2 q = abs(p) - b + rad;
+    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - rad;
+}
+
+float apply_clip(float2 screen_pos)
+{
+    if (clip_enabled < 0.5f)
+    {
+        return 1.0f;
+    }
+
+    float2 center = (clip_min + clip_max) * 0.5f;
+    float2 half_size = (clip_max - clip_min) * 0.5f;
+    float2 p = screen_pos - center;
+
+    float d = sd_round_rect(p, half_size, clip_radii);
+
+    return saturate(0.5f - d);
+}
 
 ps_input vertex_shader(vs_input input)
 {
@@ -34,22 +74,9 @@ ps_input vertex_shader(vs_input input)
 
 float4 pixel_shader(ps_input input) : SV_TARGET
 {
-    return input.color * textr.Sample(samplr, input.uv);
-}
-
-float sd_round_rect(float2 p, float2 b, float4 r)
-{
-    float max_rad = min(b.x, b.y);
-    r = min(r, max_rad);
-
-    float2 s = step(0.0, p);
-    
-    float rad_top = lerp(r.w, r.x, s.x);
-    float rad_bottom = lerp(r.z, r.y, s.x);
-    float rad = lerp(rad_top, rad_bottom, s.y);
-
-    float2 q = abs(p) - b + rad;
-    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - rad;
+    float4 result = input.color * textr.Sample(samplr, input.uv);
+    result.a *= apply_clip(input.position.xy);
+    return result;
 }
 
 float4 rect_pixel_shader(ps_input input) : SV_TARGET
@@ -68,7 +95,9 @@ float4 rect_pixel_shader(ps_input input) : SV_TARGET
     
     float alpha = saturate(0.5f - d);
     
-    return float4(input.color.rgb, input.color.a * alpha);
+    float4 result = float4(input.color.rgb, input.color.a * alpha);
+    result.a *= apply_clip(input.position.xy);
+    return result;
 }
 
 float4 shadow_pixel_shader(ps_input input) : SV_TARGET
@@ -92,7 +121,9 @@ float4 shadow_pixel_shader(ps_input input) : SV_TARGET
     
     float alpha = pow(1.0f - x, 3.0f) * cutout_alpha;
     
-    return float4(input.color.rgb, input.color.a * alpha);
+    float4 result = float4(input.color.rgb, input.color.a * alpha);
+    result.a *= apply_clip(input.position.xy);
+    return result;
 }
 
 float4 image_pixel_shader(ps_input input) : SV_TARGET
@@ -107,5 +138,7 @@ float4 image_pixel_shader(ps_input input) : SV_TARGET
     float alpha = saturate(0.5f - d);
     
     float4 tex_color = textr.Sample(samplr, input.uv);
-    return float4(tex_color.rgb * input.color.rgb, tex_color.a * input.color.a * alpha);
+    float4 result = float4(tex_color.rgb * input.color.rgb, tex_color.a * input.color.a * alpha);
+    result.a *= apply_clip(input.position.xy);
+    return result;
 }
