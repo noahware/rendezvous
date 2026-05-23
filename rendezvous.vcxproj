@@ -153,6 +153,7 @@
     <None Include="vcpkg.json" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\gui\gui.hpp" />
     <ClInclude Include="src\input\input.hpp" />
     <ClInclude Include="src\input\win32.hpp" />
     <ClInclude Include="src\log\log.hpp" />

@@ -68,5 +68,8 @@
     <ClInclude Include="src\util\triangulate.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\gui\gui.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
