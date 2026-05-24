@@ -48,6 +48,9 @@ using optional_t = std::optional<T>;
 template <class K, class V>
 using unordered_map_t = std::unordered_map<K, V>;
 
+template <class T, class Y>
+using pair_t = std::pair<T, Y>;
+
 template <class T>
 using hash_t = std::hash<T>;
 

@@ -83,6 +83,13 @@ namespace rv
 	public:
 		using hash_type = cstd::size_t;
 
+		void add(shared_ptr_t<element> element)
+		{
+			const hash_type id = id_++;
+
+			add(id, cstd::move(element));
+		}
+
 		void add(const hash_type hash, shared_ptr_t<element> element)
 		{
 			elements_[hash] = cstd::move(element);
@@ -105,7 +112,29 @@ namespace rv
 			return it != elements_.end() ? it->second : nullptr;
 		}
 
+		[[nodiscard]] auto begin() noexcept
+		{
+			return elements_.begin();
+		}
+
+		[[nodiscard]] auto end() noexcept
+		{
+			return elements_.end();
+		}
+
+		[[nodiscard]] auto begin() const noexcept
+		{
+			return elements_.begin();
+		}
+
+		[[nodiscard]] auto end() const noexcept
+		{
+			return elements_.end();
+		}
+
 	protected:
+		hash_type id_ = 0;
+
 		unordered_map_t<hash_type, shared_ptr_t<element>> elements_;
 	};
 
