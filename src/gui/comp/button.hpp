@@ -9,8 +9,8 @@ namespace rv
 	public:
 		button() noexcept = default;
 
-		explicit button(const struct position position, const vector_2d<float> size, shared_ptr_t<element> parent = { }) noexcept
-				:	element(position, size, cstd::move(parent)) { }
+		explicit button(const element_size size) noexcept
+				:	element(size) { }
 
 		void on_mouse_click() override
 		{
@@ -18,14 +18,11 @@ namespace rv
 		}
 
 	protected:
-		void render_self(gui_renderer& renderer, const rv::position position) const override
+		void render_self(gui_renderer& renderer, const rv::position min, const rv::position max) const override
 		{
-			const auto min = position + position_;
-			const auto max = min + size_;
-
 			constexpr color col = { 1.f, 1.f, 1.f, 1.f };
 
-			renderer.draw_rect_filled({ min.x, min.y }, { max.x, max.y }, col);
+			renderer.draw_rect_filled(min, max, col);
 		}
 	};
 }

@@ -80,5 +80,11 @@
     <ClInclude Include="src\gui\comp\button.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\gui\layout.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gui\styled_size.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -1,5 +1,6 @@
 #pragma once
 #include "../render/render.hpp"
+#include "layout.hpp"
 
 namespace rv
 {
@@ -42,6 +43,7 @@ namespace rv
 		{
 			const auto root = tree_.root();
 
+			layout(*root, display_size);
 			root->render(*renderer_, position{ 0.f, 0.f });
 		}
 

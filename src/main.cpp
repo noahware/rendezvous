@@ -97,18 +97,17 @@ cstd::int32_t main()
 	const auto gui = cstd::make_unique<rv::gui>(cstd::move(gui_renderer));
 
 	auto root = gui->root();
-	root->direction(rv::layout_direction::vertical).gap(35.f);
-	root->set_position(rv::position{ 50.f, 50.f });
+	root->direction(rv::layout_direction::vertical);
+	root->gap(8.f);
 
-	root->make_child<rv::button>(rv::position{ 0.f, 0.f }, rv::vector_2d{ 100.f, 30.f });
-	root->make_child<rv::button>(rv::position{ 0.f, 0.f }, rv::vector_2d{ 100.f, 30.f });
-	root->make_child<rv::button>(rv::position{ 0.f, 0.f }, rv::vector_2d{ 100.f, 30.f });
+	root->make_child<rv::button>(rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
+	root->make_child<rv::button>(rv::element_size{ rv::styled_size::percent(50.f), rv::styled_size::px(40.f) });
 
-	auto row = rv::make_element<rv::element>(rv::position{ 0.f, 120.f }, rv::vector_2d{ 0.f, 0.f });
-	row->direction(rv::layout_direction::horizontal).gap(15.f);
-	row->make_child<rv::button>(rv::position{ 0.f, 0.f }, rv::vector_2d{ 60.f, 30.f });
-	row->make_child<rv::button>(rv::position{ 0.f, 0.f }, rv::vector_2d{ 60.f, 30.f });
-	root->add_child(row);
+	auto row = root->make_child<rv::element>(rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
+	row->direction(rv::layout_direction::horizontal);
+	row->gap(8.f);
+	row->make_child<rv::button>(rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
+	row->make_child<rv::button>(rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
 
 	// example image loading using stb image
 	// cstd::int32_t img_w, img_h, img_c;
@@ -167,6 +166,8 @@ cstd::int32_t main()
 		context->ClearRenderTargetView(tmp_rtv, clear_color.data());
 		
 		renderer->begin_frame(screen_size);
+
+		gui->render(screen_size);
 
 		// red filled rectangle with a basic black dropshadow
 		renderer->draw_shadow_rect({ 105.f, 105.f }, { 305.f, 255.f }, { 0.f, 0.f, 0.f, 0.5f }, 17.5f, 20.f, 0.f);
@@ -295,8 +296,6 @@ cstd::int32_t main()
 			renderer->add_text_shadow(*font, text_pos, text, {1.f, 0.4f, 1.f , 1.f}, 15.f, size);
 			renderer->draw_text(*font, text_pos, text, { 0.4f, 1.f, 1.f, 1.f }, size);
 		}
-
-		gui->render(screen_size);
 
 		renderer->end_frame();
 

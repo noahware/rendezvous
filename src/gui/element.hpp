@@ -2,6 +2,7 @@
 #include "../render/position.hpp"
 #include "../util/hash.hpp"
 #include "../util/types.hpp"
+#include "styled_size.hpp"
 
 namespace rv
 {
@@ -31,10 +32,8 @@ namespace rv
 		virtual ~element() = default;
 		element() noexcept = default;
 
-		explicit element(const position position, const vector_2d<float> size, shared_ptr_t<element> parent = { }) noexcept
-				:	position_(position),
-					size_(size),
-					parent_(cstd::move(parent)) { }
+		explicit element(const element_size size) noexcept
+				:	size_(size) { }
 
 		virtual void on_mouse_click()
 		{
@@ -86,24 +85,29 @@ namespace rv
 			return element;
 		}
 
-		[[nodiscard]] position position() const noexcept
-		{
-			return position_;
-		}
-
-		void set_position(const struct position pos) noexcept
-		{
-			position_ = pos;
-		}
-
 		[[nodiscard]] vector_2d<float> size() const noexcept
+		{
+			return computed_size_;
+		}
+
+		[[nodiscard]] const element_size& declared_size() const noexcept
 		{
 			return size_;
 		}
 
-		void set_size(const vector_2d<float> size) noexcept
+		void set_declared_size(const element_size size) noexcept
 		{
 			size_ = size;
+		}
+
+		[[nodiscard]] vector_2d<float> computed_size() const noexcept
+		{
+			return computed_size_;
+		}
+
+		void set_computed_size(const vector_2d<float> size) noexcept
+		{
+			computed_size_ = size;
 		}
 
 		[[nodiscard]] element_style& style() noexcept
@@ -130,32 +134,33 @@ namespace rv
 			return *this;
 		}
 
-		void render(gui_renderer& renderer, const struct position position) const
+		void render(gui_renderer& renderer, const struct position cursor) const
 		{
-			render_self(renderer, position);
+			const struct position max = { cursor.x + computed_size_.x, cursor.y + computed_size_.y };
+			render_self(renderer, cursor, max);
 
 			const float gap = style_.gap.value_or(0.f);
-			struct position cursor = { position.x + position_.x, position.y + position_.y };
+			struct position child_cursor = cursor;
 
 			for (const auto& child : children_)
 			{
-				child->render(renderer, cursor);
+				child->render(renderer, child_cursor);
 
 				if (style_.direction == layout_direction::vertical)
-					cursor.y += child->size_.y + gap;
+					child_cursor.y += child->computed_size_.y + gap;
 				else
-					cursor.x += child->size_.x + gap;
+					child_cursor.x += child->computed_size_.x + gap;
 			}
 		}
 
 	protected:
-		virtual void render_self(gui_renderer& renderer, struct position position) const
+		virtual void render_self(gui_renderer& renderer, struct position min, struct position max) const
 		{
-			
+
 		}
 
-		struct position position_ = { };
-		vector_2d<float> size_ = { };
+		element_size size_;
+		vector_2d<float> computed_size_ = { };
 		element_style style_;
 
 		shared_ptr_t<element> parent_ = { };
@@ -167,7 +172,7 @@ namespace rv
 	public:
 		element_tree()
 		{
-			auto root = make_element<element>();
+			auto root = make_element<element>(element_size{ styled_size::fill(), styled_size::fill() });
 
 			add(root);
 

@@ -156,6 +156,8 @@
     <ClInclude Include="src\gui\comp\button.hpp" />
     <ClInclude Include="src\gui\element.hpp" />
     <ClInclude Include="src\gui\gui.hpp" />
+    <ClInclude Include="src\gui\layout.hpp" />
+    <ClInclude Include="src\gui\styled_size.hpp" />
     <ClInclude Include="src\input\input.hpp" />
     <ClInclude Include="src\input\win32.hpp" />
     <ClInclude Include="src\log\log.hpp" />
