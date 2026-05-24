@@ -69,6 +69,12 @@ namespace rv
 			children_.push_back(cstd::move(element));
 		}
 
+		template <class T, class ...Args>
+		void make_child(Args&&... args)
+		{
+			children_.push_back(make_element<T>(args...));
+		}
+
 		[[nodiscard]] position position() const noexcept
 		{
 			return position_;
