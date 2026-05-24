@@ -96,6 +96,20 @@ cstd::int32_t main()
 	auto gui_renderer = cstd::make_unique<rv::gui_renderer_impl>(renderer);
 	const auto gui = cstd::make_unique<rv::gui>(cstd::move(gui_renderer));
 
+	auto root = gui->root();
+	root->direction(rv::layout_direction::vertical).gap(35.f);
+	root->set_position(rv::position{ 50.f, 50.f });
+
+	root->make_child<rv::button>(rv::position{ 0.f, 0.f }, rv::vector_2d{ 100.f, 30.f });
+	root->make_child<rv::button>(rv::position{ 0.f, 0.f }, rv::vector_2d{ 100.f, 30.f });
+	root->make_child<rv::button>(rv::position{ 0.f, 0.f }, rv::vector_2d{ 100.f, 30.f });
+
+	auto row = rv::make_element<rv::element>(rv::position{ 0.f, 120.f }, rv::vector_2d{ 0.f, 0.f });
+	row->direction(rv::layout_direction::horizontal).gap(15.f);
+	row->make_child<rv::button>(rv::position{ 0.f, 0.f }, rv::vector_2d{ 60.f, 30.f });
+	row->make_child<rv::button>(rv::position{ 0.f, 0.f }, rv::vector_2d{ 60.f, 30.f });
+	root->add_child(row);
+
 	// example image loading using stb image
 	// cstd::int32_t img_w, img_h, img_c;
 	// unsigned char* img_data = stbi_load("images/landing.png", &img_w, &img_h, &img_c, 4);
@@ -178,8 +192,6 @@ cstd::int32_t main()
 			{ 0.5f, 0.0f, 1.0f, 1.f },
 			20.f
 		);
-
-		gui->draw_button({ 0.5f, 0.5f }, { 25.f, 25.f }, { 1.f, 0.f, 0.f, 0.5f }, 5.f);
 
 		// red filled rectangle with a really thick shadow
 		renderer->draw_shadow_rect({ 100.f, 350.f }, { 300.f, 500.f }, { 0.f, 0.f, 0.f, 0.6f }, 17.5f, 10.f, 20.f);
@@ -283,13 +295,6 @@ cstd::int32_t main()
 			renderer->add_text_shadow(*font, text_pos, text, {1.f, 0.4f, 1.f , 1.f}, 15.f, size);
 			renderer->draw_text(*font, text_pos, text, { 0.4f, 1.f, 1.f, 1.f }, size);
 		}
-
-
-		auto button = rv::make_element<rv::button>();
-
-		auto root = gui->root();
-
-		root->add_child(button);
 
 		gui->render(screen_size);
 

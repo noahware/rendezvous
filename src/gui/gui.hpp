@@ -38,11 +38,6 @@ namespace rv
 		explicit gui(unique_ptr_t<gui_renderer> renderer)
 				:	renderer_(cstd::move(renderer)) { }
 
-		void draw_button(const position min, const position max, const color col, const float rounding) noexcept
-		{
-			renderer_->draw_rect_filled(min, max, col, rounding);
-		}
-
 		void render(const vector_2d<float> display_size)
 		{
 			const auto root = tree_.root();

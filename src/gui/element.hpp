@@ -13,9 +13,16 @@ namespace rv
 		return cstd::make_shared<T>(args...);
 	}
 
+	enum class layout_direction : cstd::uint8_t
+	{
+		vertical,
+		horizontal
+	};
+
 	struct element_style
 	{
 		optional_t<float> gap;
+		layout_direction direction = layout_direction::horizontal;
 	};
 
 	class element
@@ -112,13 +119,28 @@ namespace rv
 			return *this;
 		}
 
-		void render(gui_renderer& renderer, struct position position) const
+		element& direction(const layout_direction direction) noexcept
+		{
+			style_.direction = direction;
+
+			return *this;
+		}
+
+		void render(gui_renderer& renderer, const struct position position) const
 		{
 			render_self(renderer, position);
 
+			const float gap = style_.gap.value_or(0.f);
+			struct position cursor = { position.x + position_.x, position.y + position_.y };
+
 			for (const auto& child : children_)
 			{
-				child->render(renderer, position);
+				child->render(renderer, cursor);
+
+				if (style_.direction == layout_direction::vertical)
+					cursor.y += child->size_.y + gap;
+				else
+					cursor.x += child->size_.x + gap;
 			}
 		}
 

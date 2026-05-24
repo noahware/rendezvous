@@ -13,10 +13,10 @@ namespace rv
 		constexpr color() noexcept = default;
 
 		constexpr color(const float r, const float g, const float b, const float a = 255.f) noexcept
-			: r(r > 1.f ? r / 255.f : r),
-			  g(g > 1.f ? g / 255.f : g),
-			  b(b > 1.f ? b / 255.f : b),
-			  a(a > 1.f ? a / 255.f : a) { }
+				:	r(r > 1.f ? r / 255.f : r),
+					g(g > 1.f ? g / 255.f : g),
+					b(b > 1.f ? b / 255.f : b),
+					a(a > 1.f ? a / 255.f : a) { }
 	};
 
 	struct position : vector_2d<float>
