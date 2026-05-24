@@ -5,6 +5,12 @@
 
 namespace rv
 {
+	template <class T, class ...Args>
+	[[nodiscard]] shared_ptr_t<T> make_element(Args&&... args)
+	{
+		return cstd::make_shared<T>(args...);
+	}
+
 	struct element_style
 	{
 		optional_t<float> gap;
@@ -56,6 +62,11 @@ namespace rv
 			return children_;
 		}
 
+		void add_child(shared_ptr_t<element> element)
+		{
+			children_.push_back(cstd::move(element));
+		}
+
 		[[nodiscard]] position position() const noexcept
 		{
 			return position_;
@@ -76,21 +87,21 @@ namespace rv
 			size_ = size;
 		}
 
+		[[nodiscard]] element_style& style() noexcept
+		{
+			return style_;
+		}
+
+		[[nodiscard]] const element_style& style() const noexcept
+		{
+			return style_;
+		}
+
 		element& gap(const optional_t<float> gap) noexcept
 		{
 			style_.gap = gap;
 
 			return *this;
-		}
-
-		element_style& style() noexcept
-		{
-			return style_;
-		}
-
-		const element_style& style() const noexcept
-		{
-			return style_;
 		}
 
 	protected:
@@ -105,6 +116,15 @@ namespace rv
 	class element_tree
 	{
 	public:
+		element_tree()
+		{
+			auto root = make_element<element>();
+
+			add(root);
+
+			root_ = cstd::move(root);
+		}
+
 		using hash_type = cstd::size_t;
 
 		void add(shared_ptr_t<element> element)
@@ -136,6 +156,11 @@ namespace rv
 			return it != elements_.end() ? it->second : nullptr;
 		}
 
+		[[nodiscard]] shared_ptr_t<element> root() const noexcept
+		{
+			return root_;
+		}
+
 		[[nodiscard]] auto begin() noexcept
 		{
 			return elements_.begin();
@@ -159,12 +184,7 @@ namespace rv
 	protected:
 		hash_type id_ = 0;
 
+		shared_ptr_t<element> root_;
 		unordered_map_t<hash_type, shared_ptr_t<element>> elements_;
 	};
-
-	template <class T, class ...Args>
-	[[nodiscard]] shared_ptr_t<T> make_element(Args&&... args)
-	{
-		return cstd::make_shared<T>(args...);
-	}
 }
