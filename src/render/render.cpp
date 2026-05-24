@@ -371,6 +371,36 @@ void rv::renderer::draw_circle_filled(const position pos, const float radius, co
     draw_vertices(vertices, shader_type::rect_shader);
 }
 
+void rv::renderer::draw_circle_filled_radial(const position pos, const float radius, const color col_in, const color col_out,
+                                             const cstd::size_t segment_count) noexcept
+{
+    const float qw = radius + 1.f;
+    const float qh = radius + 1.f;
+
+    const position p0 = {pos.x - qw, pos.y - qh};
+    const position p1 = {pos.x + qw, pos.y + qh};
+
+    const ndc_position n0 = to_ndc(p0);
+    const ndc_position n1 = to_ndc(p1);
+
+    // data.w = 1.f indicates radial gradient. custom_data2 holds col_in.
+    const array_t<float, 8> data = {radius * 2.f, radius * 2.f, 0.f, 1.f, col_in.r, col_in.g, col_in.b, col_in.a};
+
+    const auto make_vertex = [col_out, data](const float x, const float y, const float u, const float v) -> vertex
+    { 
+        return vertex{.pos = {x, y}, .col = col_out, .uv = {u, v}, .custom_data = data}; 
+    };
+
+    const array_t<vertex, 6> vertices = 
+    {
+        make_vertex(n0.x, n0.y, -qw, -qh), make_vertex(n1.x, n0.y, qw, -qh),
+        make_vertex(n0.x, n1.y, -qw, qh),  make_vertex(n1.x, n0.y, qw, -qh),
+        make_vertex(n1.x, n1.y, qw, qh),   make_vertex(n0.x, n1.y, -qw, qh),
+    };
+
+    draw_vertices(vertices, shader_type::rect_shader);
+}
+
 void rv::renderer::draw_shadow_circle(const position pos, const float radius, const color col, const float shadow_blur,
                                       const bool cut_background) noexcept
 {

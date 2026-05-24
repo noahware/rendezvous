@@ -89,9 +89,23 @@ float4 rect_pixel_shader(ps_input input) : SV_TARGET
 {
     float2 rect_size = input.custom_data.xy;
     float thickness = input.custom_data.z;
+    float is_radial = input.custom_data.w;
     float4 radii = input.custom_data2;
     
     float2 p = input.uv;
+    
+    float4 base_color = input.color;
+    if (is_radial > 0.5f)
+    {
+        float4 color_in = radii;
+        float radius = rect_size.x * 0.5f;
+        float dist = length(p);
+        float t = saturate(dist / radius);
+        base_color = lerp(color_in, input.color, t);
+        
+        radii = float4(radius, radius, radius, radius);
+    }
+    
     float d = sd_round_rect(p, rect_size * 0.5f, radii);
     
     float alpha = 0.0f;
@@ -116,7 +130,7 @@ float4 rect_pixel_shader(ps_input input) : SV_TARGET
         alpha = 1.0f - smoothstep(-0.5f, 0.5f, d);
     }
     
-    float4 result = float4(input.color.rgb, input.color.a * alpha);
+    float4 result = float4(base_color.rgb, base_color.a * alpha);
     result.a *= apply_clip(input.position.xy);
     return result;
 }

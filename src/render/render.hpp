@@ -112,6 +112,8 @@ namespace rv
 
 		void draw_circle_filled(position pos, float radius, color col, cstd::size_t segment_count = 32) noexcept;
 
+		void draw_circle_filled_radial(position pos, float radius, color col_in, color col_out, cstd::size_t segment_count = 32) noexcept;
+
 		void draw_shadow_circle(position pos, float radius, color col, float shadow_blur, bool cut_background = false) noexcept;
 
 		void draw_image(shared_ptr_t<texture> tex, position min, position max, position uv_min = { 0.f, 0.f }, position uv_max = { 1.f, 1.f }, color tint = { 1.f, 1.f, 1.f, 1.f }) noexcept;
