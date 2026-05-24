@@ -8,6 +8,7 @@ namespace rv
 	class element
 	{
 	public:
+		virtual ~element() = default;
 		element() noexcept = default;
 
 		explicit element(const position position, const vector_2d<float> size, shared_ptr_t<element> parent = { }) noexcept
