@@ -18,9 +18,14 @@ namespace rv
 		}
 
 	protected:
-		void render_self(gui_renderer& renderer, rv::position position) const override
+		void render_self(gui_renderer& renderer, const rv::position position) const override
 		{
-			LOG_INFO("render");
+			const auto min = position + position_;
+			const auto max = min + size_;
+
+			constexpr color col = { 1.f, 1.f, 1.f, 1.f };
+
+			renderer.draw_rect_filled({ min.x, min.y }, { max.x, max.y }, col);
 		}
 	};
 }
