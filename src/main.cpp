@@ -191,11 +191,11 @@ cstd::int32_t main()
 		const auto mouse_pos = input->mouse_pos();
 		if (input->is_mouse_down(0))
 		{
-			renderer->draw_circle_filled({ mouse_pos.x, mouse_pos.y }, 25.f, { 1.f, 1.f, 1.f, 0.5f });
+			renderer->draw_circle_filled({ mouse_pos.x, mouse_pos.y }, 25.f, { 0.f, 0.5f, 1.f, 1.f });
 		}
 		else
 		{
-			renderer->draw_circle({ mouse_pos.x, mouse_pos.y }, 25.f, { 1.f, 1.f, 1.f, 0.5f }, 2.f);
+			renderer->draw_circle({ mouse_pos.x, mouse_pos.y }, 25.f, { 0.f, 0.5f, 1.f, 1.f }, 1.f);
 		}
 
 		// win32 scroll example

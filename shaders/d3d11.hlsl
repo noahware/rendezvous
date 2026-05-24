@@ -100,14 +100,20 @@ float4 rect_pixel_shader(ps_input input) : SV_TARGET
         float outer_d = d;
         float inner_d = d + thickness;
         
-        float alpha_outer = saturate(0.5f - outer_d);
-        float alpha_inner = saturate(0.5f - inner_d);
+        float alpha_outer = 1.0f - smoothstep(-0.5f, 0.5f, outer_d);
+        float alpha_inner = 1.0f - smoothstep(-0.5f, 0.5f, inner_d);
         
         alpha = alpha_outer - alpha_inner;
     }
+    else if (thickness < 0.0)
+    {
+        float abs_t = -thickness;
+        float d_stroke = abs(d) - abs_t * 0.5f;
+        alpha = 1.0f - smoothstep(-0.5f, 0.5f, d_stroke);
+    }
     else
     {
-        alpha = saturate(0.5f - d);
+        alpha = 1.0f - smoothstep(-0.5f, 0.5f, d);
     }
     
     float4 result = float4(input.color.rgb, input.color.a * alpha);
