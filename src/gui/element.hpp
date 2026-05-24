@@ -77,9 +77,13 @@ namespace rv
 		}
 
 		template <class T, class ...Args>
-		void make_child(Args&&... args)
+		shared_ptr_t<element> make_child(Args&&... args)
 		{
-			children_.push_back(make_element<T>(args...));
+			auto element = make_element<T>(args...);
+
+			children_.push_back(element);
+
+			return element;
 		}
 
 		[[nodiscard]] position position() const noexcept
