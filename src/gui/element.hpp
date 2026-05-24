@@ -5,6 +5,11 @@
 
 namespace rv
 {
+	struct element_style
+	{
+		optional_t<float> gap;
+	};
+
 	class element
 	{
 	public:
@@ -71,9 +76,27 @@ namespace rv
 			size_ = size;
 		}
 
+		element& gap(const optional_t<float> gap) noexcept
+		{
+			style_.gap = gap;
+
+			return *this;
+		}
+
+		element_style& style() noexcept
+		{
+			return style_;
+		}
+
+		const element_style& style() const noexcept
+		{
+			return style_;
+		}
+
 	protected:
 		struct position position_ = { };
 		vector_2d<float> size_ = { };
+		element_style style_;
 
 		shared_ptr_t<element> parent_ = { };
 		vector_t<shared_ptr_t<element>> children_ = { };
