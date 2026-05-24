@@ -1,4 +1,5 @@
 #pragma once
+#include "../render/position.hpp"
 #include "../util/hash.hpp"
 #include "../util/types.hpp"
 
@@ -7,6 +8,13 @@ namespace rv
 	class element
 	{
 	public:
+		element() noexcept = default;
+
+		explicit element(const position position, const vector_2d<float> size, shared_ptr_t<element> parent = { }) noexcept
+				:	position_(position),
+					size_(size),
+					parent_(cstd::move(parent)) { }
+
 		[[nodiscard]] bool child_of(const shared_ptr_t<element>& parent) const noexcept
 		{
 			return parent_ == parent;
@@ -27,9 +35,32 @@ namespace rv
 			return children_;
 		}
 
+		[[nodiscard]] position position() const noexcept
+		{
+			return position_;
+		}
+
+		void set_position(const struct position pos) noexcept
+		{
+			position_ = pos;
+		}
+
+		[[nodiscard]] vector_2d<float> size() const noexcept
+		{
+			return size_;
+		}
+
+		void set_size(const vector_2d<float> size) noexcept
+		{
+			size_ = size;
+		}
+
 	protected:
-		shared_ptr_t<element> parent_;
-		vector_t<shared_ptr_t<element>> children_;
+		struct position position_ = { };
+		vector_2d<float> size_ = { };
+
+		shared_ptr_t<element> parent_ = { };
+		vector_t<shared_ptr_t<element>> children_ = { };
 	};
 
 	class element_tree
@@ -62,4 +93,10 @@ namespace rv
 	protected:
 		unordered_map_t<hash_type, shared_ptr_t<element>> elements_;
 	};
+
+	template <class T, class ...Args>
+	[[nodiscard]] shared_ptr_t<T> make_element(Args&&... args)
+	{
+		return cstd::make_shared<T>(args...);
+	}
 }
