@@ -16,5 +16,11 @@ namespace rv
 		{
 			LOG_INFO("click");
 		}
+
+	protected:
+		void render_self(gui_renderer& renderer, rv::position position) const override
+		{
+			LOG_INFO("render");
+		}
 	};
 }

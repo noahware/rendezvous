@@ -43,7 +43,20 @@ namespace rv
 			renderer_->draw_rect_filled(min, max, col, rounding);
 		}
 
+		void render(const vector_2d<float> display_size)
+		{
+			const auto root = tree_.root();
+
+			root->render(*renderer_, position{ 0.f, 0.f });
+		}
+
+		[[nodiscard]] shared_ptr_t<element> root() const noexcept
+		{
+			return tree_.root();
+		}
+
 	protected:
 		unique_ptr_t<gui_renderer> renderer_;
+		element_tree tree_;
 	};
 }

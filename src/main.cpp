@@ -1,4 +1,6 @@
+#include "gui/element.hpp"
 #include "gui/gui.hpp"
+#include "gui/comp/button.hpp"
 #include "log/log.hpp"
 #include "render/impl/dx11.hpp"
 #include "input/win32.hpp"
@@ -281,6 +283,15 @@ cstd::int32_t main()
 			renderer->add_text_shadow(*font, text_pos, text, {1.f, 0.4f, 1.f , 1.f}, 15.f, size);
 			renderer->draw_text(*font, text_pos, text, { 0.4f, 1.f, 1.f, 1.f }, size);
 		}
+
+
+		auto button = rv::make_element<rv::button>();
+
+		auto root = gui->root();
+
+		root->add_child(button);
+
+		gui->render(screen_size);
 
 		renderer->end_frame();
 

@@ -5,6 +5,8 @@
 
 namespace rv
 {
+	class gui_renderer;
+
 	template <class T, class ...Args>
 	[[nodiscard]] shared_ptr_t<T> make_element(Args&&... args)
 	{
@@ -104,7 +106,22 @@ namespace rv
 			return *this;
 		}
 
+		void render(gui_renderer& renderer, struct position position) const
+		{
+			render_self(renderer, position);
+
+			for (const auto& child : children_)
+			{
+				child->render(renderer, position);
+			}
+		}
+
 	protected:
+		virtual void render_self(gui_renderer& renderer, struct position position) const
+		{
+			
+		}
+
 		struct position position_ = { };
 		vector_2d<float> size_ = { };
 		element_style style_;
