@@ -164,6 +164,7 @@
     <ClInclude Include="src\render\shaders.hpp" />
     <ClInclude Include="src\render\texture.hpp" />
     <ClInclude Include="src\util\file.hpp" />
+    <ClInclude Include="src\util\hash.hpp" />
     <ClInclude Include="src\util\math.hpp" />
     <ClInclude Include="src\util\triangulate.hpp" />
     <ClInclude Include="src\util\types.hpp" />

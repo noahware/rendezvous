@@ -49,6 +49,9 @@ template <class K, class V>
 using unordered_map_t = std::unordered_map<K, V>;
 
 template <class T>
+using hash_t = std::hash<T>;
+
+template <class T>
 using istreambuf_iterator_t = std::istreambuf_iterator<T>;
 
 using ifstream_t = std::ifstream;
@@ -105,6 +108,12 @@ namespace cstd
 	inline float roundf(const float x)
 	{
 		return std::roundf(x);
+	}
+
+	template <class T, class Y>
+	[[nodiscard]] constexpr T bit_cast(const Y& object) noexcept
+	{
+		return std::bit_cast<T>(object);
 	}
 
 	template <class T, class ...Args>
