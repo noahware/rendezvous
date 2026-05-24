@@ -599,6 +599,110 @@ void rv::renderer::draw_text(const font &font, const position pos, const string_
     current_texture_ = default_texture_;
 }
 
+void rv::renderer::add_text_shadow(const font &font, const position pos, const string_view_t text, const color col,
+                                   const float shadow_blur, const float size, const bool cut_background) noexcept
+{
+    const shared_ptr_t<texture> font_texture = font.texture();
+
+    if (text.empty() || !font_texture)
+    {
+        return;
+    }
+
+    current_texture_ = font_texture;
+
+    const float scale = size != 0.f ? size / font.baked_size() : 1.f;
+    const float baseline = pos.y + font.ascent() * scale;
+
+    float pen = cstd::floorf(pos.x);
+    float line_y = cstd::floorf(baseline);
+
+    const char *s = text.data();
+    const char *end = s + text.size();
+
+    vector_t<vertex> vertices;
+    vector_t<cstd::uint32_t> indices;
+
+    vertices.reserve(text.size() * 4);
+    indices.reserve(text.size() * 6);
+
+    cstd::uint32_t prev_codepoint = 0;
+
+    while (s < end)
+    {
+        const cstd::uint32_t codepoint = decode_utf8(s, end);
+
+        if (codepoint == '\n')
+        {
+            pen = pos.x;
+            line_y += font.line_height() * scale;
+            prev_codepoint = 0;
+            continue;
+        }
+
+        if (codepoint == '\r')
+        {
+            prev_codepoint = 0;
+            continue;
+        }
+
+        if (prev_codepoint != 0)
+        {
+            pen += font.kerning(prev_codepoint, codepoint) * scale;
+        }
+
+        const glyph &g = font.glyph(codepoint);
+
+        if (g.size.x > 0.f && g.size.y > 0.f)
+        {
+            const float x0 = pen + g.bearing.x * scale - shadow_blur;
+            const float y0 = line_y + g.bearing.y * scale - shadow_blur;
+            const float x1 = pen + g.bearing.x * scale + g.size.x * scale + shadow_blur;
+            const float y1 = line_y + g.bearing.y * scale + g.size.y * scale + shadow_blur;
+
+            const ndc_position a = to_ndc({x0, y0});
+            const ndc_position b = to_ndc({x1, y1});
+
+            const float du_per_pixel = (g.uv1.x - g.uv0.x) / (g.size.x * scale);
+            const float dv_per_pixel = (g.uv1.y - g.uv0.y) / (g.size.y * scale);
+            
+            const float u0 = g.uv0.x - shadow_blur * du_per_pixel;
+            const float v0 = g.uv0.y - shadow_blur * dv_per_pixel;
+            const float u1 = g.uv1.x + shadow_blur * du_per_pixel;
+            const float v1 = g.uv1.y + shadow_blur * dv_per_pixel;
+
+            const array_t<float, 8> data = {
+                shadow_blur, du_per_pixel, dv_per_pixel, cut_background ? 1.f : 0.f,
+                g.uv0.x, g.uv0.y, g.uv1.x, g.uv1.y
+            };
+
+            const cstd::uint32_t base = static_cast<cstd::uint32_t>(vertices.size());
+
+            vertices.push_back(vertex{.pos = {a.x, a.y}, .col = col, .uv = {u0, v0}, .custom_data = data});
+            vertices.push_back(vertex{.pos = {b.x, a.y}, .col = col, .uv = {u1, v0}, .custom_data = data});
+            vertices.push_back(vertex{.pos = {b.x, b.y}, .col = col, .uv = {u1, v1}, .custom_data = data});
+            vertices.push_back(vertex{.pos = {a.x, b.y}, .col = col, .uv = {u0, v1}, .custom_data = data});
+
+            indices.push_back(base);
+            indices.push_back(base + 1);
+            indices.push_back(base + 2);
+            indices.push_back(base);
+            indices.push_back(base + 2);
+            indices.push_back(base + 3);
+        }
+
+        pen += g.advance * scale;
+        prev_codepoint = codepoint;
+    }
+
+    if (!vertices.empty())
+    {
+        draw_indexed_vertices(vertices, indices, shader_type::text_shadow_shader);
+    }
+
+    current_texture_ = default_texture_;
+}
+
 rv::position rv::renderer::calc_text_size(const font &font, const string_view_t text, const float size) const noexcept
 {
     if (text.empty() || !font.texture())

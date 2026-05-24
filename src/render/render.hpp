@@ -45,7 +45,8 @@ namespace rv
 		default_shader,
 		shadow_shader,
 		rect_shader,
-		image_shader
+		image_shader,
+		text_shadow_shader
 	};
 
 	struct clip_rect_data
@@ -122,6 +123,7 @@ namespace rv
 		void draw_mouse_cursor(position pos, cursor_type type, float size_multiplier = 1.f) noexcept;
 
 		void draw_text(const font& font, position pos, string_view_t text, color col, float size = 0.f) noexcept;
+		void add_text_shadow(const font& font, position pos, string_view_t text, color col, float shadow_blur, float size = 0.f, bool cut_background = false) noexcept;
 		[[nodiscard]] position calc_text_size(const font& font, string_view_t text, float size = 0.f) const noexcept;
 
 		optional_t<font> add_font(span_t<const cstd::uint8_t> bytes, float pixel_height = 16.f, cstd::uint32_t min_char = 32, cstd::uint32_t max_char = 126, bool anti_aliased = true);

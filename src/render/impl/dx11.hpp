@@ -129,6 +129,7 @@ namespace rv
 		dx11_object<ID3D11PixelShader> shadow_pixel_shader_;
 		dx11_object<ID3D11PixelShader> rect_pixel_shader_;
 		dx11_object<ID3D11PixelShader> image_pixel_shader_;
+		dx11_object<ID3D11PixelShader> text_shadow_pixel_shader_;
 		dx11_object<ID3D11VertexShader> vertex_shader_;
 		dx11_object<ID3D11InputLayout> input_layout_;
 		dx11_object<ID3D11RasterizerState> rasterizer_state_;

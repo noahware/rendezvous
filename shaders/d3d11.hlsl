@@ -177,3 +177,83 @@ float4 image_pixel_shader(ps_input input) : SV_TARGET
     result.a *= apply_clip(input.position.xy);
     return result;
 }
+
+float4 text_shadow_pixel_shader(ps_input input) : SV_TARGET
+{
+    float blur_radius = input.custom_data.x;
+    float du_per_pixel = input.custom_data.y;
+    float dv_per_pixel = input.custom_data.z;
+    float cut_bg = input.custom_data.w;
+    
+    float2 uv_min = input.custom_data2.xy;
+    float2 uv_max = input.custom_data2.zw;
+    
+    int samples = (int)ceil(blur_radius);
+    
+    if (samples <= 0)
+    {
+        if (input.uv.x < uv_min.x || input.uv.x > uv_max.x ||
+            input.uv.y < uv_min.y || input.uv.y > uv_max.y)
+        {
+            return float4(0.0f, 0.0f, 0.0f, 0.0f);
+        }
+        float a = textr.SampleLevel(samplr, input.uv, 0).a;
+        float4 res = float4(input.color.rgb, input.color.a * a);
+        res.a *= apply_clip(input.position.xy);
+        return res;
+    }
+    
+    float total_alpha = 0.0f;
+    float total_weight = 0.0f;
+    
+    // Standard CSS-style Gaussian falloff
+    float sigma = max(blur_radius / 2.0f, 0.1f);
+    float two_sigma_sq = 2.0f * sigma * sigma;
+    
+    // True additive blur to prevent beading/caps at stroke ends
+    [loop]
+    for (int x = -samples; x <= samples; ++x)
+    {
+        [loop]
+        for (int y = -samples; y <= samples; ++y)
+        {
+            float dist_sq = x*x + y*y;
+            if (dist_sq <= blur_radius * blur_radius)
+            {
+                float2 offset = float2(x * du_per_pixel, y * dv_per_pixel);
+                float2 sample_uv = input.uv + offset;
+                
+                float weight = exp(-dist_sq / two_sigma_sq);
+                
+                if (sample_uv.x >= uv_min.x && sample_uv.x <= uv_max.x &&
+                    sample_uv.y >= uv_min.y && sample_uv.y <= uv_max.y)
+                {
+                    float a = textr.SampleLevel(samplr, sample_uv, 0).a;
+                    total_alpha += a * weight;
+                }
+                
+                // Weight must be accumulated regardless of sample boundary to preserve normalized energy
+                total_weight += weight;
+            }
+        }
+    }
+    
+    float final_alpha = total_weight > 0.0f ? (total_alpha / total_weight) : 0.0f;
+    
+    // 1.5x boost for UI vibrancy (avoids intense alpha-stacking banding from higher multipliers)
+    final_alpha = saturate(final_alpha * 1.5f);
+    
+    if (cut_bg > 0.5f)
+    {
+        if (input.uv.x >= uv_min.x && input.uv.x <= uv_max.x &&
+            input.uv.y >= uv_min.y && input.uv.y <= uv_max.y)
+        {
+            float core_alpha = textr.SampleLevel(samplr, input.uv, 0).a;
+            final_alpha *= saturate(1.0f - core_alpha);
+        }
+    }
+    
+    float4 result = float4(input.color.rgb, input.color.a * final_alpha);
+    result.a *= apply_clip(input.position.xy);
+    return result;
+}
