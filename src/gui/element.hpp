@@ -15,6 +15,21 @@ namespace rv
 					size_(size),
 					parent_(cstd::move(parent)) { }
 
+		virtual void on_mouse_click()
+		{
+			
+		}
+
+		virtual void on_mouse_enter()
+		{
+
+		}
+
+		virtual void on_mouse_exit()
+		{
+
+		}
+
 		[[nodiscard]] bool child_of(const shared_ptr_t<element>& parent) const noexcept
 		{
 			return parent_ == parent;
