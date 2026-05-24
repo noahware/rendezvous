@@ -97,15 +97,17 @@ cstd::int32_t main()
 	const auto gui = cstd::make_unique<rv::gui>(cstd::move(gui_renderer));
 
 	auto root = gui->root();
-	root->direction(rv::layout_direction::vertical);
-	root->gap(8.f);
+	root->direction(rv::layout_direction::vertical)
+		.gap(8.f);
 
 	root->make_child<rv::button>(rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
 	root->make_child<rv::button>(rv::element_size{ rv::styled_size::percent(50.f), rv::styled_size::px(40.f) });
 
 	auto row = root->make_child<rv::element>(rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
-	row->direction(rv::layout_direction::horizontal);
-	row->gap(8.f);
+
+	row->direction(rv::layout_direction::horizontal)
+		.gap(8.f);
+
 	row->make_child<rv::button>(rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
 	row->make_child<rv::button>(rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
 

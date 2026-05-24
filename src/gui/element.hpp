@@ -22,6 +22,7 @@ namespace rv
 
 	struct element_style
 	{
+		element_size size;
 		optional_t<float> gap;
 		layout_direction direction = layout_direction::horizontal;
 	};
@@ -33,7 +34,7 @@ namespace rv
 		element() noexcept = default;
 
 		explicit element(const element_size size) noexcept
-				:	size_(size) { }
+				:	style_{ size } { }
 
 		virtual void on_mouse_click()
 		{
@@ -92,12 +93,12 @@ namespace rv
 
 		[[nodiscard]] const element_size& declared_size() const noexcept
 		{
-			return size_;
+			return style_.size;
 		}
 
 		void set_declared_size(const element_size size) noexcept
 		{
-			size_ = size;
+			style_.size = size;
 		}
 
 		[[nodiscard]] vector_2d<float> computed_size() const noexcept
@@ -159,7 +160,6 @@ namespace rv
 
 		}
 
-		element_size size_;
 		vector_2d<float> computed_size_ = { };
 		element_style style_;
 
