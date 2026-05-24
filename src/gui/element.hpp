@@ -34,7 +34,7 @@ namespace rv
 		element() noexcept = default;
 
 		explicit element(const element_size size) noexcept
-				:	style_{ size } { }
+				:	style_{ .size = size } { }
 
 		virtual void on_mouse_click()
 		{
@@ -135,17 +135,17 @@ namespace rv
 			return *this;
 		}
 
-		void render(gui_renderer& renderer, const struct position cursor) const
+		void render(gui_renderer& renderer, const position cursor, const element_style& defaults) const
 		{
-			const struct position max = { cursor.x + computed_size_.x, cursor.y + computed_size_.y };
+			const position max = { cursor.x + computed_size_.x, cursor.y + computed_size_.y };
 			render_self(renderer, cursor, max);
 
-			const float gap = style_.gap.value_or(0.f);
-			struct position child_cursor = cursor;
+			const float gap = style_.gap.value_or(defaults.gap.value_or(0.f));
+			position child_cursor = cursor;
 
 			for (const auto& child : children_)
 			{
-				child->render(renderer, child_cursor);
+				child->render(renderer, child_cursor, defaults);
 
 				if (style_.direction == layout_direction::vertical)
 					child_cursor.y += child->computed_size_.y + gap;
@@ -155,7 +155,7 @@ namespace rv
 		}
 
 	protected:
-		virtual void render_self(gui_renderer& renderer, struct position min, struct position max) const
+		virtual void render_self(gui_renderer& renderer, position min, position max) const
 		{
 
 		}

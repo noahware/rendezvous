@@ -3,11 +3,11 @@
 
 namespace rv
 {
-	inline void layout(element& el, const vector_2d<float> available)
+	inline void layout(element& el, const vector_2d<float> available, const element_style& defaults)
 	{
 		const auto& size = el.declared_size();
 		const auto& style = el.style();
-		const float gap = style.gap.value_or(0.f);
+		const float gap = style.gap.value_or(defaults.gap.value_or(0.f));
 		const bool is_vertical = (style.direction == layout_direction::vertical);
 
 		const auto resolve_axis = [](const styled_size& sv, const float available_px) -> optional_t<float>
@@ -47,7 +47,7 @@ namespace rv
 				continue;
 			}
 
-			layout(*child, child_available);
+			layout(*child, child_available, defaults);
 
 			const vector_2d<float> cs = child->computed_size();
 			const float child_main = is_vertical ? cs.y : cs.x;
@@ -82,7 +82,7 @@ namespace rv
 				else
 					fill_available.x = fill_size;
 
-				layout(*child, fill_available);
+				layout(*child, fill_available, defaults);
 
 				const vector_2d<float> cs = child->computed_size();
 				const float child_cross = is_vertical ? cs.x : cs.y;

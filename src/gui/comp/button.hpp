@@ -18,7 +18,7 @@ namespace rv
 		}
 
 	protected:
-		void render_self(gui_renderer& renderer, const rv::position min, const rv::position max) const override
+		void render_self(gui_renderer& renderer, const position min, const position max) const override
 		{
 			constexpr color col = { 1.f, 1.f, 1.f, 1.f };
 

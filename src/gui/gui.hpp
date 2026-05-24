@@ -43,8 +43,8 @@ namespace rv
 		{
 			const auto root = tree_.root();
 
-			layout(*root, display_size);
-			root->render(*renderer_, position{ 0.f, 0.f });
+			layout(*root, display_size, default_style_);
+			root->render(*renderer_, position{ 0.f, 0.f }, default_style_);
 		}
 
 		[[nodiscard]] shared_ptr_t<element> root() const noexcept
@@ -52,8 +52,19 @@ namespace rv
 			return tree_.root();
 		}
 
+		[[nodiscard]] element_style& default_style() noexcept
+		{
+			return default_style_;
+		}
+
+		[[nodiscard]] const element_style& default_style() const noexcept
+		{
+			return default_style_;
+		}
+
 	protected:
 		unique_ptr_t<gui_renderer> renderer_;
 		element_tree tree_;
+		element_style default_style_;
 	};
 }
