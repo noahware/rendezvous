@@ -39,6 +39,12 @@ float sd_round_rect(float2 p, float2 b, float4 r)
     float rad_bottom = lerp(r.z, r.y, s.x);
     float rad = lerp(rad_top, rad_bottom, s.y);
 
+    if (rad <= 0.001f)
+    {
+        float2 q = abs(p) - b;
+        return max(q.x, q.y);
+    }
+
     float2 q = abs(p) - b + rad;
     return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - rad;
 }
@@ -88,12 +94,21 @@ float4 rect_pixel_shader(ps_input input) : SV_TARGET
     float2 p = input.uv;
     float d = sd_round_rect(p, rect_size * 0.5f, radii);
     
+    float alpha = 0.0f;
     if (thickness > 0.0)
     {
-        d = abs(d + thickness * 0.5f) - thickness * 0.5f;
+        float outer_d = d;
+        float inner_d = d + thickness;
+        
+        float alpha_outer = saturate(0.5f - outer_d);
+        float alpha_inner = saturate(0.5f - inner_d);
+        
+        alpha = alpha_outer - alpha_inner;
     }
-    
-    float alpha = saturate(0.5f - d);
+    else
+    {
+        alpha = saturate(0.5f - d);
+    }
     
     float4 result = float4(input.color.rgb, input.color.a * alpha);
     result.a *= apply_clip(input.position.xy);

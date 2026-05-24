@@ -164,26 +164,38 @@ void rv::renderer::draw_indexed_vertices(const span_t<const vertex> vertices, co
 void rv::renderer::draw_rect(const position min, const position max, const color col, const float thickness,
                              const float rounding) noexcept
 {
-    if (rounding < 0.5f)
-    {
-        draw_rect_filled(min, {max.x, min.y + thickness}, col);
-        draw_rect_filled({min.x, max.y - thickness}, max, col);
-        draw_rect_filled(min, {min.x + thickness, max.y}, col);
-        draw_rect_filled({max.x - thickness, min.y}, max, col);
+    const float width = max.x - min.x;
+    const float height = max.y - min.y;
 
-        return;
-    }
+    const float cx = min.x + width * 0.5f;
+    const float cy = min.y + height * 0.5f;
+
+    const float qw = (width * 0.5f) + 1.f;
+    const float qh = (height * 0.5f) + 1.f;
+
+    const position p0 = {cx - qw, cy - qh};
+    const position p1 = {cx + qw, cy + qh};
+
+    const ndc_position n0 = to_ndc(p0);
+    const ndc_position n1 = to_ndc(p1);
 
     const float r = rounding;
 
-    constexpr float pi = cstd::numbers::pi_f;
+    const array_t<float, 8> data = {width, height, thickness, 0.f, r, r, r, r};
 
-    add_arc_path({min.x + r, min.y + r}, r, pi, pi * 1.5f);
-    add_arc_path({max.x - r, min.y + r}, r, pi * 1.5f, pi * 2.f);
-    add_arc_path({max.x - r, max.y - r}, r, 0.f, pi * 0.5f);
-    add_arc_path({min.x + r, max.y - r}, r, pi * 0.5f, pi);
+    const auto make_vertex = [data](const float x, const float y, const color c, const float u, const float v) -> vertex
+    { 
+        return vertex{.pos = {x, y}, .col = c, .uv = {u, v}, .custom_data = data}; 
+    };
 
-    draw_lined_path(col, thickness, true);
+    const array_t<vertex, 6> vertices = 
+    {
+        make_vertex(n0.x, n0.y, col, -qw, -qh), make_vertex(n1.x, n0.y, col, qw, -qh),
+        make_vertex(n0.x, n1.y, col, -qw, qh),  make_vertex(n1.x, n0.y, col, qw, -qh),
+        make_vertex(n1.x, n1.y, col, qw, qh),   make_vertex(n0.x, n1.y, col, -qw, qh),
+    };
+
+    draw_vertices(vertices, shader_type::rect_shader);
 }
 
 void rv::renderer::draw_rect_filled(const position min, const position max, const color col, const float rounding,
