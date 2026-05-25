@@ -1,5 +1,6 @@
 #pragma once
 #include "types.hpp"
+#include "string.hpp"
 
 namespace rv
 {
@@ -59,25 +60,4 @@ namespace rv
 		}
 	};
 
-	template <cstd::size_t N>
-	struct fixed_string
-	{
-		char data[N]{};
-
-		constexpr fixed_string(const char(&s)[N]) noexcept
-		{
-			for (cstd::size_t i = 0; i < N; i++)
-			{
-				data[i] = s[i];
-			}
-		}
-
-		[[nodiscard]] constexpr cstd::size_t size() const noexcept
-		{
-			return N - 1;
-		}
-	};
-
-	template <cstd::size_t N>
-	fixed_string(const char(&)[N]) -> fixed_string<N>;
 }

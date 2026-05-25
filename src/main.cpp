@@ -1,6 +1,7 @@
 #include "gui/element.hpp"
 #include "gui/gui.hpp"
 #include "gui/comp/button.hpp"
+#include "gui/comp/text.hpp"
 #include "log/log.hpp"
 #include "render/impl/dx11.hpp"
 #include "input/win32.hpp"
@@ -104,7 +105,7 @@ cstd::int32_t main()
 	auto root = gui->root();
 	root->direction(rv::layout_direction::vertical);
 
-	auto vis_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
+	/*auto vis_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
 	vis_row->direction(rv::layout_direction::horizontal);
 
 	auto vis_btn1 = gui->make_child<rv::button>(vis_row, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
@@ -254,7 +255,7 @@ cstd::int32_t main()
 	{
 		gui->make_child<rv::button>(wrap_sb, rv::element_size{ rv::styled_size::px(70.f), rv::styled_size::px(28.f) });
 	}
-
+	*/
 
 	// example image loading using stb image
 	// cstd::int32_t img_w, img_h, img_c;
@@ -267,6 +268,25 @@ cstd::int32_t main()
 	rv::vector_2d<float> last_screen_size = screen_size;
 
 	const auto font = renderer->add_font("C:\\Windows\\Fonts\\arial.ttf", 32.f);
+
+	auto gui_font = cstd::make_shared<rv::gui_font_impl>(*font);
+
+	// auto-width single-line text
+	auto label = gui->make_child<rv::text_element>(root,
+		rv::element_size{}, gui_font);
+	label->content("Hello World").text_size(24.f).text_color({ 1.f, 0.f, 0.f, 1.f });
+
+	// fixed-width wrapping paragraph
+	auto para = gui->make_child<rv::text_element>(root,
+		rv::element_size{ rv::styled_size::px(400.f), rv::styled_size::auto_v() }, gui_font);
+	para->content("The quick brown fox jumps over the lazy dog. This text should wrap across multiple lines automatically.")
+		.text_size(18.f);
+
+	// centered text in full-width row
+	auto centered = gui->make_child<rv::text_element>(root,
+		rv::element_size{ rv::styled_size::fill(), rv::styled_size::auto_v() }, gui_font);
+	centered->content("Centered Heading")
+		.text_alignment(rv::text_align::center).text_size(28.f);
 
 	MSG msg = { };
 

@@ -1,16 +1,64 @@
 #pragma once
 #include "../render/render.hpp"
+#include "../render/texture.hpp"
 #include "../input/input.hpp"
 #include "layout.hpp"
 
 namespace rv
 {
+	class gui_font
+	{
+	public:
+		virtual ~gui_font() = default;
+		[[nodiscard]] virtual float glyph_advance(cstd::uint32_t codepoint) const noexcept = 0;
+		[[nodiscard]] virtual float kerning(cstd::uint32_t left, cstd::uint32_t right) const noexcept = 0;
+		[[nodiscard]] virtual float line_height() const noexcept = 0;
+		[[nodiscard]] virtual float baked_size() const noexcept = 0;
+	};
+
+	class gui_font_impl : public gui_font
+	{
+	public:
+		explicit gui_font_impl(const font& f) noexcept
+			: font_(f) { }
+
+		[[nodiscard]] float glyph_advance(const cstd::uint32_t codepoint) const noexcept override
+		{
+			return font_.glyph(codepoint).advance;
+		}
+
+		[[nodiscard]] float kerning(const cstd::uint32_t left, const cstd::uint32_t right) const noexcept override
+		{
+			return font_.kerning(left, right);
+		}
+
+		[[nodiscard]] float line_height() const noexcept override
+		{
+			return font_.line_height();
+		}
+
+		[[nodiscard]] float baked_size() const noexcept override
+		{
+			return font_.baked_size();
+		}
+
+		[[nodiscard]] const font& underlying() const noexcept
+		{
+			return font_;
+		}
+
+	protected:
+		const font& font_;
+	};
+
 	class gui_renderer
 	{
 	public:
+		virtual ~gui_renderer() = default;
 		virtual void draw_rect(position min, position max, color col, float thickness = 1.f, float rounding = 0.f) noexcept = 0;
 		virtual void draw_rect_filled(position min, position max, color col, float rounding = 0.f, rounding_flags flags = rounding_flags_all) noexcept = 0;
 		virtual void draw_circle_filled(position pos, float radius, color col) noexcept = 0;
+		virtual void draw_text(const gui_font& font, position pos, string_view_t text, color col, float size = 0.f) noexcept = 0;
 		virtual void push_clip_rect(position min, position max) noexcept = 0;
 		virtual void pop_clip_rect() noexcept = 0;
 		virtual float delta_time() const noexcept = 0;
@@ -39,6 +87,13 @@ namespace rv
 			return renderer_->draw_circle_filled(pos, radius, col);
 		}
 
+		void draw_text(const gui_font& gf, const position pos, const string_view_t text,
+		               const color col, const float size) noexcept override
+		{
+			const auto* impl = static_cast<const gui_font_impl*>(&gf);
+			renderer_->draw_text(impl->underlying(), pos, text, col, size);
+		}
+
 		void push_clip_rect(const position min, const position max) noexcept override
 		{
 			renderer_->push_clip_rect(min, max);
@@ -57,56 +112,6 @@ namespace rv
 	protected:
 		shared_ptr_t<renderer> renderer_;
 	};
-
-	// element::render() defined here because gui_renderer must be complete
-	inline void element::render(gui_renderer& renderer, const element_style& defaults,
-	                            const position offset) const
-	{
-		if (!visible_)
-		{
-			return;
-		}
-
-		position total_offset = offset;
-		const auto anim = animated_props();
-
-		if (anim && anim->offset)
-		{
-			total_offset.x += anim->offset->x;
-			total_offset.y += anim->offset->y;
-		}
-
-		const position min = { computed_pos_.x + total_offset.x, computed_pos_.y + total_offset.y };
-		const position max = { min.x + computed_size_.x, min.y + computed_size_.y };
-
-		render_self(renderer, min, max);
-
-		const auto ov = style_.overflow.value_or(defaults.overflow.value_or(overflow_mode::visible));
-		const bool clip = (ov == overflow_mode::hidden || ov == overflow_mode::scroll);
-
-		if (clip)
-		{
-			renderer.push_clip_rect(min, max);
-		}
-
-		position child_offset = total_offset;
-
-		if (ov == overflow_mode::scroll)
-		{
-			child_offset.x += scroll_offset_.x;
-			child_offset.y += scroll_offset_.y;
-		}
-
-		for (const auto& child : children_)
-		{
-			child->render(renderer, defaults, child_offset);
-		}
-
-		if (clip)
-		{
-			renderer.pop_clip_rect();
-		}
-	}
 
 	class gui
 	{

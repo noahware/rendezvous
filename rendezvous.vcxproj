@@ -144,6 +144,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\gui\elements.cpp" />
+    <ClCompile Include="src\gui\layout.cpp" />
     <ClCompile Include="src\input\win32.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\render\impl\dx11.cpp" />
@@ -153,7 +155,9 @@
     <None Include="vcpkg.json" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\gui\animation.hpp" />
     <ClInclude Include="src\gui\comp\button.hpp" />
+    <ClInclude Include="src\gui\comp\text.hpp" />
     <ClInclude Include="src\gui\element.hpp" />
     <ClInclude Include="src\gui\gui.hpp" />
     <ClInclude Include="src\gui\layout.hpp" />
@@ -168,6 +172,7 @@
     <ClInclude Include="src\render\texture.hpp" />
     <ClInclude Include="src\util\file.hpp" />
     <ClInclude Include="src\util\hash.hpp" />
+    <ClInclude Include="src\util\string.hpp" />
     <ClInclude Include="src\util\math.hpp" />
     <ClInclude Include="src\util\triangulate.hpp" />
     <ClInclude Include="src\util\types.hpp" />

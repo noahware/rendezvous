@@ -12,45 +12,9 @@
 #endif
 #include "../util/file.hpp"
 #include "../util/triangulate.hpp"
+#include "../util/string.hpp"
 
-namespace
-{
-    cstd::uint32_t decode_utf8(const char *&s, const char *end) noexcept
-    {
-        cstd::uint32_t codepoint = 0;
-        const cstd::uint8_t c0 = static_cast<cstd::uint8_t>(*s);
-
-        if (c0 < 0x80)
-        {
-            codepoint = c0;
-            s++;
-        }
-        else if ((c0 & 0xE0) == 0xC0 && s + 1 < end)
-        {
-            codepoint = ((c0 & 0x1F) << 6) | (static_cast<cstd::uint8_t>(s[1]) & 0x3F);
-            s += 2;
-        }
-        else if ((c0 & 0xF0) == 0xE0 && s + 2 < end)
-        {
-            codepoint = ((c0 & 0x0F) << 12) | ((static_cast<cstd::uint8_t>(s[1]) & 0x3F) << 6) |
-                        (static_cast<cstd::uint8_t>(s[2]) & 0x3F);
-            s += 3;
-        }
-        else if ((c0 & 0xF8) == 0xF0 && s + 3 < end)
-        {
-            codepoint = ((c0 & 0x07) << 18) | ((static_cast<cstd::uint8_t>(s[1]) & 0x3F) << 12) |
-                        ((static_cast<cstd::uint8_t>(s[2]) & 0x3F) << 6) | (static_cast<cstd::uint8_t>(s[3]) & 0x3F);
-            s += 4;
-        }
-        else
-        {
-            codepoint = '?';
-            s++;
-        }
-
-        return codepoint;
-    }
-} // namespace
+using rv::decode_utf8;
 
 bool rv::renderer::init()
 {
