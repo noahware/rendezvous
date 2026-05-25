@@ -4,6 +4,7 @@
 
 namespace rv
 {
+	template <class T = float>
 	class slider : public element
 	{
 	public:
@@ -13,24 +14,44 @@ namespace rv
 			init_slider_defaults();
 		}
 
-		slider& on_change(function_t<void(float)> callback)
+		slider& on_change(function_t<void(T)> callback)
 		{
 			on_change_ = cstd::move(callback);
 
 			return *this;
 		}
 
-		slider& value(const float v)
+		slider& value(const T v)
 		{
-			target_value_ = v;
-			visual_value_ = v;
+			target_value_ = clamp_value(v);
+			visual_t_ = normalize(target_value_);
 
 			return *this;
 		}
 
-		[[nodiscard]] float value() const noexcept
+		slider& range(const T min_v, const T max_v)
+		{
+			min_value_ = min_v;
+			max_value_ = max_v;
+			target_value_ = clamp_value(target_value_);
+			visual_t_ = normalize(target_value_);
+
+			return *this;
+		}
+
+		[[nodiscard]] T value() const noexcept
 		{
 			return target_value_;
+		}
+
+		[[nodiscard]] T min_value() const noexcept
+		{
+			return min_value_;
+		}
+
+		[[nodiscard]] T max_value() const noexcept
+		{
+			return max_value_;
 		}
 
 		slider& fill_color(const color col) noexcept
@@ -86,17 +107,18 @@ namespace rv
 				}
 			}
 
-			const float diff = target_value_ - visual_value_;
+			const float target_t = normalize(target_value_);
+			const float diff = target_t - visual_t_;
 
 			if (diff != 0.f)
 			{
 				const float speed = style_.transition_speed.value_or(12.f);
 				const float factor = cstd::fminf(speed * dt, 1.f);
-				visual_value_ += diff * factor;
+				visual_t_ += diff * factor;
 
 				if (cstd::fabsf(diff) < 0.001f)
 				{
-					visual_value_ = target_value_;
+					visual_t_ = target_t;
 				}
 			}
 		}
@@ -114,6 +136,35 @@ namespace rv
 			style_.transition_speed = 12.f;
 		}
 
+		[[nodiscard]] float normalize(const T v) const noexcept
+		{
+			if (max_value_ == min_value_)
+			{
+				return 0.f;
+			}
+
+			return static_cast<float>(v - min_value_) / static_cast<float>(max_value_ - min_value_);
+		}
+
+		[[nodiscard]] T denormalize(const float t) const noexcept
+		{
+			if constexpr (cstd::is_floating_point_v<T>)
+			{
+				return min_value_ + static_cast<T>(t) * (max_value_ - min_value_);
+			}
+			else
+			{
+				return static_cast<T>(static_cast<float>(min_value_) + t * static_cast<float>(max_value_ - min_value_) + 0.5f);
+			}
+		}
+
+		[[nodiscard]] T clamp_value(const T v) const noexcept
+		{
+			if (v < min_value_) return min_value_;
+			if (v > max_value_) return max_value_;
+			return v;
+		}
+
 		void update_value_from_mouse()
 		{
 			const position mouse_pos = input_->mouse_pos();
@@ -127,10 +178,11 @@ namespace rv
 
 			const float raw = (mouse_pos.x - track_x) / track_width;
 			const float clamped = cstd::fmaxf(0.f, cstd::fminf(1.f, raw));
+			const T new_value = denormalize(clamped);
 
-			if (clamped != target_value_)
+			if (new_value != target_value_)
 			{
-				target_value_ = clamped;
+				target_value_ = new_value;
 
 				if (on_change_)
 				{
@@ -152,14 +204,14 @@ namespace rv
 			renderer.draw_rect_filled(track_min, track_max, track_col, track_height * 0.5f);
 
 			const float track_width = track_max.x - track_min.x;
-			const position fill_max = { track_min.x + track_width * visual_value_, track_max.y };
+			const position fill_max = { track_min.x + track_width * visual_t_, track_max.y };
 
-			if (visual_value_ > 0.f)
+			if (visual_t_ > 0.f)
 			{
 				renderer.draw_rect_filled(track_min, fill_max, fill_color_, track_height * 0.5f);
 			}
 
-			const float thumb_x = track_min.x + track_width * visual_value_;
+			const float thumb_x = track_min.x + track_width * visual_t_;
 			const position thumb_pos = { thumb_x, center_y };
 			const color thumb_col = (hovered_ || dragging_) ? thumb_color_active_ : thumb_color_;
 
@@ -167,10 +219,12 @@ namespace rv
 		}
 
 		shared_ptr_t<input> input_;
-		function_t<void(float)> on_change_;
+		function_t<void(T)> on_change_;
 
-		float target_value_ = 0.f;
-		float visual_value_ = 0.f;
+		T min_value_ = static_cast<T>(0);
+		T max_value_ = static_cast<T>(1);
+		T target_value_ = static_cast<T>(0);
+		float visual_t_ = 0.f;
 		bool dragging_ = false;
 
 		float thumb_radius_ = 8.f;
@@ -179,46 +233,49 @@ namespace rv
 		color thumb_color_active_ = { 0.9f, 0.9f, 0.9f, 1.f };
 	};
 
-	class range_slider : public slider
+	template <class T = float>
+	class range_slider : public slider<T>
 	{
+		using base = slider<T>;
+
 	public:
 		range_slider(const element_size size, shared_ptr_t<input> input) noexcept
-				:	slider(size, cstd::move(input), true) { }
+				:	base(size, cstd::move(input), true) { }
 
-		range_slider& on_range_change(function_t<void(float, float)> callback)
+		range_slider& on_range_change(function_t<void(T, T)> callback)
 		{
 			on_range_change_ = cstd::move(callback);
 
 			return *this;
 		}
 
-		range_slider& values(const float low, const float high)
+		range_slider& values(const T low, const T high)
 		{
-			target_low_ = low;
-			target_high_ = high;
-			visual_low_ = low;
-			visual_high_ = high;
+			target_low_ = base::clamp_value(low);
+			target_high_ = base::clamp_value(high);
+			visual_low_t_ = base::normalize(target_low_);
+			visual_high_t_ = base::normalize(target_high_);
 
 			return *this;
 		}
 
-		[[nodiscard]] float low() const noexcept
+		[[nodiscard]] T low() const noexcept
 		{
 			return target_low_;
 		}
 
-		[[nodiscard]] float high() const noexcept
+		[[nodiscard]] T high() const noexcept
 		{
 			return target_high_;
 		}
 
 		bool on_mouse_click() override
 		{
-			dragging_ = true;
+			base::dragging_ = true;
 
-			const position mouse_pos = input_->mouse_pos();
-			const float track_x = computed_pos_.x + thumb_radius_;
-			const float track_width = computed_size_.x - thumb_radius_ * 2.f;
+			const position mouse_pos = base::input_->mouse_pos();
+			const float track_x = base::computed_pos_.x + base::thumb_radius_;
+			const float track_width = base::computed_size_.x - base::thumb_radius_ * 2.f;
 
 			if (track_width <= 0.f)
 			{
@@ -226,8 +283,8 @@ namespace rv
 			}
 
 			const float click_t = (mouse_pos.x - track_x) / track_width;
-			const float dist_low = cstd::fabsf(click_t - target_low_);
-			const float dist_high = cstd::fabsf(click_t - target_high_);
+			const float dist_low = cstd::fabsf(click_t - visual_low_t_);
+			const float dist_high = cstd::fabsf(click_t - visual_high_t_);
 
 			active_ = (dist_low <= dist_high) ? active_thumb::low : active_thumb::high;
 
@@ -240,11 +297,11 @@ namespace rv
 		{
 			element::update(dt);
 
-			if (dragging_)
+			if (base::dragging_)
 			{
-				if (!input_->is_mouse_down(0))
+				if (!base::input_->is_mouse_down(0))
 				{
-					dragging_ = false;
+					base::dragging_ = false;
 					active_ = active_thumb::none;
 				}
 				else
@@ -253,29 +310,32 @@ namespace rv
 				}
 			}
 
-			const float speed = style_.transition_speed.value_or(12.f);
+			const float speed = base::style_.transition_speed.value_or(12.f);
 			const float factor = cstd::fminf(speed * dt, 1.f);
 
-			const float diff_low = target_low_ - visual_low_;
-			const float diff_high = target_high_ - visual_high_;
+			const float target_low_t = base::normalize(target_low_);
+			const float target_high_t = base::normalize(target_high_);
+
+			const float diff_low = target_low_t - visual_low_t_;
+			const float diff_high = target_high_t - visual_high_t_;
 
 			if (diff_low != 0.f)
 			{
-				visual_low_ += diff_low * factor;
+				visual_low_t_ += diff_low * factor;
 
 				if (cstd::fabsf(diff_low) < 0.001f)
 				{
-					visual_low_ = target_low_;
+					visual_low_t_ = target_low_t;
 				}
 			}
 
 			if (diff_high != 0.f)
 			{
-				visual_high_ += diff_high * factor;
+				visual_high_t_ += diff_high * factor;
 
 				if (cstd::fabsf(diff_high) < 0.001f)
 				{
-					visual_high_ = target_high_;
+					visual_high_t_ = target_high_t;
 				}
 			}
 		}
@@ -290,9 +350,9 @@ namespace rv
 
 		void update_range_from_mouse()
 		{
-			const position mouse_pos = input_->mouse_pos();
-			const float track_x = computed_pos_.x + thumb_radius_;
-			const float track_width = computed_size_.x - thumb_radius_ * 2.f;
+			const position mouse_pos = base::input_->mouse_pos();
+			const float track_x = base::computed_pos_.x + base::thumb_radius_;
+			const float track_width = base::computed_size_.x - base::thumb_radius_ * 2.f;
 
 			if (track_width <= 0.f)
 			{
@@ -301,26 +361,27 @@ namespace rv
 
 			const float raw = (mouse_pos.x - track_x) / track_width;
 			const float clamped = cstd::fmaxf(0.f, cstd::fminf(1.f, raw));
+			const T new_value = base::denormalize(clamped);
 
 			bool changed = false;
 
 			if (active_ == active_thumb::low)
 			{
-				const float new_low = cstd::fminf(clamped, target_high_);
+				const T capped = (new_value < target_high_) ? new_value : target_high_;
 
-				if (new_low != target_low_)
+				if (capped != target_low_)
 				{
-					target_low_ = new_low;
+					target_low_ = capped;
 					changed = true;
 				}
 			}
 			else if (active_ == active_thumb::high)
 			{
-				const float new_high = cstd::fmaxf(clamped, target_low_);
+				const T capped = (new_value > target_low_) ? new_value : target_low_;
 
-				if (new_high != target_high_)
+				if (capped != target_high_)
 				{
-					target_high_ = new_high;
+					target_high_ = capped;
 					changed = true;
 				}
 			}
@@ -336,40 +397,40 @@ namespace rv
 			const float height = max.y - min.y;
 			const float center_y = min.y + height * 0.5f;
 			const float track_height = 4.f;
-			const color track_col = style_.background_color.value_or(color{ 0.3f, 0.3f, 0.3f, 1.f });
+			const color track_col = base::style_.background_color.value_or(color{ 0.3f, 0.3f, 0.3f, 1.f });
 
-			const position track_min = { min.x + thumb_radius_, center_y - track_height * 0.5f };
-			const position track_max = { max.x - thumb_radius_, center_y + track_height * 0.5f };
+			const position track_min = { min.x + base::thumb_radius_, center_y - track_height * 0.5f };
+			const position track_max = { max.x - base::thumb_radius_, center_y + track_height * 0.5f };
 
 			renderer.draw_rect_filled(track_min, track_max, track_col, track_height * 0.5f);
 
 			const float track_width = track_max.x - track_min.x;
-			const position fill_min = { track_min.x + track_width * visual_low_, track_min.y };
-			const position fill_max = { track_min.x + track_width * visual_high_, track_max.y };
+			const position fill_min = { track_min.x + track_width * visual_low_t_, track_min.y };
+			const position fill_max = { track_min.x + track_width * visual_high_t_, track_max.y };
 
-			if (visual_high_ > visual_low_)
+			if (visual_high_t_ > visual_low_t_)
 			{
-				renderer.draw_rect_filled(fill_min, fill_max, fill_color_, track_height * 0.5f);
+				renderer.draw_rect_filled(fill_min, fill_max, base::fill_color_, track_height * 0.5f);
 			}
 
-			const float low_x = track_min.x + track_width * visual_low_;
-			const float high_x = track_min.x + track_width * visual_high_;
+			const float low_x = track_min.x + track_width * visual_low_t_;
+			const float high_x = track_min.x + track_width * visual_high_t_;
 
-			const color low_col = (hovered_ || (dragging_ && active_ == active_thumb::low))
-				? thumb_color_active_ : thumb_color_;
-			const color high_col = (hovered_ || (dragging_ && active_ == active_thumb::high))
-				? thumb_color_active_ : thumb_color_;
+			const color low_col = (base::hovered_ || (base::dragging_ && active_ == active_thumb::low))
+				? base::thumb_color_active_ : base::thumb_color_;
+			const color high_col = (base::hovered_ || (base::dragging_ && active_ == active_thumb::high))
+				? base::thumb_color_active_ : base::thumb_color_;
 
-			renderer.draw_circle_filled(position{ low_x, center_y }, thumb_radius_, low_col);
-			renderer.draw_circle_filled(position{ high_x, center_y }, thumb_radius_, high_col);
+			renderer.draw_circle_filled(position{ low_x, center_y }, base::thumb_radius_, low_col);
+			renderer.draw_circle_filled(position{ high_x, center_y }, base::thumb_radius_, high_col);
 		}
 
-		function_t<void(float, float)> on_range_change_;
+		function_t<void(T, T)> on_range_change_;
 
-		float target_low_ = 0.25f;
-		float target_high_ = 0.75f;
-		float visual_low_ = 0.25f;
-		float visual_high_ = 0.75f;
+		T target_low_ = static_cast<T>(0);
+		T target_high_ = static_cast<T>(1);
+		float visual_low_t_ = 0.f;
+		float visual_high_t_ = 1.f;
 
 		active_thumb active_ = active_thumb::none;
 	};

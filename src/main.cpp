@@ -329,7 +329,7 @@ cstd::int32_t main()
 		rv::element_size{}, gui_font);
 	slider_label->content("Volume: 50%").text_size(16.f);
 
-	auto vol_slider = gui->make_child<rv::slider>(root,
+	auto vol_slider = gui->make_child<rv::slider<>>(root,
 		rv::element_size{ rv::styled_size::px(300.f), rv::styled_size::px(30.f) }, input);
 
 	vol_slider->value(0.5f)
@@ -345,7 +345,7 @@ cstd::int32_t main()
 		rv::element_size{}, gui_font);
 	range_label->content("Range: 25% - 75%").text_size(16.f);
 
-	auto price_range = gui->make_child<rv::range_slider>(root,
+	auto price_range = gui->make_child<rv::range_slider<>>(root,
 		rv::element_size{ rv::styled_size::px(300.f), rv::styled_size::px(30.f) }, input);
 
 	price_range->values(0.25f, 0.75f)
@@ -358,6 +358,19 @@ cstd::int32_t main()
 		.fill_color({ 0.9f, 0.4f, 0.2f, 1.f })
 		.padding({ .top = 0, .right = 10.f, .bottom = 0.f, .left = 10.f })
 		.rounding(17.5f);
+
+	auto int_label = gui->make_child<rv::text_element>(root,
+		rv::element_size{}, gui_font);
+	int_label->content("Level: 5").text_size(16.f);
+
+	auto int_slider = gui->make_child<rv::slider<int>>(root,
+		rv::element_size{ rv::styled_size::px(300.f), rv::styled_size::px(30.f) }, input);
+	int_slider->range(0, 10).value(5)
+		.on_change([int_label](const int v)
+		{
+			int_label->content("Level: " + string_t(std::to_string(v)));
+		})
+		.fill_color({ 0.2f, 0.8f, 0.4f, 1.f });
 
 	MSG msg = { };
 

@@ -12,6 +12,7 @@
 #include <chrono>
 #include <unordered_map>
 #include <functional>
+#include <type_traits>
 
 namespace cstd
 {
@@ -26,6 +27,12 @@ namespace cstd
 	typedef unsigned long long uint64_t;
 
 	typedef unsigned long long size_t;
+
+	template <class T>
+	inline constexpr bool is_floating_point_v = std::is_floating_point_v<T>;
+
+	template <class T>
+	inline constexpr bool is_integral_v = std::is_integral_v<T>;
 }
 
 template <class T, cstd::size_t Count>
