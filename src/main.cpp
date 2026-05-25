@@ -126,6 +126,15 @@ cstd::int32_t main()
 	gui->make_child<rv::button>(jsb_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
 	gui->make_child<rv::button>(jsb_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
 
+	auto scroll_box = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(150.f) });
+	scroll_box->direction(rv::layout_direction::vertical).gap(6.f)
+		.overflow(rv::overflow_mode::scroll);
+
+	for (int i = 0; i < 12; ++i)
+	{
+		gui->make_child<rv::button>(scroll_box, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(30.f) });
+	}
+
 	auto ac_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(80.f) });
 	ac_row->direction(rv::layout_direction::horizontal).align(rv::alignment::center);
 
@@ -187,6 +196,65 @@ cstd::int32_t main()
 	gui->make_child<rv::button>(moving_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
 	gui->make_child<rv::button>(moving_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
 	gui->make_child<rv::button>(moving_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
+
+	auto pad_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(60.f) });
+	pad_row->direction(rv::layout_direction::horizontal).padding(12.f);
+	gui->make_child<rv::button>(pad_row, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
+	gui->make_child<rv::button>(pad_row, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
+
+	auto sev_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
+	sev_row->direction(rv::layout_direction::horizontal).justify(rv::justify_content::space_evenly);
+	gui->make_child<rv::button>(sev_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
+	gui->make_child<rv::button>(sev_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
+	gui->make_child<rv::button>(sev_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
+
+	auto fg_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
+	fg_row->direction(rv::layout_direction::horizontal).gap(4.f);
+	auto fg1 = gui->make_child<rv::button>(fg_row, rv::element_size{ rv::styled_size::px(0.f), rv::styled_size::fill() });
+	fg1->flex_grow(1.f);
+	auto fg2 = gui->make_child<rv::button>(fg_row, rv::element_size{ rv::styled_size::px(0.f), rv::styled_size::fill() });
+	fg2->flex_grow(2.f);
+	auto fg3 = gui->make_child<rv::button>(fg_row, rv::element_size{ rv::styled_size::px(0.f), rv::styled_size::fill() });
+	fg3->flex_grow(1.f);
+
+	auto mx_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
+	mx_row->direction(rv::layout_direction::horizontal).gap(8.f);
+	auto mx_btn = gui->make_child<rv::button>(mx_row, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
+	mx_btn->max_width(rv::styled_size::px(200.f));
+	gui->make_child<rv::button>(mx_row, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
+
+	auto rev_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
+	rev_row->direction(rv::layout_direction::horizontal_reverse).gap(8.f);
+	gui->make_child<rv::button>(rev_row, rv::element_size{ rv::styled_size::px(60.f), rv::styled_size::fill() });
+	gui->make_child<rv::button>(rev_row, rv::element_size{ rv::styled_size::px(120.f), rv::styled_size::fill() });
+	gui->make_child<rv::button>(rev_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
+
+	auto abs_container = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(80.f) });
+	abs_container->direction(rv::layout_direction::horizontal).gap(8.f);
+	gui->make_child<rv::button>(abs_container, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
+	auto abs_child = gui->make_child<rv::button>(abs_container, rv::element_size{ rv::styled_size::px(40.f), rv::styled_size::px(40.f) });
+	abs_child->positioning(rv::position_type::absolute)
+		.inset_right(rv::styled_size::px(8.f))
+		.inset_bottom(rv::styled_size::px(8.f));
+
+	auto wrap_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(90.f) });
+	wrap_row->direction(rv::layout_direction::horizontal).gap(6.f).row_gap(6.f)
+		.wrap(rv::wrap_mode::wrap).align_content(rv::align_content::flex_start);
+
+	for (int i = 0; i < 8; ++i)
+	{
+		gui->make_child<rv::button>(wrap_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::px(28.f) });
+	}
+
+	auto wrap_sb = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(90.f) });
+	wrap_sb->direction(rv::layout_direction::horizontal).gap(6.f).row_gap(6.f)
+		.wrap(rv::wrap_mode::wrap).align_content(rv::align_content::space_between);
+
+	for (int i = 0; i < 10; ++i)
+	{
+		gui->make_child<rv::button>(wrap_sb, rv::element_size{ rv::styled_size::px(70.f), rv::styled_size::px(28.f) });
+	}
+
 
 	// example image loading using stb image
 	// cstd::int32_t img_w, img_h, img_c;

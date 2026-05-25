@@ -11,6 +11,8 @@ namespace rv
 		virtual void draw_rect(position min, position max, color col, float thickness = 1.f, float rounding = 0.f) noexcept = 0;
 		virtual void draw_rect_filled(position min, position max, color col, float rounding = 0.f, rounding_flags flags = rounding_flags_all) noexcept = 0;
 		virtual void draw_circle_filled(position pos, float radius, color col) noexcept = 0;
+		virtual void push_clip_rect(position min, position max) noexcept = 0;
+		virtual void pop_clip_rect() noexcept = 0;
 		virtual float delta_time() const noexcept = 0;
 	};
 
@@ -37,6 +39,16 @@ namespace rv
 			return renderer_->draw_circle_filled(pos, radius, col);
 		}
 
+		void push_clip_rect(const position min, const position max) noexcept override
+		{
+			renderer_->push_clip_rect(min, max);
+		}
+
+		void pop_clip_rect() noexcept override
+		{
+			renderer_->pop_clip_rect();
+		}
+
 		float delta_time() const noexcept override
 		{
 			return renderer_->state().delta_time;
@@ -45,6 +57,56 @@ namespace rv
 	protected:
 		shared_ptr_t<renderer> renderer_;
 	};
+
+	// element::render() defined here because gui_renderer must be complete
+	inline void element::render(gui_renderer& renderer, const element_style& defaults,
+	                            const position offset) const
+	{
+		if (!visible_)
+		{
+			return;
+		}
+
+		position total_offset = offset;
+		const auto anim = animated_props();
+
+		if (anim && anim->offset)
+		{
+			total_offset.x += anim->offset->x;
+			total_offset.y += anim->offset->y;
+		}
+
+		const position min = { computed_pos_.x + total_offset.x, computed_pos_.y + total_offset.y };
+		const position max = { min.x + computed_size_.x, min.y + computed_size_.y };
+
+		render_self(renderer, min, max);
+
+		const auto ov = style_.overflow.value_or(defaults.overflow.value_or(overflow_mode::visible));
+		const bool clip = (ov == overflow_mode::hidden || ov == overflow_mode::scroll);
+
+		if (clip)
+		{
+			renderer.push_clip_rect(min, max);
+		}
+
+		position child_offset = total_offset;
+
+		if (ov == overflow_mode::scroll)
+		{
+			child_offset.x += scroll_offset_.x;
+			child_offset.y += scroll_offset_.y;
+		}
+
+		for (const auto& child : children_)
+		{
+			child->render(renderer, defaults, child_offset);
+		}
+
+		if (clip)
+		{
+			renderer.pop_clip_rect();
+		}
+	}
 
 	class gui
 	{
@@ -99,9 +161,13 @@ namespace rv
 
 			const position mouse_pos = input_->mouse_pos();
 			const bool mouse_clicked = input_->is_mouse_clicked(0);
+			const float scroll_delta = input_->scroll_delta();
 
 			bool click_handled = false;
 			bool enter_handled = false;
+
+			// find deepest scrollable element for scroll input
+			shared_ptr_t<element> scroll_target;
 
 			for (auto& [id, el] : tree_)
 			{
@@ -128,6 +194,18 @@ namespace rv
 					el->set_hovered(false);
 					el->on_mouse_exit();
 				}
+
+				// track scrollable elements under mouse
+				if (hovering && el->style().overflow.value_or(overflow_mode::visible) == overflow_mode::scroll)
+				{
+					scroll_target = el;
+				}
+			}
+
+			// apply scroll to deepest scrollable
+			if (scroll_target && scroll_delta != 0.f)
+			{
+				scroll_target->apply_scroll(scroll_delta, default_style_);
 			}
 		}
 
