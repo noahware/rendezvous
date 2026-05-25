@@ -8,7 +8,9 @@ namespace rv
 		const auto& size = el.declared_size();
 		const auto& style = el.style();
 		const float gap = style.gap.value_or(defaults.gap.value_or(0.f));
-		const bool is_vertical = (style.direction == layout_direction::vertical);
+		const bool is_vertical = style.direction.value_or(
+			defaults.direction.value_or(layout_direction::horizontal)
+		) == layout_direction::vertical;
 
 		const auto resolve_axis = [](const styled_size& sv, const float available_px) -> optional_t<float>
 		{
@@ -34,32 +36,65 @@ namespace rv
 		float used_main = 0.f;
 		cstd::uint32_t fill_count = 0;
 		float max_cross = 0.f;
+		cstd::uint32_t visible_count = 0;
 
 		for (const auto& child : el.children())
 		{
+			if (!child->is_visible())
+			{
+				continue;
+			}
+
 			const styled_size& child_main_sv = is_vertical
 				? child->declared_size().height
 				: child->declared_size().width;
 
+			const auto child_margin = child->style().margin.value_or(
+				defaults.margin.value_or(border_vector{})
+			);
+
+			const float main_margins = is_vertical
+				? child_margin.top + child_margin.bottom
+				: child_margin.left + child_margin.right;
+
+			const float cross_margins = is_vertical
+				? child_margin.left + child_margin.right
+				: child_margin.top + child_margin.bottom;
+
 			if (child_main_sv.mode == size_mode::fill)
 			{
 				fill_count++;
+				used_main += main_margins;
+				visible_count++;
 				continue;
 			}
 
-			layout(*child, child_available, defaults);
+			vector_2d<float> margin_adjusted = child_available;
+
+			if (is_vertical)
+			{
+				margin_adjusted.x -= cross_margins;
+			}
+			else
+			{
+				margin_adjusted.y -= cross_margins;
+			}
+
+			layout(*child, margin_adjusted, defaults);
 
 			const vector_2d<float> cs = child->computed_size();
 			const float child_main = is_vertical ? cs.y : cs.x;
 			const float child_cross = is_vertical ? cs.x : cs.y;
 
-			used_main += child_main;
-			max_cross = cstd::fmaxf(max_cross, child_cross);
+			used_main += child_main + main_margins;
+			max_cross = cstd::fmaxf(max_cross, child_cross + cross_margins);
+			visible_count++;
 		}
 
-		const auto child_count = el.children().size();
-		if (child_count > 1)
-			used_main += gap * static_cast<float>(child_count - 1);
+		if (visible_count > 1)
+		{
+			used_main += gap * static_cast<float>(visible_count - 1);
+		}
 
 		if (fill_count > 0)
 		{
@@ -69,24 +104,46 @@ namespace rv
 
 			for (const auto& child : el.children())
 			{
+				if (!child->is_visible())
+				{
+					continue;
+				}
+
 				const styled_size& child_main_sv = is_vertical
 					? child->declared_size().height
 					: child->declared_size().width;
 
 				if (child_main_sv.mode != size_mode::fill)
+				{
 					continue;
+				}
+
+				const auto child_margin = child->style().margin.value_or(
+					defaults.margin.value_or(border_vector{})
+				);
+
+				const float cross_margins = is_vertical
+					? child_margin.left + child_margin.right
+					: child_margin.top + child_margin.bottom;
 
 				vector_2d<float> fill_available = child_available;
+
 				if (is_vertical)
+				{
 					fill_available.y = fill_size;
+					fill_available.x -= cross_margins;
+				}
 				else
+				{
 					fill_available.x = fill_size;
+					fill_available.y -= cross_margins;
+				}
 
 				layout(*child, fill_available, defaults);
 
 				const vector_2d<float> cs = child->computed_size();
 				const float child_cross = is_vertical ? cs.x : cs.y;
-				max_cross = cstd::fmaxf(max_cross, child_cross);
+				max_cross = cstd::fmaxf(max_cross, child_cross + cross_margins);
 			}
 		}
 

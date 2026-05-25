@@ -20,11 +20,38 @@ namespace rv
 		horizontal
 	};
 
+	enum class alignment : cstd::uint8_t
+	{
+		start,
+		center,
+		end
+	};
+
+	enum class justify_content : cstd::uint8_t
+	{
+		start,
+		center,
+		end,
+		space_between,
+		space_around
+	};
+
+	struct border_vector
+	{
+		float top = 0.f;
+		float right = 0.f;
+		float bottom = 0.f;
+		float left = 0.f;
+	};
+
 	struct element_style
 	{
 		element_size size;
 		optional_t<float> gap;
-		layout_direction direction = layout_direction::horizontal;
+		optional_t<layout_direction> direction;
+		optional_t<alignment> align;
+		optional_t<justify_content> justify;
+		optional_t<border_vector> margin;
 	};
 
 	class element
@@ -136,6 +163,16 @@ namespace rv
 			hovered_ = hovered;
 		}
 
+		[[nodiscard]] bool is_visible() const noexcept
+		{
+			return visible_;
+		}
+
+		void set_visible(const bool visible) noexcept
+		{
+			visible_ = visible;
+		}
+
 		[[nodiscard]] bool contains(const position point) const noexcept
 		{
 			return point.x >= computed_pos_.x
@@ -168,22 +205,55 @@ namespace rv
 			return *this;
 		}
 
-		void render(gui_renderer& renderer, const position cursor, const element_style& defaults) const
+		element& align(const alignment align) noexcept
 		{
-			const position max = { cursor.x + computed_size_.x, cursor.y + computed_size_.y };
-			render_self(renderer, cursor, max);
+			style_.align = align;
 
-			const float gap = style_.gap.value_or(defaults.gap.value_or(0.f));
-			position child_cursor = cursor;
+			return *this;
+		}
+
+		element& justify(const justify_content justify) noexcept
+		{
+			style_.justify = justify;
+
+			return *this;
+		}
+
+		element& margin(const border_vector margin) noexcept
+		{
+			style_.margin = margin;
+
+			return *this;
+		}
+
+		element& margin(const float all) noexcept
+		{
+			style_.margin = border_vector{ all, all, all, all };
+
+			return *this;
+		}
+
+		element& visible(const bool visible) noexcept
+		{
+			visible_ = visible;
+
+			return *this;
+		}
+
+		void render(gui_renderer& renderer, const element_style& defaults) const
+		{
+			if (!visible_)
+			{
+				return;
+			}
+
+			const position min = computed_pos_;
+			const position max = { computed_pos_.x + computed_size_.x, computed_pos_.y + computed_size_.y };
+			render_self(renderer, min, max);
 
 			for (const auto& child : children_)
 			{
-				child->render(renderer, child_cursor, defaults);
-
-				if (style_.direction == layout_direction::vertical)
-					child_cursor.y += child->computed_size_.y + gap;
-				else
-					child_cursor.x += child->computed_size_.x + gap;
+				child->render(renderer, defaults);
 			}
 		}
 
@@ -197,35 +267,189 @@ namespace rv
 		position computed_pos_ = { };
 		element_style style_;
 		bool hovered_ = false;
+		bool visible_ = true;
 
 		shared_ptr_t<element> parent_ = { };
 		vector_t<shared_ptr_t<element>> children_ = { };
 	};
 
-	inline void resolve_positions(element& element, const position cursor, const element_style& defaults)
+	inline void resolve_positions(element& el, const position cursor, const element_style& defaults)
 	{
-		element.set_computed_pos(cursor);
+		el.set_computed_pos(cursor);
 
-		const float gap = element.style().gap.value_or(defaults.gap.value_or(0.f));
+		if (!el.is_visible())
+		{
+			return;
+		}
+
+		const auto& style = el.style();
+		const float gap = style.gap.value_or(defaults.gap.value_or(0.f));
+		const bool is_vertical = style.direction.value_or(
+			defaults.direction.value_or(layout_direction::horizontal)
+		) == layout_direction::vertical;
+
+		const auto al = style.align.value_or(defaults.align.value_or(alignment::start));
+		const auto jc = style.justify.value_or(defaults.justify.value_or(justify_content::start));
+
+		const float available_main = is_vertical ? el.computed_size().y : el.computed_size().x;
+		const float available_cross = is_vertical ? el.computed_size().x : el.computed_size().y;
+
+		// count visible children and compute total main-axis usage
+		float total_main = 0.f;
+		cstd::size_t visible_count = 0;
+
+		for (const auto& child : el.children())
+		{
+			if (!child->is_visible())
+			{
+				continue;
+			}
+
+			const auto child_margin = child->style().margin.value_or(
+				defaults.margin.value_or(border_vector{})
+			);
+
+			const float child_main = is_vertical
+				? child->computed_size().y + child_margin.top + child_margin.bottom
+				: child->computed_size().x + child_margin.left + child_margin.right;
+
+			total_main += child_main;
+			visible_count++;
+		}
+
+		if (visible_count > 1)
+		{
+			total_main += gap * static_cast<float>(visible_count - 1);
+		}
+
+		const float remaining = cstd::fmaxf(0.f, available_main - total_main);
+
+		// justify: compute main-axis offset and effective gap
+		float main_offset = 0.f;
+		float effective_gap = gap;
+
+		switch (jc)
+		{
+		case justify_content::start:
+			break;
+		case justify_content::center:
+			main_offset = remaining * 0.5f;
+			break;
+		case justify_content::end:
+			main_offset = remaining;
+			break;
+		case justify_content::space_between:
+			if (visible_count > 1)
+			{
+				effective_gap = gap + remaining / static_cast<float>(visible_count - 1);
+			}
+			break;
+		case justify_content::space_around:
+			if (visible_count > 0)
+			{
+				const float space = remaining / static_cast<float>(visible_count);
+				main_offset = space * 0.5f;
+				effective_gap = gap + space;
+			}
+			break;
+		}
+
 		position child_cursor = cursor;
 
-		for (const auto& child : element.children())
+		if (is_vertical)
 		{
-			resolve_positions(*child, child_cursor, defaults);
+			child_cursor.y += main_offset;
+		}
+		else
+		{
+			child_cursor.x += main_offset;
+		}
 
-			if (element.style().direction == layout_direction::vertical)
+		bool first_visible = true;
+
+		for (const auto& child : el.children())
+		{
+			if (!child->is_visible())
 			{
-				child_cursor.y += child->computed_size().y + gap;
+				continue;
+			}
+
+			if (!first_visible)
+			{
+				if (is_vertical)
+				{
+					child_cursor.y += effective_gap;
+				}
+				else
+				{
+					child_cursor.x += effective_gap;
+				}
+			}
+
+			first_visible = false;
+
+			const auto child_margin = child->style().margin.value_or(
+				defaults.margin.value_or(border_vector{})
+			);
+
+			// apply margin offset
+			position child_pos = child_cursor;
+			child_pos.x += child_margin.left;
+			child_pos.y += child_margin.top;
+
+			// alignment: cross-axis offset
+			const float child_cross = is_vertical
+				? child->computed_size().x
+				: child->computed_size().y;
+
+			const float cross_margins = is_vertical
+				? child_margin.left + child_margin.right
+				: child_margin.top + child_margin.bottom;
+
+			float cross_offset = 0.f;
+
+			switch (al)
+			{
+			case alignment::start:
+				break;
+			case alignment::center:
+				cross_offset = (available_cross - child_cross - cross_margins) * 0.5f;
+				break;
+			case alignment::end:
+				cross_offset = available_cross - child_cross - cross_margins;
+				break;
+			}
+
+			if (is_vertical)
+			{
+				child_pos.x += cross_offset;
 			}
 			else
 			{
-				child_cursor.x += child->computed_size().x + gap;
+				child_pos.y += cross_offset;
+			}
+
+			resolve_positions(*child, child_pos, defaults);
+
+			// advance cursor along main axis
+			if (is_vertical)
+			{
+				child_cursor.y += child->computed_size().y + child_margin.top + child_margin.bottom;
+			}
+			else
+			{
+				child_cursor.x += child->computed_size().x + child_margin.left + child_margin.right;
 			}
 		}
 	}
 
 	inline void update_all(element& el, const float dt)
 	{
+		if (!el.is_visible())
+		{
+			return;
+		}
+
 		el.update(dt);
 
 		for (const auto& child : el.children())

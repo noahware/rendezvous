@@ -1,7 +1,6 @@
 #include "gui/element.hpp"
 #include "gui/gui.hpp"
 #include "gui/comp/button.hpp"
-#include "gui/comp/slider.hpp"
 #include "log/log.hpp"
 #include "render/impl/dx11.hpp"
 #include "input/win32.hpp"
@@ -105,21 +104,42 @@ cstd::int32_t main()
 	auto root = gui->root();
 	root->direction(rv::layout_direction::vertical);
 
-	auto btn1 = gui->make_child<rv::button>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
-	btn1->on_click([]() { LOG_INFO("button 1 clicked"); });
+	auto vis_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
+	vis_row->direction(rv::layout_direction::horizontal);
 
-	auto btn2 = gui->make_child<rv::button>(root, rv::element_size{ rv::styled_size::percent(50.f), rv::styled_size::px(40.f) });
-	btn2->on_click([]() { LOG_INFO("button 2 clicked"); });
+	auto vis_btn1 = gui->make_child<rv::button>(vis_row, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
+	auto vis_btn2 = gui->make_child<rv::button>(vis_row, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
+	vis_btn2->visible(false);
+	auto vis_btn3 = gui->make_child<rv::button>(vis_row, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
 
-	auto row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
+	auto jc_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
+	jc_row->direction(rv::layout_direction::horizontal).justify(rv::justify_content::center);
 
-	row->direction(rv::layout_direction::horizontal);
+	gui->make_child<rv::button>(jc_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
+	gui->make_child<rv::button>(jc_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
+	gui->make_child<rv::button>(jc_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
 
-	auto btn3 = gui->make_child<rv::button>(row, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
-	btn3->on_click([]() { LOG_INFO("button 3 clicked"); });
+	auto jsb_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
+	jsb_row->direction(rv::layout_direction::horizontal).justify(rv::justify_content::space_between);
 
-	auto btn4 = gui->make_child<rv::button>(row, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
-	btn4->on_click([]() { LOG_INFO("button 4 clicked"); });
+	gui->make_child<rv::button>(jsb_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
+	gui->make_child<rv::button>(jsb_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
+	gui->make_child<rv::button>(jsb_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
+
+	auto ac_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(80.f) });
+	ac_row->direction(rv::layout_direction::horizontal).align(rv::alignment::center);
+
+	gui->make_child<rv::button>(ac_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::px(20.f) });
+	gui->make_child<rv::button>(ac_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::px(60.f) });
+	gui->make_child<rv::button>(ac_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::px(40.f) });
+
+	auto mg_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(60.f) });
+	mg_row->direction(rv::layout_direction::horizontal);
+
+	gui->make_child<rv::button>(mg_row, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
+	auto mg_btn = gui->make_child<rv::button>(mg_row, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
+	mg_btn->margin(rv::border_vector{ 10.f, 20.f, 10.f, 20.f });
+	gui->make_child<rv::button>(mg_row, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
 
 	// example image loading using stb image
 	// cstd::int32_t img_w, img_h, img_c;
@@ -306,7 +326,6 @@ cstd::int32_t main()
 			renderer->add_text_shadow(*font, text_pos, text, {1.f, 0.4f, 1.f , 1.f}, 15.f, size);
 			renderer->draw_text(*font, text_pos, text, { 0.4f, 1.f, 1.f, 1.f }, size);
 		}
-
 		renderer->end_frame();
 
 		swap_chain->Present(1, 0);

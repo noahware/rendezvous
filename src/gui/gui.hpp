@@ -10,6 +10,8 @@ namespace rv
 	public:
 		virtual void draw_rect(position min, position max, color col, float thickness = 1.f, float rounding = 0.f) noexcept = 0;
 		virtual void draw_rect_filled(position min, position max, color col, float rounding = 0.f, rounding_flags flags = rounding_flags_all) noexcept = 0;
+		virtual void draw_circle_filled(position pos, float radius, color col) noexcept = 0;
+		virtual float delta_time() const noexcept = 0;
 	};
 
 	class gui_renderer_impl : public gui_renderer
@@ -30,6 +32,16 @@ namespace rv
 			return renderer_->draw_rect_filled(min, max, col, rounding, flags);
 		}
 
+		void draw_circle_filled(const position pos, const float radius, const color col) noexcept override
+		{
+			return renderer_->draw_circle_filled(pos, radius, col);
+		}
+
+		float delta_time() const noexcept override
+		{
+			return renderer_->state().delta_time;
+		}
+
 	protected:
 		shared_ptr_t<renderer> renderer_;
 	};
@@ -48,7 +60,7 @@ namespace rv
 			resolve_positions(*root, position{ 0.f, 0.f }, default_style_);
 			update_all(*root, renderer_->delta_time());
 			process_events();
-			root->render(*renderer_, position{ 0.f, 0.f }, default_style_);
+			root->render(*renderer_, default_style_);
 		}
 
 		[[nodiscard]] shared_ptr_t<element> root() const noexcept
@@ -93,6 +105,11 @@ namespace rv
 
 			for (auto& [id, el] : tree_)
 			{
+				if (!el->is_visible())
+				{
+					continue;
+				}
+
 				const bool hovering = el->contains(mouse_pos);
 
 				if (!click_handled && mouse_clicked && hovering)

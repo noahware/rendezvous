@@ -21,7 +21,7 @@ rv::dx11_renderer::dx11_renderer(ID3D11Device* const device, ID3D11DeviceContext
 	context_->AddRef();
 }
 
-rv::dx11_renderer::dx11_renderer(IDXGISwapChain* swap_chain) noexcept
+rv::dx11_renderer::dx11_renderer(IDXGISwapChain* const swap_chain) noexcept
 {
 	if (swap_chain->GetDevice(IID_PPV_ARGS(device_.release_and_get())) == S_OK)
 	{
