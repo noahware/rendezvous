@@ -276,8 +276,8 @@ cstd::int32_t main()
 
 	auto primary = gui->make_child<rv::button>(btn_row,
 		rv::element_size{ rv::styled_size::auto_v(), rv::styled_size::fill() }, gui_font);
-	primary->background_color({ 0.15f, 0.45f, 0.95f, 1.f }).rounding(8.f);
-	primary->text("Primary").text_size(18.f)
+	primary->background_color({ 0.15f, 0.45f, 0.95f, 1.f }).rounding(8.f).text_size(18.f);
+	primary->text("Primary")
 		.hover_color({ 0.25f, 0.55f, 1.f, 1.f })
 		.pressed_color({ 0.1f, 0.35f, 0.8f, 1.f })
 		.on_click([]() { LOG_INFO("primary clicked"); });
@@ -288,15 +288,16 @@ cstd::int32_t main()
 		.rounding(8.f)
 		.border_color({ 0.35f, 0.35f, 0.4f, 1.f })
 		.border_width(1.f);
-	secondary->text("Secondary").text_size(18.f)
+	secondary->text_size(18.f);
+	secondary->text("Secondary")
 		.hover_color({ 0.2f, 0.2f, 0.25f, 1.f })
 		.pressed_color({ 0.08f, 0.08f, 0.1f, 1.f })
-		.on_click([]() { LOG_INFO("secondary clicked"); });
+		.on_click([]() { LOG_INFO("secondary clicked"); }).transition_speed(0.1f);
 
 	auto danger = gui->make_child<rv::button>(btn_row,
 		rv::element_size{ rv::styled_size::auto_v(), rv::styled_size::fill() }, gui_font);
-	danger->background_color({ 0.85f, 0.15f, 0.15f, 1.f }).rounding(8.f);
-	danger->text("Delete").text_size(18.f)
+	danger->background_color({ 0.85f, 0.15f, 0.15f, 1.f }).rounding(8.f).text_size(18.f);
+	danger->text("Delete")
 		.hover_color({ 0.95f, 0.25f, 0.25f, 1.f })
 		.pressed_color({ 0.65f, 0.1f, 0.1f, 1.f })
 		.on_click([]() { LOG_INFO("delete clicked"); });

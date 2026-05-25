@@ -19,24 +19,6 @@ namespace rv
 			return *this;
 		}
 
-		text_element& text_color(const color col) noexcept
-		{
-			color_ = col;
-			return *this;
-		}
-
-		text_element& text_size(const float size) noexcept
-		{
-			font_size_ = size;
-			return *this;
-		}
-
-		text_element& text_alignment(const text_align align) noexcept
-		{
-			align_ = align;
-			return *this;
-		}
-
 		[[nodiscard]] vector_2d<float> content_size(const vector_2d<float> available) const noexcept override
 		{
 			if (!font_ || text_.empty())
@@ -44,7 +26,7 @@ namespace rv
 				return { 0.f, 0.f };
 			}
 
-			const float scale = font_size_ > 0.f ? font_size_ / font_->baked_size() : 1.f;
+			const float scale = style_.font_size.value_or(0.f) > 0.f ? style_.font_size.value_or(0.f) / font_->baked_size() : 1.f;
 			const float line_h = font_->line_height() * scale;
 			const bool has_width_constraint = (declared_size().width.mode != size_mode::auto_v);
 
@@ -73,7 +55,7 @@ namespace rv
 				return;
 			}
 
-			const float scale = font_size_ > 0.f ? font_size_ / font_->baked_size() : 1.f;
+			const float scale = style_.font_size.value_or(0.f) > 0.f ? style_.font_size.value_or(0.f) / font_->baked_size() : 1.f;
 			const float line_h = font_->line_height() * scale;
 			const float box_w = max.x - min.x;
 
@@ -87,18 +69,18 @@ namespace rv
 			{
 				float x = min.x;
 
-				if (align_ == text_align::center)
+				if (style_.text_alignment.value_or(text_align::left) == text_align::center)
 				{
 					const float lw = measure_line(line, scale);
 					x += (box_w - lw) * 0.5f;
 				}
-				else if (align_ == text_align::right)
+				else if (style_.text_alignment.value_or(text_align::left) == text_align::right)
 				{
 					const float lw = measure_line(line, scale);
 					x += box_w - lw;
 				}
 
-				renderer.draw_text(*font_, { x, y }, line, color_, font_size_);
+				renderer.draw_text(*font_, { x, y }, line, visual_text_color_, style_.font_size.value_or(0.f));
 				y += line_h;
 			}
 
@@ -266,8 +248,5 @@ namespace rv
 
 		shared_ptr_t<gui_font> font_;
 		string_t text_;
-		color color_ = { 1.f, 1.f, 1.f, 1.f };
-		float font_size_ = 0.f;
-		text_align align_ = text_align::left;
 	};
 }

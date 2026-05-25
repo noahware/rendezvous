@@ -146,6 +146,9 @@ namespace rv
 		optional_t<color> text_color;
 		optional_t<float> rounding;
 		optional_t<color> border_color;
+		optional_t<float> font_size;
+		optional_t<text_align> text_alignment;
+		optional_t<float> transition_speed;
 	};
 
 	// helper to resolve gap for the correct axis
@@ -214,7 +217,9 @@ namespace rv
 				const float target_rd = style_.rounding.value_or(0.f);
 				const color target_bc = style_.border_color.value_or(color{ 0.f, 0.f, 0.f, 0.f });
 
-				if (!transitions_initialized_ || transition_speed_ <= 0.f)
+				const float tspeed = style_.transition_speed.value_or(0.f);
+
+				if (!transitions_initialized_ || tspeed <= 0.f)
 				{
 					visual_bg_ = target_bg;
 					visual_text_color_ = target_tc;
@@ -224,7 +229,7 @@ namespace rv
 				}
 				else
 				{
-					const float factor = cstd::fminf(transition_speed_ * dt, 1.f);
+					const float factor = cstd::fminf(tspeed * dt, 1.f);
 					visual_bg_ = lerp_color(visual_bg_, target_bg, factor);
 					visual_text_color_ = lerp_color(visual_text_color_, target_tc, factor);
 					visual_rounding_ = lerp(visual_rounding_, target_rd, factor);
@@ -278,16 +283,6 @@ namespace rv
 			return false;
 		}
 
-		[[nodiscard]] bool child_of(const shared_ptr_t<element>& parent) const noexcept
-		{
-			return parent_ == parent;
-		}
-
-		[[nodiscard]] shared_ptr_t<element> parent() const noexcept
-		{
-			return parent_;
-		}
-
 		[[nodiscard]] span_t<shared_ptr_t<element>> children() noexcept
 		{
 			return children_;
@@ -311,11 +306,6 @@ namespace rv
 			children_.push_back(child);
 
 			return child;
-		}
-
-		[[nodiscard]] vector_2d<float> size() const noexcept
-		{
-			return computed_size_;
 		}
 
 		[[nodiscard]] const element_size& declared_size() const noexcept
@@ -650,7 +640,21 @@ namespace rv
 
 		element& transition_speed(const float speed) noexcept
 		{
-			transition_speed_ = speed;
+			style_.transition_speed = speed;
+
+			return *this;
+		}
+
+		element& text_size(const float size) noexcept
+		{
+			style_.font_size = size;
+
+			return *this;
+		}
+
+		element& text_alignment(const text_align align) noexcept
+		{
+			style_.text_alignment = align;
 
 			return *this;
 		}
@@ -809,11 +813,6 @@ namespace rv
 		            const position offset = { 0.f, 0.f }) const;
 
 	protected:
-		virtual void render_background(gui_renderer& renderer, position min, position max) const
-		{
-
-		}
-
 		virtual void render_self(gui_renderer& renderer, position min, position max) const
 		{
 
@@ -827,7 +826,6 @@ namespace rv
 		bool visible_ = true;
 		vector_t<animation_state> animations_;
 
-		float transition_speed_ = 0.f;
 		color visual_bg_ = { 0.f, 0.f, 0.f, 0.f };
 		color visual_text_color_ = { 1.f, 1.f, 1.f, 1.f };
 		float visual_rounding_ = 0.f;
@@ -837,7 +835,6 @@ namespace rv
 		vector_t<flex_line> flex_lines_;
 		position scroll_offset_ = { 0.f, 0.f };
 
-		shared_ptr_t<element> parent_ = { };
 		vector_t<shared_ptr_t<element>> children_ = { };
 	};
 

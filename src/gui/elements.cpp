@@ -560,8 +560,6 @@ namespace rv
 		const position min = { computed_pos_.x + total_offset.x, computed_pos_.y + total_offset.y };
 		const position max = { min.x + computed_size_.x, min.y + computed_size_.y };
 
-		render_background(renderer, min, max);
-
 		color effective_bg = visual_bg_;
 		float effective_rounding = visual_rounding_;
 

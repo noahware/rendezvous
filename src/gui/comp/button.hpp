@@ -29,13 +29,6 @@ namespace rv
 			return *this;
 		}
 
-		button& text_size(const float size) noexcept
-		{
-			font_size_ = size;
-
-			return *this;
-		}
-
 		button& hover_color(const color col) noexcept
 		{
 			hover_color_ = col;
@@ -92,7 +85,7 @@ namespace rv
 				return { 0.f, 0.f };
 			}
 
-			const float scale = font_size_ > 0.f ? font_size_ / font_->baked_size() : 1.f;
+			const float scale = style_.font_size.value_or(0.f) > 0.f ? style_.font_size.value_or(0.f) / font_->baked_size() : 1.f;
 			const float line_h = font_->line_height() * scale;
 			const float text_w = measure_text_width(scale);
 
@@ -107,7 +100,7 @@ namespace rv
 				return;
 			}
 
-			const float scale = font_size_ > 0.f ? font_size_ / font_->baked_size() : 1.f;
+			const float scale = style_.font_size.value_or(0.f) > 0.f ? style_.font_size.value_or(0.f) / font_->baked_size() : 1.f;
 			const float line_h = font_->line_height() * scale;
 			const float text_w = measure_text_width(scale);
 
@@ -117,7 +110,7 @@ namespace rv
 			const float x = min.x + (box_w - text_w) * 0.5f;
 			const float y = min.y + (box_h - line_h) * 0.5f;
 
-			renderer.draw_text(*font_, { x, y }, text_, visual_text_color_, font_size_);
+			renderer.draw_text(*font_, { x, y }, text_, visual_text_color_, style_.font_size.value_or(0.f));
 		}
 
 	private:
@@ -126,7 +119,7 @@ namespace rv
 			style_.background_color = color{ 0.18f, 0.18f, 0.22f, 1.f };
 			style_.rounding = 6.f;
 			style_.text_color = color{ 1.f, 1.f, 1.f, 1.f };
-			transition_speed_ = 12.f;
+			style_.transition_speed = 12.f;
 		}
 
 		[[nodiscard]] float measure_text_width(const float scale) const noexcept
@@ -155,7 +148,6 @@ namespace rv
 
 		shared_ptr_t<gui_font> font_;
 		string_t text_;
-		float font_size_ = 0.f;
 
 		color hover_color_ = { 0.28f, 0.28f, 0.34f, 1.f };
 		color pressed_color_ = { 0.12f, 0.12f, 0.15f, 1.f };
