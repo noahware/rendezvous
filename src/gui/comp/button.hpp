@@ -32,11 +32,31 @@ namespace rv
 	protected:
 		void render_self(gui_renderer& renderer, const position min, const position max) const override
 		{
-			const color col = hovered_
+			color col = hovered_
 				? color{ 0.8f, 0.8f, 0.8f, 1.f }
 				: color{ 1.f, 1.f, 1.f, 1.f };
 
-			renderer.draw_rect_filled(min, max, col);
+			float round = 0.f;
+
+			if (const auto anim = animated_props())
+			{
+				if (anim->col)
+				{
+					col = *anim->col;
+				}
+
+				if (anim->opacity)
+				{
+					col.a *= *anim->opacity;
+				}
+
+				if (anim->rounding)
+				{
+					round = *anim->rounding;
+				}
+			}
+
+			renderer.draw_rect_filled(min, max, col, round);
 		}
 
 		function_t<void()> on_click_;

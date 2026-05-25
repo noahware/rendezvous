@@ -122,6 +122,16 @@ namespace cstd
 		return std::roundf(x);
 	}
 
+	inline float powf(const float base, const float exp)
+	{
+		return std::powf(base, exp);
+	}
+
+	inline float fmodf(const float x, const float y)
+	{
+		return std::fmodf(x, y);
+	}
+
 	template <class T, class Y>
 	[[nodiscard]] constexpr T bit_cast(const Y& object) noexcept
 	{

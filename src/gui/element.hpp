@@ -3,6 +3,7 @@
 #include "../util/hash.hpp"
 #include "../util/types.hpp"
 #include "styled_size.hpp"
+#include "animation.hpp"
 
 namespace rv
 {
@@ -65,7 +66,15 @@ namespace rv
 
 		virtual void update(float dt)
 		{
+			if (animation_)
+			{
+				animation_->update(dt);
 
+				if (animation_->is_finished() && animation_->get_fill_mode() == fill_mode::none)
+				{
+					animation_.reset();
+				}
+			}
 		}
 
 		virtual bool on_mouse_click()
@@ -240,20 +249,60 @@ namespace rv
 			return *this;
 		}
 
-		void render(gui_renderer& renderer, const element_style& defaults) const
+		element& animate(keyframe_sequence seq, animation_options opts)
+		{
+			animation_.emplace(cstd::move(seq), cstd::move(opts));
+
+			return *this;
+		}
+
+		element& stop_animation() noexcept
+		{
+			animation_.reset();
+
+			return *this;
+		}
+
+		[[nodiscard]] optional_t<keyframe_props> animated_props() const noexcept
+		{
+			if (!animation_)
+			{
+				return {};
+			}
+
+			if (animation_->is_finished() && animation_->get_fill_mode() == fill_mode::none)
+			{
+				return {};
+			}
+
+			return animation_->current_props();
+		}
+
+		void render(gui_renderer& renderer, const element_style& defaults,
+		            const position offset = { 0.f, 0.f }) const
 		{
 			if (!visible_)
 			{
 				return;
 			}
 
-			const position min = computed_pos_;
-			const position max = { computed_pos_.x + computed_size_.x, computed_pos_.y + computed_size_.y };
+			// accumulate this element's animation offset
+			position total_offset = offset;
+			const auto anim = animated_props();
+
+			if (anim && anim->offset)
+			{
+				total_offset.x += anim->offset->x;
+				total_offset.y += anim->offset->y;
+			}
+
+			const position min = { computed_pos_.x + total_offset.x, computed_pos_.y + total_offset.y };
+			const position max = { min.x + computed_size_.x, min.y + computed_size_.y };
 			render_self(renderer, min, max);
 
 			for (const auto& child : children_)
 			{
-				child->render(renderer, defaults);
+				child->render(renderer, defaults, total_offset);
 			}
 		}
 
@@ -268,6 +317,7 @@ namespace rv
 		element_style style_;
 		bool hovered_ = false;
 		bool visible_ = true;
+		optional_t<animation_state> animation_;
 
 		shared_ptr_t<element> parent_ = { };
 		vector_t<shared_ptr_t<element>> children_ = { };

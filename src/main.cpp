@@ -141,6 +141,47 @@ cstd::int32_t main()
 	mg_btn->margin(rv::border_vector{ 10.f, 20.f, 10.f, 20.f });
 	gui->make_child<rv::button>(mg_row, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
 
+	auto anim_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(50.f) });
+	anim_row->direction(rv::layout_direction::horizontal).gap(16.f);
+
+	auto fade_btn = gui->make_child<rv::button>(anim_row, rv::element_size{ rv::styled_size::px(120.f), rv::styled_size::fill() });
+	fade_btn->animate(
+		rv::keyframe_sequence{}
+			.add(0.f, { .col = rv::color{1.f, 1.f, 1.f, 0.f} })
+			.add(1.f, { .col = rv::color{1.f, 1.f, 1.f, 1.f} }),
+		{ .duration = 10.f, .ease = rv::easing::ease_out_cubic }
+	);
+
+	auto slide_btn = gui->make_child<rv::button>(anim_row, rv::element_size{ rv::styled_size::px(120.f), rv::styled_size::fill() });
+	slide_btn->animate(
+		rv::keyframe_sequence{}
+			.add(0.f, { .offset = rv::position{0.f, -40.f} })
+			.add(1.f, { .offset = rv::position{0.f, 0.f} }),
+		{ .duration = 0.6f, .ease = rv::easing::ease_out_back }
+	);
+
+	auto pulse_btn = gui->make_child<rv::button>(anim_row, rv::element_size{ rv::styled_size::px(120.f), rv::styled_size::fill() });
+	pulse_btn->animate(
+		rv::keyframe_sequence{}
+			.add(0.f, { .col = rv::color{1.f, 1.f, 1.f, 1.f} })
+			.add(0.5f, { .col = rv::color{1.f, 0.3f, 0.3f, 1.f} })
+			.add(1.f, { .col = rv::color{1.f, 1.f, 1.f, 1.f} }),
+		{ .duration = 1.5f, .ease = rv::easing::ease_in_out_quad, .iterations = -1 }
+	);
+
+	auto moving_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(50.f) });
+	moving_row->direction(rv::layout_direction::horizontal).gap(8.f);
+	moving_row->animate(
+		rv::keyframe_sequence{}
+			.add(0.f, { .offset = rv::position{0.f, 0.f} })
+			.add(0.5f, { .offset = rv::position{30.f, 0.f} })
+			.add(1.f, { .offset = rv::position{0.f, 0.f} }),
+		{ .duration = 2.f, .ease = rv::easing::ease_in_out_sine, .iterations = -1 }
+	);
+	gui->make_child<rv::button>(moving_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
+	gui->make_child<rv::button>(moving_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
+	gui->make_child<rv::button>(moving_row, rv::element_size{ rv::styled_size::px(80.f), rv::styled_size::fill() });
+
 	// example image loading using stb image
 	// cstd::int32_t img_w, img_h, img_c;
 	// unsigned char* img_data = stbi_load("images/landing.png", &img_w, &img_h, &img_c, 4);
