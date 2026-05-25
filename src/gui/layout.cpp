@@ -130,7 +130,7 @@ namespace rv
 					}
 					else
 					{
-						// auto basis — layout to get natural size
+						// auto basis - layout to get natural size
 						vector_2d<float> margin_adjusted = child_available;
 
 						if (vertical)
@@ -153,7 +153,7 @@ namespace rv
 				}
 				else if (child_main_sv.mode == size_mode::auto_v)
 				{
-					// auto — layout to get natural size
+					// auto - layout to get natural size
 					vector_2d<float> margin_adjusted = child_available;
 
 					if (vertical)
@@ -170,7 +170,7 @@ namespace rv
 				}
 				else
 				{
-					// px or percent — resolve normally
+					// px or percent - resolve normally
 					const auto resolved = resolve_size(child_main_sv, main_available);
 					item.base_size = resolved.value_or(0.f);
 				}

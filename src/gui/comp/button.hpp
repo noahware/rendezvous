@@ -1,6 +1,7 @@
 #pragma once
 #include "../element.hpp"
-#include "../../log/log.hpp"
+#include "../gui.hpp"
+#include "../../util/string.hpp"
 
 namespace rv
 {
@@ -10,7 +11,44 @@ namespace rv
 		button() noexcept = default;
 
 		explicit button(const element_size size) noexcept
-				:	element(size) { }
+			: element(size)
+		{
+			init_defaults();
+		}
+
+		button(const element_size size, shared_ptr_t<gui_font> font) noexcept
+			: element(size), font_(cstd::move(font))
+		{
+			init_defaults();
+		}
+
+		button& text(const string_view_t text)
+		{
+			text_ = string_t(text);
+
+			return *this;
+		}
+
+		button& text_size(const float size) noexcept
+		{
+			font_size_ = size;
+
+			return *this;
+		}
+
+		button& hover_color(const color col) noexcept
+		{
+			hover_color_ = col;
+
+			return *this;
+		}
+
+		button& pressed_color(const color col) noexcept
+		{
+			pressed_color_ = col;
+
+			return *this;
+		}
 
 		button& on_click(function_t<void()> callback)
 		{
@@ -29,35 +67,96 @@ namespace rv
 			return true;
 		}
 
+		void update(const float dt) override
+		{
+			if (!hovered_ && !pressed_)
+			{
+				resting_bg_ = style_.background_color.value_or(resting_bg_);
+			}
+
+			style_.background_color = pressed_ ? pressed_color_
+			                        : hovered_ ? hover_color_
+			                        : resting_bg_;
+
+			element::update(dt);
+		}
+
+		[[nodiscard]] vector_2d<float> content_size(const vector_2d<float> available) const noexcept override
+		{
+			if (!font_ || text_.empty())
+			{
+				return { 0.f, 0.f };
+			}
+
+			const float scale = font_size_ > 0.f ? font_size_ / font_->baked_size() : 1.f;
+			const float line_h = font_->line_height() * scale;
+			const float text_w = measure_text_width(scale);
+
+			return { text_w + line_h * 0.8f, line_h + line_h * 0.4f };
+		}
+
 	protected:
 		void render_self(gui_renderer& renderer, const position min, const position max) const override
 		{
-			color col = hovered_
-				? color{ 0.8f, 0.8f, 0.8f, 1.f }
-				: color{ 1.f, 1.f, 1.f, 1.f };
-
-			float round = 0.f;
-
-			if (const auto anim = animated_props())
+			if (!font_ || text_.empty())
 			{
-				if (anim->col)
-				{
-					col = *anim->col;
-				}
-
-				if (anim->opacity)
-				{
-					col.a *= *anim->opacity;
-				}
-
-				if (anim->rounding)
-				{
-					round = *anim->rounding;
-				}
+				return;
 			}
 
-			renderer.draw_rect_filled(min, max, col, round);
+			const float scale = font_size_ > 0.f ? font_size_ / font_->baked_size() : 1.f;
+			const float line_h = font_->line_height() * scale;
+			const float text_w = measure_text_width(scale);
+
+			const float box_w = max.x - min.x;
+			const float box_h = max.y - min.y;
+
+			const float x = min.x + (box_w - text_w) * 0.5f;
+			const float y = min.y + (box_h - line_h) * 0.5f;
+
+			renderer.draw_text(*font_, { x, y }, text_, visual_text_color_, font_size_);
 		}
+
+	private:
+		void init_defaults() noexcept
+		{
+			style_.background_color = color{ 0.18f, 0.18f, 0.22f, 1.f };
+			style_.rounding = 6.f;
+			style_.text_color = color{ 1.f, 1.f, 1.f, 1.f };
+			transition_speed_ = 12.f;
+			resting_bg_ = *style_.background_color;
+		}
+
+		[[nodiscard]] float measure_text_width(const float scale) const noexcept
+		{
+			float width = 0.f;
+			cstd::uint32_t prev_cp = 0;
+
+			const char* s = text_.data();
+			const char* end = s + text_.size();
+
+			while (s < end)
+			{
+				const cstd::uint32_t cp = decode_utf8(s, end);
+
+				if (prev_cp != 0)
+				{
+					width += font_->kerning(prev_cp, cp) * scale;
+				}
+
+				width += font_->glyph_advance(cp) * scale;
+				prev_cp = cp;
+			}
+
+			return width;
+		}
+
+		shared_ptr_t<gui_font> font_;
+		string_t text_;
+		float font_size_ = 0.f;
+
+		color resting_bg_ = { 0.18f, 0.18f, 0.22f, 1.f };
+		color hover_color_ = { 0.28f, 0.28f, 0.34f, 1.f };
+		color pressed_color_ = { 0.12f, 0.12f, 0.15f, 1.f };
 
 		function_t<void()> on_click_;
 	};

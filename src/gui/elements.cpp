@@ -191,7 +191,7 @@ namespace rv
 		const float available_cross = (vertical ? el.computed_size().x : el.computed_size().y)
 			- (vertical ? insets.left + insets.right : insets.top + insets.bottom);
 
-		// collect visible flow children (skip absolute) — in original order
+		// collect visible flow children (skip absolute) - in original order
 		vector_t<shared_ptr_t<element>> flow_children;
 		vector_t<shared_ptr_t<element>> abs_children;
 
@@ -434,7 +434,7 @@ namespace rv
 					cross_offset = available_cross - child_cross - cross_margins;
 					break;
 				case alignment::stretch:
-					// stretch is handled in layout() — here just treat as start
+					// stretch is handled in layout() - here just treat as start
 					break;
 				}
 
@@ -560,7 +560,49 @@ namespace rv
 		const position min = { computed_pos_.x + total_offset.x, computed_pos_.y + total_offset.y };
 		const position max = { min.x + computed_size_.x, min.y + computed_size_.y };
 
+		render_background(renderer, min, max);
+
+		color effective_bg = visual_bg_;
+		float effective_rounding = visual_rounding_;
+
+		if (anim)
+		{
+			if (anim->col)
+			{
+				effective_bg = *anim->col;
+			}
+
+			if (anim->opacity)
+			{
+				effective_bg.a *= *anim->opacity;
+			}
+
+			if (anim->rounding)
+			{
+				effective_rounding = *anim->rounding;
+			}
+		}
+
+		if (effective_bg.a > 0.001f)
+		{
+			renderer.draw_rect_filled(min, max, effective_bg, effective_rounding);
+		}
+
 		render_self(renderer, min, max);
+
+		if (visual_border_color_.a > 0.001f)
+		{
+			const auto bw = style_.border_width.value_or(border_vector{});
+			const float thickness = cstd::fmaxf(
+				cstd::fmaxf(bw.top, bw.bottom),
+				cstd::fmaxf(bw.left, bw.right)
+			);
+
+			if (thickness > 0.f)
+			{
+				renderer.draw_rect(min, max, visual_border_color_, thickness, effective_rounding);
+			}
+		}
 
 		const auto ov = style_.overflow.value_or(defaults.overflow.value_or(overflow_mode::visible));
 		const bool clip = (ov == overflow_mode::hidden || ov == overflow_mode::scroll);

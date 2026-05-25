@@ -244,7 +244,7 @@ namespace rv
 					}
 					else
 					{
-						// no break point — force break at current char
+						// no break point - force break at current char
 						lines.emplace_back(line_start, static_cast<cstd::size_t>(char_start - line_start));
 						line_start = char_start;
 						current_width = font_->glyph_advance(cp) * scale;

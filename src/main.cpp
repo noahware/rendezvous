@@ -271,18 +271,52 @@ cstd::int32_t main()
 
 	auto gui_font = cstd::make_shared<rv::gui_font_impl>(*font);
 
-	// auto-width single-line text
+	auto btn_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(50.f) });
+	btn_row->direction(rv::layout_direction::horizontal).gap(12.f).padding(8.f);
+
+	auto primary = gui->make_child<rv::button>(btn_row,
+		rv::element_size{ rv::styled_size::auto_v(), rv::styled_size::fill() }, gui_font);
+	primary->background_color({ 0.15f, 0.45f, 0.95f, 1.f }).rounding(8.f);
+	primary->text("Primary").text_size(18.f)
+		.hover_color({ 0.25f, 0.55f, 1.f, 1.f })
+		.pressed_color({ 0.1f, 0.35f, 0.8f, 1.f })
+		.on_click([]() { LOG_INFO("primary clicked"); });
+
+	auto secondary = gui->make_child<rv::button>(btn_row,
+		rv::element_size{ rv::styled_size::auto_v(), rv::styled_size::fill() }, gui_font);
+	secondary->background_color({ 0.12f, 0.12f, 0.15f, 1.f })
+		.rounding(8.f)
+		.border_color({ 0.35f, 0.35f, 0.4f, 1.f })
+		.border_width(1.f);
+	secondary->text("Secondary").text_size(18.f)
+		.hover_color({ 0.2f, 0.2f, 0.25f, 1.f })
+		.pressed_color({ 0.08f, 0.08f, 0.1f, 1.f })
+		.on_click([]() { LOG_INFO("secondary clicked"); });
+
+	auto danger = gui->make_child<rv::button>(btn_row,
+		rv::element_size{ rv::styled_size::auto_v(), rv::styled_size::fill() }, gui_font);
+	danger->background_color({ 0.85f, 0.15f, 0.15f, 1.f }).rounding(8.f);
+	danger->text("Delete").text_size(18.f)
+		.hover_color({ 0.95f, 0.25f, 0.25f, 1.f })
+		.pressed_color({ 0.65f, 0.1f, 0.1f, 1.f })
+		.on_click([]() { LOG_INFO("delete clicked"); });
+
+	auto icon_btn = gui->make_child<rv::button>(btn_row,
+		rv::element_size{ rv::styled_size::px(40.f), rv::styled_size::px(40.f) }, gui_font);
+	icon_btn->background_color({ 0.25f, 0.25f, 0.3f, 1.f }).rounding(20.f);
+	icon_btn->hover_color({ 0.35f, 0.35f, 0.42f, 1.f })
+		.pressed_color({ 0.18f, 0.18f, 0.22f, 1.f })
+		.on_click([]() { LOG_INFO("icon clicked"); });
+
 	auto label = gui->make_child<rv::text_element>(root,
 		rv::element_size{}, gui_font);
 	label->content("Hello World").text_size(24.f).text_color({ 1.f, 0.f, 0.f, 1.f });
 
-	// fixed-width wrapping paragraph
 	auto para = gui->make_child<rv::text_element>(root,
 		rv::element_size{ rv::styled_size::px(400.f), rv::styled_size::auto_v() }, gui_font);
 	para->content("The quick brown fox jumps over the lazy dog. This text should wrap across multiple lines automatically.")
 		.text_size(18.f);
 
-	// centered text in full-width row
 	auto centered = gui->make_child<rv::text_element>(root,
 		rv::element_size{ rv::styled_size::fill(), rv::styled_size::auto_v() }, gui_font);
 	centered->content("Centered Heading")

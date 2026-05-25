@@ -58,6 +58,10 @@ namespace rv
 		virtual void draw_rect(position min, position max, color col, float thickness = 1.f, float rounding = 0.f) noexcept = 0;
 		virtual void draw_rect_filled(position min, position max, color col, float rounding = 0.f, rounding_flags flags = rounding_flags_all) noexcept = 0;
 		virtual void draw_circle_filled(position pos, float radius, color col) noexcept = 0;
+		virtual void draw_shadow_rect(position min, position max, color col, float rounding = 0.f,
+		                              float shadow_blur = 15.f, float shadow_spread = 0.f,
+		                              rounding_flags flags = rounding_flags_all,
+		                              bool cut_background = false) noexcept = 0;
 		virtual void draw_text(const gui_font& font, position pos, string_view_t text, color col, float size = 0.f) noexcept = 0;
 		virtual void push_clip_rect(position min, position max) noexcept = 0;
 		virtual void pop_clip_rect() noexcept = 0;
@@ -85,6 +89,13 @@ namespace rv
 		void draw_circle_filled(const position pos, const float radius, const color col) noexcept override
 		{
 			return renderer_->draw_circle_filled(pos, radius, col);
+		}
+
+		void draw_shadow_rect(const position min, const position max, const color col, const float rounding,
+		                      const float shadow_blur, const float shadow_spread,
+		                      const rounding_flags flags, const bool cut_background) noexcept override
+		{
+			return renderer_->draw_shadow_rect(min, max, col, rounding, shadow_blur, shadow_spread, flags, cut_background);
 		}
 
 		void draw_text(const gui_font& gf, const position pos, const string_view_t text,
@@ -166,12 +177,12 @@ namespace rv
 
 			const position mouse_pos = input_->mouse_pos();
 			const bool mouse_clicked = input_->is_mouse_clicked(0);
+			const bool mouse_down = input_->is_mouse_down(0);
 			const float scroll_delta = input_->scroll_delta();
 
 			bool click_handled = false;
 			bool enter_handled = false;
 
-			// find deepest scrollable element for scroll input
 			shared_ptr_t<element> scroll_target;
 
 			for (auto& [id, el] : tree_)
@@ -200,7 +211,8 @@ namespace rv
 					el->on_mouse_exit();
 				}
 
-				// track scrollable elements under mouse
+				el->set_pressed(hovering && mouse_down);
+
 				if (hovering && el->style().overflow.value_or(overflow_mode::visible) == overflow_mode::scroll)
 				{
 					scroll_target = el;

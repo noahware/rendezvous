@@ -142,6 +142,10 @@ namespace rv
 		optional_t<align_content> align_content_v;
 		optional_t<overflow_mode> overflow;
 		optional_t<text_direction> dir;
+		optional_t<color> background_color;
+		optional_t<color> text_color;
+		optional_t<float> rounding;
+		optional_t<color> border_color;
 	};
 
 	// helper to resolve gap for the correct axis
@@ -195,7 +199,6 @@ namespace rv
 				anim.update(dt);
 			}
 
-			// remove finished animations with fill_mode::none
 			animations_.erase(
 				std::remove_if(animations_.begin(), animations_.end(), [](const animation_state& a)
 				{
@@ -203,6 +206,61 @@ namespace rv
 				}),
 				animations_.end()
 			);
+
+			if (style_.background_color || style_.text_color || style_.rounding || style_.border_color)
+			{
+				const color target_bg = style_.background_color.value_or(color{ 0.f, 0.f, 0.f, 0.f });
+				const color target_tc = style_.text_color.value_or(color{ 1.f, 1.f, 1.f, 1.f });
+				const float target_rd = style_.rounding.value_or(0.f);
+				const color target_bc = style_.border_color.value_or(color{ 0.f, 0.f, 0.f, 0.f });
+
+				if (!transitions_initialized_ || transition_speed_ <= 0.f)
+				{
+					visual_bg_ = target_bg;
+					visual_text_color_ = target_tc;
+					visual_rounding_ = target_rd;
+					visual_border_color_ = target_bc;
+					transitions_initialized_ = true;
+				}
+				else
+				{
+					const float factor = cstd::fminf(transition_speed_ * dt, 1.f);
+					visual_bg_ = lerp_color(visual_bg_, target_bg, factor);
+					visual_text_color_ = lerp_color(visual_text_color_, target_tc, factor);
+					visual_rounding_ = lerp(visual_rounding_, target_rd, factor);
+					visual_border_color_ = lerp_color(visual_border_color_, target_bc, factor);
+
+					auto close = [](const float a, const float b) noexcept
+					{
+						return cstd::fabsf(a - b) < 0.001f;
+					};
+
+					auto color_close = [&](const color& a, const color& b) noexcept
+					{
+						return close(a.r, b.r) && close(a.g, b.g) && close(a.b, b.b) && close(a.a, b.a);
+					};
+
+					if (color_close(visual_bg_, target_bg))
+					{
+						visual_bg_ = target_bg;
+					}
+
+					if (color_close(visual_text_color_, target_tc))
+					{
+						visual_text_color_ = target_tc;
+					}
+
+					if (close(visual_rounding_, target_rd))
+					{
+						visual_rounding_ = target_rd;
+					}
+
+					if (color_close(visual_border_color_, target_bc))
+					{
+						visual_border_color_ = target_bc;
+					}
+				}
+			}
 		}
 
 		virtual bool on_mouse_click()
@@ -303,6 +361,16 @@ namespace rv
 		void set_hovered(const bool hovered) noexcept
 		{
 			hovered_ = hovered;
+		}
+
+		[[nodiscard]] bool is_pressed() const noexcept
+		{
+			return pressed_;
+		}
+
+		void set_pressed(const bool pressed) noexcept
+		{
+			pressed_ = pressed;
 		}
 
 		[[nodiscard]] bool is_visible() const noexcept
@@ -552,6 +620,41 @@ namespace rv
 			return *this;
 		}
 
+		element& background_color(const color c) noexcept
+		{
+			style_.background_color = c;
+
+			return *this;
+		}
+
+		element& text_color(const color c) noexcept
+		{
+			style_.text_color = c;
+
+			return *this;
+		}
+
+		element& rounding(const float r) noexcept
+		{
+			style_.rounding = r;
+
+			return *this;
+		}
+
+		element& border_color(const color c) noexcept
+		{
+			style_.border_color = c;
+
+			return *this;
+		}
+
+		element& transition_speed(const float speed) noexcept
+		{
+			transition_speed_ = speed;
+
+			return *this;
+		}
+
 		void set_flex_lines(vector_t<flex_line> lines) noexcept
 		{
 			flex_lines_ = cstd::move(lines);
@@ -706,6 +809,11 @@ namespace rv
 		            const position offset = { 0.f, 0.f }) const;
 
 	protected:
+		virtual void render_background(gui_renderer& renderer, position min, position max) const
+		{
+
+		}
+
 		virtual void render_self(gui_renderer& renderer, position min, position max) const
 		{
 
@@ -715,8 +823,16 @@ namespace rv
 		position computed_pos_ = { };
 		element_style style_;
 		bool hovered_ = false;
+		bool pressed_ = false;
 		bool visible_ = true;
 		vector_t<animation_state> animations_;
+
+		float transition_speed_ = 0.f;
+		color visual_bg_ = { 0.f, 0.f, 0.f, 0.f };
+		color visual_text_color_ = { 1.f, 1.f, 1.f, 1.f };
+		float visual_rounding_ = 0.f;
+		color visual_border_color_ = { 0.f, 0.f, 0.f, 0.f };
+		bool transitions_initialized_ = false;
 
 		vector_t<flex_line> flex_lines_;
 		position scroll_offset_ = { 0.f, 0.f };
