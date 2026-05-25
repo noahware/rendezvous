@@ -1,5 +1,6 @@
 #pragma once
 #include "../render/render.hpp"
+#include "../input/input.hpp"
 #include "layout.hpp"
 
 namespace rv
@@ -36,14 +37,17 @@ namespace rv
 	class gui
 	{
 	public:
-		explicit gui(unique_ptr_t<gui_renderer> renderer)
-				:	renderer_(cstd::move(renderer)) { }
+		explicit gui(unique_ptr_t<gui_renderer> renderer, shared_ptr_t<input> input)
+				:	renderer_(cstd::move(renderer)), input_(cstd::move(input)) { }
 
 		void render(const vector_2d<float> display_size)
 		{
 			const auto root = tree_.root();
 
 			layout(*root, display_size, default_style_);
+			resolve_positions(*root, position{ 0.f, 0.f }, default_style_);
+			update_all(*root, renderer_->delta_time());
+			process_events();
 			root->render(*renderer_, position{ 0.f, 0.f }, default_style_);
 		}
 
@@ -62,8 +66,56 @@ namespace rv
 			return default_style_;
 		}
 
+		[[nodiscard]] const shared_ptr_t<input>& get_input() const noexcept
+		{
+			return input_;
+		}
+
+		template <class T, class ...Args>
+		shared_ptr_t<T> make_child(const shared_ptr_t<element>& parent, Args&&... args)
+		{
+			return tree_.make_child<T>(parent, args...);
+		}
+
 	protected:
+		void process_events()
+		{
+			if (!input_)
+			{
+				return;
+			}
+
+			const position mouse_pos = input_->mouse_pos();
+			const bool mouse_clicked = input_->is_mouse_clicked(0);
+
+			bool click_handled = false;
+			bool enter_handled = false;
+
+			for (auto& [id, el] : tree_)
+			{
+				const bool hovering = el->contains(mouse_pos);
+
+				if (!click_handled && mouse_clicked && hovering)
+				{
+					click_handled = el->on_mouse_click();
+				}
+
+				if (!enter_handled && hovering && !el->is_hovered())
+				{
+					el->set_hovered(true);
+					enter_handled = el->on_mouse_enter();
+				}
+
+				if (!hovering && el->is_hovered())
+				{
+					el->set_hovered(false);
+					el->on_mouse_exit();
+				}
+			}
+		}
+
 		unique_ptr_t<gui_renderer> renderer_;
+		shared_ptr_t<input> input_;
 		element_tree tree_;
 		element_style default_style_;
 	};

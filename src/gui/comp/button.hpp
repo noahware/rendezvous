@@ -12,17 +12,33 @@ namespace rv
 		explicit button(const element_size size) noexcept
 				:	element(size) { }
 
-		void on_mouse_click() override
+		button& on_click(function_t<void()> callback)
 		{
-			LOG_INFO("click");
+			on_click_ = cstd::move(callback);
+
+			return *this;
+		}
+
+		bool on_mouse_click() override
+		{
+			if (on_click_)
+			{
+				on_click_();
+			}
+
+			return true;
 		}
 
 	protected:
 		void render_self(gui_renderer& renderer, const position min, const position max) const override
 		{
-			constexpr color col = { 1.f, 1.f, 1.f, 1.f };
+			const color col = hovered_
+				? color{ 0.8f, 0.8f, 0.8f, 1.f }
+				: color{ 1.f, 1.f, 1.f, 1.f };
 
 			renderer.draw_rect_filled(min, max, col);
 		}
+
+		function_t<void()> on_click_;
 	};
 }

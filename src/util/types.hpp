@@ -11,6 +11,7 @@
 #include <span>
 #include <chrono>
 #include <unordered_map>
+#include <functional>
 
 namespace cstd
 {
@@ -55,6 +56,9 @@ template <class T>
 using hash_t = std::hash<T>;
 
 template <class T>
+using function_t = std::function<T>;
+
+template <class T>
 using istreambuf_iterator_t = std::istreambuf_iterator<T>;
 
 using ifstream_t = std::ifstream;
@@ -91,6 +95,11 @@ namespace cstd
 	inline float atan2f(const float y, const float x)
 	{
 		return std::atan2f(y, x);
+	}
+
+	inline float fabsf(const float x)
+	{
+		return std::fabsf(x);
 	}
 
 	inline float fminf(const float x, const float y)

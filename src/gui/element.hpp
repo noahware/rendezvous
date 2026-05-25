@@ -36,19 +36,24 @@ namespace rv
 		explicit element(const element_size size) noexcept
 				:	style_{ .size = size } { }
 
-		virtual void on_mouse_click()
-		{
-			
-		}
-
-		virtual void on_mouse_enter()
+		virtual void update(float dt)
 		{
 
 		}
 
-		virtual void on_mouse_exit()
+		virtual bool on_mouse_click()
 		{
+			return false;
+		}
 
+		virtual bool on_mouse_enter()
+		{
+			return false;
+		}
+
+		virtual bool on_mouse_exit()
+		{
+			return false;
 		}
 
 		[[nodiscard]] bool child_of(const shared_ptr_t<element>& parent) const noexcept
@@ -71,19 +76,19 @@ namespace rv
 			return children_;
 		}
 
-		void add_child(shared_ptr_t<element> element)
+		void add_child(shared_ptr_t<element> child)
 		{
-			children_.push_back(cstd::move(element));
+			children_.push_back(cstd::move(child));
 		}
 
 		template <class T, class ...Args>
-		shared_ptr_t<element> make_child(Args&&... args)
+		shared_ptr_t<T> make_child(Args&&... args)
 		{
-			auto element = make_element<T>(args...);
+			auto child = make_element<T>(args...);
 
-			children_.push_back(element);
+			children_.push_back(child);
 
-			return element;
+			return child;
 		}
 
 		[[nodiscard]] vector_2d<float> size() const noexcept
@@ -109,6 +114,34 @@ namespace rv
 		void set_computed_size(const vector_2d<float> size) noexcept
 		{
 			computed_size_ = size;
+		}
+
+		[[nodiscard]] position computed_pos() const noexcept
+		{
+			return computed_pos_;
+		}
+
+		void set_computed_pos(const position pos) noexcept
+		{
+			computed_pos_ = pos;
+		}
+
+		[[nodiscard]] bool is_hovered() const noexcept
+		{
+			return hovered_;
+		}
+
+		void set_hovered(const bool hovered) noexcept
+		{
+			hovered_ = hovered;
+		}
+
+		[[nodiscard]] bool contains(const position point) const noexcept
+		{
+			return point.x >= computed_pos_.x
+				&& point.y >= computed_pos_.y
+				&& point.x <= computed_pos_.x + computed_size_.x
+				&& point.y <= computed_pos_.y + computed_size_.y;
 		}
 
 		[[nodiscard]] element_style& style() noexcept
@@ -161,11 +194,45 @@ namespace rv
 		}
 
 		vector_2d<float> computed_size_ = { };
+		position computed_pos_ = { };
 		element_style style_;
+		bool hovered_ = false;
 
 		shared_ptr_t<element> parent_ = { };
 		vector_t<shared_ptr_t<element>> children_ = { };
 	};
+
+	inline void resolve_positions(element& element, const position cursor, const element_style& defaults)
+	{
+		element.set_computed_pos(cursor);
+
+		const float gap = element.style().gap.value_or(defaults.gap.value_or(0.f));
+		position child_cursor = cursor;
+
+		for (const auto& child : element.children())
+		{
+			resolve_positions(*child, child_cursor, defaults);
+
+			if (element.style().direction == layout_direction::vertical)
+			{
+				child_cursor.y += child->computed_size().y + gap;
+			}
+			else
+			{
+				child_cursor.x += child->computed_size().x + gap;
+			}
+		}
+	}
+
+	inline void update_all(element& el, const float dt)
+	{
+		el.update(dt);
+
+		for (const auto& child : el.children())
+		{
+			update_all(*child, dt);
+		}
+	}
 
 	class element_tree
 	{
@@ -201,6 +268,17 @@ namespace rv
 			static_assert(hash != 0);
 
 			add(hash, cstd::move(element));
+		}
+
+		template <class T, class ...Args>
+		shared_ptr_t<T> make_child(const shared_ptr_t<element>& parent, Args&&... args)
+		{
+			auto child = make_element<T>(args...);
+
+			parent->add_child(child);
+			add(child);
+
+			return child;
 		}
 
 		[[nodiscard]] shared_ptr_t<element> find(const hash_type hash) const noexcept

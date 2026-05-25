@@ -1,6 +1,7 @@
 #include "gui/element.hpp"
 #include "gui/gui.hpp"
 #include "gui/comp/button.hpp"
+#include "gui/comp/slider.hpp"
 #include "log/log.hpp"
 #include "render/impl/dx11.hpp"
 #include "input/win32.hpp"
@@ -11,7 +12,7 @@
 // #include <stb_image.h>
 
 rv::vector_2d<float> screen_size = { 1280.f, 720.f };
-unique_ptr_t<rv::win32_input> input = { };
+shared_ptr_t<rv::win32_input> input = { };
 
 static LRESULT CALLBACK wnd_proc(const HWND hwnd, const UINT msg, const WPARAM wparam, const LPARAM lparam)
 {
@@ -93,8 +94,10 @@ cstd::int32_t main()
 		return 1;
 	}
 
+	input = cstd::make_shared<rv::win32_input>();
+
 	auto gui_renderer = cstd::make_unique<rv::gui_renderer_impl>(renderer);
-	auto gui = cstd::make_unique<rv::gui>(cstd::move(gui_renderer));
+	auto gui = cstd::make_unique<rv::gui>(cstd::move(gui_renderer), input);
 
 	gui->default_style().gap = 8.f;
 	gui->default_style().direction = rv::layout_direction::vertical;
@@ -102,15 +105,21 @@ cstd::int32_t main()
 	auto root = gui->root();
 	root->direction(rv::layout_direction::vertical);
 
-	root->make_child<rv::button>(rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
-	root->make_child<rv::button>(rv::element_size{ rv::styled_size::percent(50.f), rv::styled_size::px(40.f) });
+	auto btn1 = gui->make_child<rv::button>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
+	btn1->on_click([]() { LOG_INFO("button 1 clicked"); });
 
-	auto row = root->make_child<rv::element>(rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
+	auto btn2 = gui->make_child<rv::button>(root, rv::element_size{ rv::styled_size::percent(50.f), rv::styled_size::px(40.f) });
+	btn2->on_click([]() { LOG_INFO("button 2 clicked"); });
+
+	auto row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(40.f) });
 
 	row->direction(rv::layout_direction::horizontal);
 
-	row->make_child<rv::button>(rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
-	row->make_child<rv::button>(rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
+	auto btn3 = gui->make_child<rv::button>(row, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
+	btn3->on_click([]() { LOG_INFO("button 3 clicked"); });
+
+	auto btn4 = gui->make_child<rv::button>(row, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
+	btn4->on_click([]() { LOG_INFO("button 4 clicked"); });
 
 	// example image loading using stb image
 	// cstd::int32_t img_w, img_h, img_c;
@@ -119,8 +128,6 @@ cstd::int32_t main()
 	// if (img_data) stbi_image_free(img_data);
 	// img_w /= 2;
 	// img_h /= 2;
-
-	input = cstd::make_unique<rv::win32_input>();
 
 	rv::vector_2d<float> last_screen_size = screen_size;
 
