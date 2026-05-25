@@ -586,7 +586,11 @@ namespace rv
 			renderer.draw_rect_filled(min, max, effective_bg, effective_rounding);
 		}
 
-		render_self(renderer, min, max);
+		const auto insets = compute_insets(style_, defaults);
+		const position content_min = { min.x + insets.left, min.y + insets.top };
+		const position content_max = { max.x - insets.right, max.y - insets.bottom };
+
+		render_self(renderer, content_min, content_max);
 
 		if (visual_border_color_.a > 0.001f)
 		{

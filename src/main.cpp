@@ -2,6 +2,7 @@
 #include "gui/gui.hpp"
 #include "gui/comp/button.hpp"
 #include "gui/comp/text.hpp"
+#include "gui/comp/slider.hpp"
 #include "log/log.hpp"
 #include "render/impl/dx11.hpp"
 #include "input/win32.hpp"
@@ -290,9 +291,10 @@ cstd::int32_t main()
 		.border_width(1.f);
 	secondary->text_size(18.f);
 	secondary->text("Secondary")
-		.hover_color({ 0.2f, 0.2f, 0.25f, 1.f })
-		.pressed_color({ 0.08f, 0.08f, 0.1f, 1.f })
-		.on_click([]() { LOG_INFO("secondary clicked"); }).transition_speed(0.1f);
+		.hover_color({ 1.0f, 0.2f, 0.25f, 1.f })
+		.pressed_color({ 0.08f, 1.0f, 0.1f, 1.f })
+		.on_click([]() { LOG_INFO("secondary clicked"); })
+		.transition_speed(6.f);
 
 	auto danger = gui->make_child<rv::button>(btn_row,
 		rv::element_size{ rv::styled_size::auto_v(), rv::styled_size::fill() }, gui_font);
@@ -322,6 +324,36 @@ cstd::int32_t main()
 		rv::element_size{ rv::styled_size::fill(), rv::styled_size::auto_v() }, gui_font);
 	centered->content("Centered Heading")
 		.text_alignment(rv::text_align::center).text_size(28.f);
+
+	auto slider_label = gui->make_child<rv::text_element>(root,
+		rv::element_size{}, gui_font);
+	slider_label->content("Volume: 50%").text_size(16.f);
+
+	auto vol_slider = gui->make_child<rv::slider>(root,
+		rv::element_size{ rv::styled_size::px(300.f), rv::styled_size::px(30.f) }, input);
+	vol_slider->value(0.5f)
+		.on_change([slider_label](const float v)
+		{
+			const int pct = static_cast<int>(v * 100.f);
+			slider_label->content("Volume: " + string_t(std::to_string(pct)) + "%");
+		})
+		.padding({ .top = 0, .right = 5.f, .bottom = 0.f, .left = 5.f })
+		.rounding(10.f);
+
+	auto range_label = gui->make_child<rv::text_element>(root,
+		rv::element_size{}, gui_font);
+	range_label->content("Range: 25% - 75%").text_size(16.f);
+
+	auto price_range = gui->make_child<rv::range_slider>(root,
+		rv::element_size{ rv::styled_size::px(300.f), rv::styled_size::px(30.f) }, input);
+	price_range->values(0.25f, 0.75f)
+		.fill_color({ 0.9f, 0.4f, 0.2f, 1.f });
+	price_range->on_range_change([range_label](const float lo, const float hi)
+		{
+			const int lo_pct = static_cast<int>(lo * 100.f);
+			const int hi_pct = static_cast<int>(hi * 100.f);
+			range_label->content("Range: " + string_t(std::to_string(lo_pct)) + "% - " + string_t(std::to_string(hi_pct)) + "%");
+		});
 
 	MSG msg = { };
 
@@ -369,7 +401,7 @@ cstd::int32_t main()
 
 		gui->render(screen_size);
 
-		// red filled rectangle with a basic black dropshadow
+		/*// red filled rectangle with a basic black dropshadow
 		renderer->draw_shadow_rect({ 105.f, 105.f }, { 305.f, 255.f }, { 0.f, 0.f, 0.f, 0.5f }, 17.5f, 20.f, 0.f);
 		renderer->draw_rect_filled({ 100.f, 100.f }, { 300.f, 250.f }, { 0.2f, 0.2f, 0.2f, 1.f }, 17.5f);
 		renderer->draw_rect({ 100.f, 100.f }, { 300.f, 250.f }, { 0.3f, 0.3f, 0.3f, 1.f }, 1.f, 17.5f);
@@ -495,7 +527,8 @@ cstd::int32_t main()
 			//renderer->draw_rect_filled(text_pos, {text_pos.x + text_size.x, text_pos.y + text_size.y}, {1.f, 0.25f, 0.f, 1.f});
 			renderer->add_text_shadow(*font, text_pos, text, {1.f, 0.4f, 1.f , 1.f}, 15.f, size);
 			renderer->draw_text(*font, text_pos, text, { 0.4f, 1.f, 1.f, 1.f }, size);
-		}
+		}*/
+
 		renderer->end_frame();
 
 		swap_chain->Present(1, 0);
