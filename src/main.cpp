@@ -159,6 +159,12 @@ cstd::int32_t main()
 			.add(1.f, { .offset = rv::position{0.f, 0.f} }),
 		{ .duration = 0.6f, .ease = rv::easing::ease_out_back }
 	);
+	slide_btn->animate(
+		rv::keyframe_sequence{}
+			.add(0.f, { .opacity = 0.f })
+			.add(1.f, { .opacity = 1.f }),
+		{ .duration = 0.6f, .ease = rv::easing::ease_out_quad }
+	);
 
 	auto pulse_btn = gui->make_child<rv::button>(anim_row, rv::element_size{ rv::styled_size::px(120.f), rv::styled_size::fill() });
 	pulse_btn->animate(

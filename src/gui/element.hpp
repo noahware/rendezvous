@@ -66,15 +66,19 @@ namespace rv
 
 		virtual void update(float dt)
 		{
-			if (animation_)
+			for (auto& anim : animations_)
 			{
-				animation_->update(dt);
-
-				if (animation_->is_finished() && animation_->get_fill_mode() == fill_mode::none)
-				{
-					animation_.reset();
-				}
+				anim.update(dt);
 			}
+
+			// remove finished animations with fill_mode::none
+			animations_.erase(
+				std::remove_if(animations_.begin(), animations_.end(), [](const animation_state& a)
+				{
+					return a.is_finished() && a.get_fill_mode() == fill_mode::none;
+				}),
+				animations_.end()
+			);
 		}
 
 		virtual bool on_mouse_click()
@@ -251,31 +255,75 @@ namespace rv
 
 		element& animate(keyframe_sequence seq, animation_options opts)
 		{
-			animation_.emplace(cstd::move(seq), cstd::move(opts));
+			animations_.emplace_back(cstd::move(seq), cstd::move(opts));
 
 			return *this;
 		}
 
-		element& stop_animation() noexcept
+		element& stop_animations() noexcept
 		{
-			animation_.reset();
+			animations_.clear();
 
 			return *this;
 		}
 
 		[[nodiscard]] optional_t<keyframe_props> animated_props() const noexcept
 		{
-			if (!animation_)
+			if (animations_.empty())
 			{
 				return {};
 			}
 
-			if (animation_->is_finished() && animation_->get_fill_mode() == fill_mode::none)
+			// merge all active animations - later ones win per property, offset accumulates
+			keyframe_props merged;
+			bool has_any = false;
+
+			for (const auto& anim : animations_)
+			{
+				if (anim.is_finished() && anim.get_fill_mode() == fill_mode::none)
+				{
+					continue;
+				}
+
+				const auto props = anim.current_props();
+				has_any = true;
+
+				if (props.col)
+				{
+					merged.col = props.col;
+				}
+
+				if (props.opacity)
+				{
+					merged.opacity = props.opacity;
+				}
+
+				if (props.rounding)
+				{
+					merged.rounding = props.rounding;
+				}
+
+				// offset is additive - stacked slides combine
+				if (props.offset)
+				{
+					if (merged.offset)
+					{
+						merged.offset->x += props.offset->x;
+						merged.offset->y += props.offset->y;
+					}
+					else
+					{
+						merged.offset = props.offset;
+					}
+				}
+			}
+
+			if (!has_any)
 			{
 				return {};
 			}
 
-			return animation_->current_props();
+			return merged;
 		}
 
 		void render(gui_renderer& renderer, const element_style& defaults,
@@ -317,7 +365,7 @@ namespace rv
 		element_style style_;
 		bool hovered_ = false;
 		bool visible_ = true;
-		optional_t<animation_state> animation_;
+		vector_t<animation_state> animations_;
 
 		shared_ptr_t<element> parent_ = { };
 		vector_t<shared_ptr_t<element>> children_ = { };
