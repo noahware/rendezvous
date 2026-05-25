@@ -522,7 +522,7 @@ cstd::int32_t main()
 		{
 			const auto state = renderer->state();
 
-			const string_t text = std::format("width {}px height {}px time {:.2f}s delta {:.4f}s", state.display_size.x, state.display_size.y, state.time, state.delta_time);
+			const string_t text = std::format("width {}px height {}px time {:.2f}s delta {:.4f}s fps {:.2f}", state.display_size.x, state.display_size.y, state.time, state.delta_time, 1.f / state.delta_time);
 
 			constexpr float size = 35.f;
 			constexpr rv::position text_pos = { 100.f, 580.f};
@@ -535,7 +535,7 @@ cstd::int32_t main()
 
 		renderer->end_frame();
 
-		swap_chain->Present(1, 0);
+		swap_chain->Present(0, 0);
 
 		input->reset();
 	} while (msg.message != WM_QUIT);
