@@ -69,16 +69,20 @@ namespace rv
 
 		void update(const float dt) override
 		{
-			if (!hovered_ && !pressed_)
+			const auto resting = style_.background_color;
+
+			if (pressed_)
 			{
-				resting_bg_ = style_.background_color.value_or(resting_bg_);
+				style_.background_color = pressed_color_;
+			}
+			else if (hovered_)
+			{
+				style_.background_color = hover_color_;
 			}
 
-			style_.background_color = pressed_ ? pressed_color_
-			                        : hovered_ ? hover_color_
-			                        : resting_bg_;
-
 			element::update(dt);
+
+			style_.background_color = resting;
 		}
 
 		[[nodiscard]] vector_2d<float> content_size(const vector_2d<float> available) const noexcept override
@@ -123,7 +127,6 @@ namespace rv
 			style_.rounding = 6.f;
 			style_.text_color = color{ 1.f, 1.f, 1.f, 1.f };
 			transition_speed_ = 12.f;
-			resting_bg_ = *style_.background_color;
 		}
 
 		[[nodiscard]] float measure_text_width(const float scale) const noexcept
@@ -154,7 +157,6 @@ namespace rv
 		string_t text_;
 		float font_size_ = 0.f;
 
-		color resting_bg_ = { 0.18f, 0.18f, 0.22f, 1.f };
 		color hover_color_ = { 0.28f, 0.28f, 0.34f, 1.f };
 		color pressed_color_ = { 0.12f, 0.12f, 0.15f, 1.f };
 

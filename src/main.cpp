@@ -284,7 +284,7 @@ cstd::int32_t main()
 
 	auto secondary = gui->make_child<rv::button>(btn_row,
 		rv::element_size{ rv::styled_size::auto_v(), rv::styled_size::fill() }, gui_font);
-	secondary->background_color({ 0.12f, 0.12f, 0.15f, 1.f })
+	secondary->background_color({ 0.12f, 0.12f, 0.15f, 0.f })
 		.rounding(8.f)
 		.border_color({ 0.35f, 0.35f, 0.4f, 1.f })
 		.border_width(1.f);
