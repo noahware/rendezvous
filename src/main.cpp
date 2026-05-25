@@ -331,14 +331,15 @@ cstd::int32_t main()
 
 	auto vol_slider = gui->make_child<rv::slider>(root,
 		rv::element_size{ rv::styled_size::px(300.f), rv::styled_size::px(30.f) }, input);
+
 	vol_slider->value(0.5f)
 		.on_change([slider_label](const float v)
 		{
 			const int pct = static_cast<int>(v * 100.f);
 			slider_label->content("Volume: " + string_t(std::to_string(pct)) + "%");
 		})
-		.padding({ .top = 0, .right = 5.f, .bottom = 0.f, .left = 5.f })
-		.rounding(10.f);
+		.padding({ .top = 0, .right = 10.f, .bottom = 0.f, .left = 10.f })
+		.rounding(17.5f);
 
 	auto range_label = gui->make_child<rv::text_element>(root,
 		rv::element_size{}, gui_font);
@@ -346,14 +347,17 @@ cstd::int32_t main()
 
 	auto price_range = gui->make_child<rv::range_slider>(root,
 		rv::element_size{ rv::styled_size::px(300.f), rv::styled_size::px(30.f) }, input);
+
 	price_range->values(0.25f, 0.75f)
-		.fill_color({ 0.9f, 0.4f, 0.2f, 1.f });
-	price_range->on_range_change([range_label](const float lo, const float hi)
+		.on_range_change([range_label](const float lo, const float hi)
 		{
 			const int lo_pct = static_cast<int>(lo * 100.f);
 			const int hi_pct = static_cast<int>(hi * 100.f);
 			range_label->content("Range: " + string_t(std::to_string(lo_pct)) + "% - " + string_t(std::to_string(hi_pct)) + "%");
-		});
+		})
+		.fill_color({ 0.9f, 0.4f, 0.2f, 1.f })
+		.padding({ .top = 0, .right = 10.f, .bottom = 0.f, .left = 10.f })
+		.rounding(17.5f);
 
 	MSG msg = { };
 
@@ -401,7 +405,7 @@ cstd::int32_t main()
 
 		gui->render(screen_size);
 
-		/*// red filled rectangle with a basic black dropshadow
+		// red filled rectangle with a basic black dropshadow
 		renderer->draw_shadow_rect({ 105.f, 105.f }, { 305.f, 255.f }, { 0.f, 0.f, 0.f, 0.5f }, 17.5f, 20.f, 0.f);
 		renderer->draw_rect_filled({ 100.f, 100.f }, { 300.f, 250.f }, { 0.2f, 0.2f, 0.2f, 1.f }, 17.5f);
 		renderer->draw_rect({ 100.f, 100.f }, { 300.f, 250.f }, { 0.3f, 0.3f, 0.3f, 1.f }, 1.f, 17.5f);
@@ -527,7 +531,7 @@ cstd::int32_t main()
 			//renderer->draw_rect_filled(text_pos, {text_pos.x + text_size.x, text_pos.y + text_size.y}, {1.f, 0.25f, 0.f, 1.f});
 			renderer->add_text_shadow(*font, text_pos, text, {1.f, 0.4f, 1.f , 1.f}, 15.f, size);
 			renderer->draw_text(*font, text_pos, text, { 0.4f, 1.f, 1.f, 1.f }, size);
-		}*/
+		}
 
 		renderer->end_frame();
 
