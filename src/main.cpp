@@ -3,6 +3,7 @@
 #include "gui/comp/button.hpp"
 #include "gui/comp/text.hpp"
 #include "gui/comp/slider.hpp"
+#include "gui/comp/checkbox.hpp"
 #include "log/log.hpp"
 #include "render/impl/dx11.hpp"
 #include "input/win32.hpp"
@@ -371,6 +372,45 @@ cstd::int32_t main()
 			int_label->content("Level: " + string_t(std::to_string(v)));
 		})
 		.fill_color({ 0.2f, 0.8f, 0.4f, 1.f });
+
+	static float bound_volume = 0.5f;
+	static int bound_level = 5;
+	vol_slider->bind(&bound_volume);
+	int_slider->bind(&bound_level);
+
+	auto cb_row = gui->make_child<rv::element>(root,
+		rv::element_size{ rv::styled_size::fill(), rv::styled_size::auto_v() });
+	cb_row->direction(rv::layout_direction::horizontal).gap(8.f).align(rv::alignment::center);
+
+	static bool feature_enabled = true;
+
+	auto cb = gui->make_child<rv::checkbox>(cb_row,
+		rv::element_size{ rv::styled_size::px(20.f), rv::styled_size::px(20.f) });
+	cb->checked(true).bind(&feature_enabled)
+		.on_change([](const bool v)
+		{
+			LOG_INFO("checkbox: {}", v);
+		});
+
+	auto cb_label = gui->make_child<rv::text_element>(cb_row,
+		rv::element_size{}, gui_font);
+	cb_label->content("Enable feature").text_size(16.f);
+
+	auto cb2_row = gui->make_child<rv::element>(root,
+		rv::element_size{ rv::styled_size::fill(), rv::styled_size::auto_v() });
+	cb2_row->direction(rv::layout_direction::horizontal).gap(8.f).align(rv::alignment::center);
+
+	auto cb2 = gui->make_child<rv::checkbox>(cb2_row,
+		rv::element_size{ rv::styled_size::px(20.f), rv::styled_size::px(20.f) });
+	cb2->rounding(10.f);
+	cb2->on_change([](const bool v)
+		{
+			LOG_INFO("round checkbox: {}", v);
+		});
+
+	auto cb2_label = gui->make_child<rv::text_element>(cb2_row,
+		rv::element_size{}, gui_font);
+	cb2_label->content("Round checkbox").text_size(16.f);
 
 	MSG msg = { };
 

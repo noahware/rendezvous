@@ -54,6 +54,19 @@ namespace rv
 			return max_value_;
 		}
 
+		slider& bind(T* ptr) noexcept
+		{
+			bound_ = ptr;
+
+			if (bound_)
+			{
+				target_value_ = clamp_value(*bound_);
+				visual_t_ = normalize(target_value_);
+			}
+
+			return *this;
+		}
+
 		slider& fill_color(const color col) noexcept
 		{
 			fill_color_ = col;
@@ -94,6 +107,16 @@ namespace rv
 		void update(const float dt) override
 		{
 			element::update(dt);
+
+			if (bound_ && !dragging_)
+			{
+				const T ext = clamp_value(*bound_);
+
+				if (ext != target_value_)
+				{
+					target_value_ = ext;
+				}
+			}
 
 			if (dragging_)
 			{
@@ -184,6 +207,11 @@ namespace rv
 			{
 				target_value_ = new_value;
 
+				if (bound_)
+				{
+					*bound_ = target_value_;
+				}
+
 				if (on_change_)
 				{
 					on_change_(target_value_);
@@ -226,6 +254,7 @@ namespace rv
 		T target_value_ = static_cast<T>(0);
 		float visual_t_ = 0.f;
 		bool dragging_ = false;
+		T* bound_ = nullptr;
 
 		float thumb_radius_ = 8.f;
 		color fill_color_ = { 0.4f, 0.7f, 1.f, 1.f };
@@ -245,6 +274,26 @@ namespace rv
 		range_slider& on_range_change(function_t<void(T, T)> callback)
 		{
 			on_range_change_ = cstd::move(callback);
+
+			return *this;
+		}
+
+		range_slider& bind(T* low, T* high) noexcept
+		{
+			bound_low_ = low;
+			bound_high_ = high;
+
+			if (bound_low_)
+			{
+				target_low_ = base::clamp_value(*bound_low_);
+				visual_low_t_ = base::normalize(target_low_);
+			}
+
+			if (bound_high_)
+			{
+				target_high_ = base::clamp_value(*bound_high_);
+				visual_high_t_ = base::normalize(target_high_);
+			}
 
 			return *this;
 		}
@@ -296,6 +345,29 @@ namespace rv
 		void update(const float dt) override
 		{
 			element::update(dt);
+
+			if (!base::dragging_)
+			{
+				if (bound_low_)
+				{
+					const T ext = base::clamp_value(*bound_low_);
+
+					if (ext != target_low_)
+					{
+						target_low_ = ext;
+					}
+				}
+
+				if (bound_high_)
+				{
+					const T ext = base::clamp_value(*bound_high_);
+
+					if (ext != target_high_)
+					{
+						target_high_ = ext;
+					}
+				}
+			}
 
 			if (base::dragging_)
 			{
@@ -386,9 +458,22 @@ namespace rv
 				}
 			}
 
-			if (changed && on_range_change_)
+			if (changed)
 			{
-				on_range_change_(target_low_, target_high_);
+				if (bound_low_)
+				{
+					*bound_low_ = target_low_;
+				}
+
+				if (bound_high_)
+				{
+					*bound_high_ = target_high_;
+				}
+
+				if (on_range_change_)
+				{
+					on_range_change_(target_low_, target_high_);
+				}
 			}
 		}
 
@@ -431,6 +516,9 @@ namespace rv
 		T target_high_ = static_cast<T>(1);
 		float visual_low_t_ = 0.f;
 		float visual_high_t_ = 1.f;
+
+		T* bound_low_ = nullptr;
+		T* bound_high_ = nullptr;
 
 		active_thumb active_ = active_thumb::none;
 	};
