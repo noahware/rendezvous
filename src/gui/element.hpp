@@ -141,6 +141,7 @@ namespace rv
 		optional_t<wrap_mode> wrap;
 		optional_t<align_content> align_content_v;
 		optional_t<overflow_mode> overflow;
+		optional_t<bool> show_scrollbar;
 		optional_t<text_direction> dir;
 		optional_t<color> background_color;
 		optional_t<color> text_color;
@@ -149,6 +150,9 @@ namespace rv
 		optional_t<float> font_size;
 		optional_t<text_align> text_alignment;
 		optional_t<float> transition_speed;
+		optional_t<color> shadow_color;
+		optional_t<float> shadow_blur;
+		optional_t<float> shadow_spread;
 	};
 
 	// helper to resolve gap for the correct axis
@@ -341,6 +345,16 @@ namespace rv
 		void set_computed_pos(const position pos) noexcept
 		{
 			computed_pos_ = pos;
+		}
+
+		[[nodiscard]] position visual_pos() const noexcept
+		{
+			return visual_pos_;
+		}
+
+		void set_visual_pos(const position pos) noexcept
+		{
+			visual_pos_ = pos;
 		}
 
 		[[nodiscard]] bool is_hovered() const noexcept
@@ -603,6 +617,13 @@ namespace rv
 			return *this;
 		}
 
+		element& show_scrollbar(const bool show) noexcept
+		{
+			style_.show_scrollbar = show;
+
+			return *this;
+		}
+
 		element& dir(const text_direction d) noexcept
 		{
 			style_.dir = d;
@@ -638,6 +659,15 @@ namespace rv
 			return *this;
 		}
 
+		element& shadow(const color col, const float blur = 15.f, const float spread = 0.f) noexcept
+		{
+			style_.shadow_color = col;
+			style_.shadow_blur = blur;
+			style_.shadow_spread = spread;
+
+			return *this;
+		}
+
 		element& transition_speed(const float speed) noexcept
 		{
 			style_.transition_speed = speed;
@@ -669,14 +699,8 @@ namespace rv
 			return flex_lines_;
 		}
 
-		void apply_scroll(const float delta, const element_style& defaults) noexcept
+		[[nodiscard]] float compute_main_content_size(const element_style& defaults, const bool vertical) const noexcept
 		{
-			const auto dir = style_.direction.value_or(
-				defaults.direction.value_or(layout_direction::horizontal)
-			);
-			const bool vertical = rv::is_vertical(dir);
-
-			// compute total content size along main axis (including gaps + margins)
 			const auto insets = compute_insets(style_, defaults);
 			const float gap = resolve_gap(style_, defaults, vertical);
 			float content_size = 0.f;
@@ -711,6 +735,23 @@ namespace rv
 				? (insets.top + insets.bottom)
 				: (insets.left + insets.right);
 			content_size += total_insets;
+
+			return content_size;
+		}
+
+		[[nodiscard]] position scroll_offset() const noexcept
+		{
+			return scroll_offset_;
+		}
+
+		void apply_scroll(const float delta, const element_style& defaults) noexcept
+		{
+			const auto dir = style_.direction.value_or(
+				defaults.direction.value_or(layout_direction::horizontal)
+			);
+			const bool vertical = rv::is_vertical(dir);
+
+			const float content_size = compute_main_content_size(defaults, vertical);
 
 			const float viewport = vertical ? computed_size_.y : computed_size_.x;
 			const float max_scroll = cstd::fmaxf(0.f, content_size - viewport);
@@ -818,8 +859,11 @@ namespace rv
 
 		}
 
+
+
 		vector_2d<float> computed_size_ = { };
 		position computed_pos_ = { };
+		position visual_pos_ = { };
 		element_style style_;
 		bool hovered_ = false;
 		bool pressed_ = false;
@@ -857,7 +901,7 @@ namespace rv
 
 	void resolve_positions(element& el, position cursor, const element_style& defaults);
 
-	void update_all(element& el, float dt);
+	void update_all(element& el, float dt, position current_offset = { 0.f, 0.f });
 
 	class element_tree
 	{

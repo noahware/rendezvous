@@ -525,18 +525,35 @@ namespace rv
 		}
 	}
 
-	void update_all(element& el, const float dt)
+	void update_all(element& el, const float dt, const position current_offset)
 	{
 		if (!el.is_visible())
 		{
 			return;
 		}
 
+		position new_offset = current_offset;
+		const auto anim = el.animated_props();
+		if (anim && anim->offset)
+		{
+			new_offset.x += anim->offset->x;
+			new_offset.y += anim->offset->y;
+		}
+
+		el.set_visual_pos({ el.computed_pos().x + new_offset.x, el.computed_pos().y + new_offset.y });
+
 		el.update(dt);
+
+		position child_offset = new_offset;
+		if (el.style().overflow.value_or(overflow_mode::visible) == overflow_mode::scroll)
+		{
+			child_offset.x += el.scroll_offset().x;
+			child_offset.y += el.scroll_offset().y;
+		}
 
 		for (const auto& child : el.children())
 		{
-			update_all(*child, dt);
+			update_all(*child, dt, child_offset);
 		}
 	}
 
@@ -583,6 +600,14 @@ namespace rv
 
 		if (effective_bg.a > 0.001f)
 		{
+			const color shadow_col = style_.shadow_color.value_or(color{0.f, 0.f, 0.f, 0.f});
+			if (shadow_col.a > 0.001f)
+			{
+				const float shadow_blur = style_.shadow_blur.value_or(15.f);
+				const float shadow_spread = style_.shadow_spread.value_or(0.f);
+				renderer.draw_shadow_rect(min, max, shadow_col, effective_rounding, shadow_blur, shadow_spread);
+			}
+
 			renderer.draw_rect_filled(min, max, effective_bg, effective_rounding);
 		}
 
@@ -611,7 +636,7 @@ namespace rv
 
 		if (clip)
 		{
-			renderer.push_clip_rect(min, max);
+			renderer.push_clip_rect(min, max, effective_rounding);
 		}
 
 		position child_offset = total_offset;
@@ -630,6 +655,52 @@ namespace rv
 		if (clip)
 		{
 			renderer.pop_clip_rect();
+		}
+
+		if (ov == overflow_mode::scroll && style_.show_scrollbar.value_or(true))
+		{
+			const auto dir = style_.direction.value_or(defaults.direction.value_or(layout_direction::horizontal));
+			const bool vertical = rv::is_vertical(dir);
+			const float content_size = compute_main_content_size(defaults, vertical);
+			const float viewport = vertical ? computed_size_.y : computed_size_.x;
+
+			if (content_size > viewport)
+			{
+				const float scrollbar_thickness = 4.f;
+				const float scrollbar_margin = 4.f;
+				const float scroll_track_size = viewport - 2.f * scrollbar_margin;
+
+				const float scroll_ratio = viewport / content_size;
+				const float thumb_size = cstd::fmaxf(20.f, scroll_track_size * scroll_ratio);
+				const float max_scroll = content_size - viewport;
+				const float scroll_pos = vertical ? -scroll_offset_.y : -scroll_offset_.x;
+				const float scroll_percent = max_scroll > 0.f ? scroll_pos / max_scroll : 0.f;
+				const float thumb_pos = scroll_percent * (scroll_track_size - thumb_size);
+
+				const color track_col = color{0.15f, 0.15f, 0.15f, 0.4f};
+				const color thumb_col = color{0.4f, 0.4f, 0.4f, 0.6f};
+
+				if (vertical)
+				{
+					const position track_min = { max.x - scrollbar_thickness - scrollbar_margin, min.y + scrollbar_margin };
+					const position track_max = { max.x - scrollbar_margin, max.y - scrollbar_margin };
+					renderer.draw_rect_filled(track_min, track_max, track_col, scrollbar_thickness * 0.5f);
+
+					const position thumb_min = { track_min.x, min.y + scrollbar_margin + thumb_pos };
+					const position thumb_max = { track_max.x, thumb_min.y + thumb_size };
+					renderer.draw_rect_filled(thumb_min, thumb_max, thumb_col, scrollbar_thickness * 0.5f);
+				}
+				else
+				{
+					const position track_min = { min.x + scrollbar_margin, max.y - scrollbar_thickness - scrollbar_margin };
+					const position track_max = { max.x - scrollbar_margin, max.y - scrollbar_margin };
+					renderer.draw_rect_filled(track_min, track_max, track_col, scrollbar_thickness * 0.5f);
+
+					const position thumb_min = { min.x + scrollbar_margin + thumb_pos, track_min.y };
+					const position thumb_max = { thumb_min.x + thumb_size, track_max.y };
+					renderer.draw_rect_filled(thumb_min, thumb_max, thumb_col, scrollbar_thickness * 0.5f);
+				}
+			}
 		}
 	}
 }

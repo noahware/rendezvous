@@ -50,7 +50,33 @@ void rv::renderer::begin_frame(const vector_2d<float> display_size) noexcept
 void rv::renderer::push_clip_rect(const position min, const position max, const float rounding,
                                   const rounding_flags flags) noexcept
 {
-    clip_rects_.push_back({{min, max}, rounding, flags});
+    if (clip_rects_.empty())
+    {
+        clip_rects_.push_back({{min, max}, rounding, flags});
+    }
+    else
+    {
+        const auto& parent = clip_rects_.back();
+        
+        position intersected_min;
+        intersected_min.x = cstd::fmaxf(min.x, parent.bounds.min.x);
+        intersected_min.y = cstd::fmaxf(min.y, parent.bounds.min.y);
+        
+        position intersected_max;
+        intersected_max.x = cstd::fmaxf(intersected_min.x, cstd::fminf(max.x, parent.bounds.max.x));
+        intersected_max.y = cstd::fmaxf(intersected_min.y, cstd::fminf(max.y, parent.bounds.max.y));
+        
+        float new_rounding = rounding;
+        rounding_flags new_flags = flags;
+
+        if (rounding == 0.f && parent.rounding > 0.f)
+        {
+            new_rounding = parent.rounding;
+            new_flags = parent.flags;
+        }
+
+        clip_rects_.push_back({{intersected_min, intersected_max}, new_rounding, new_flags});
+    }
 }
 
 void rv::renderer::pop_clip_rect() noexcept

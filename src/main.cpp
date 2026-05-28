@@ -4,6 +4,7 @@
 #include "gui/comp/text.hpp"
 #include "gui/comp/slider.hpp"
 #include "gui/comp/checkbox.hpp"
+#include "gui/comp/panel.hpp"
 #include "log/log.hpp"
 #include "render/impl/dx11.hpp"
 #include "input/win32.hpp"
@@ -412,6 +413,63 @@ cstd::int32_t main()
 		rv::element_size{}, gui_font);
 	cb2_label->content("Round checkbox").text_size(16.f);
 
+	auto demo_panel = gui->make_child<rv::panel>(root,
+		rv::element_size{ rv::styled_size::px(350.f), rv::styled_size::px(250.f) }, input);
+	
+	demo_panel->draggable(true)
+		.resizable(true)
+		.min_panel_size(250.f, 150.f)
+		.shadow({ 0.f, 0.f, 0.f, 0.6f }, 10.f)
+		.positioning(rv::position_type::absolute)
+		.inset_top(rv::styled_size::px(150.f))
+		.inset_left(rv::styled_size::px(600.f));
+
+	auto panel_content = gui->make_child<rv::element>(demo_panel,
+		rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
+	panel_content->direction(rv::layout_direction::vertical).padding(16.f).gap(12.f)
+		.overflow(rv::overflow_mode::scroll);
+
+	auto p_text = gui->make_child<rv::text_element>(panel_content,
+		rv::element_size{ rv::styled_size::fill(), rv::styled_size::auto_v() }, gui_font);
+	p_text->content("The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.")
+		.text_size(16.f).text_color({ 0.7f, 0.7f, 0.75f, 1.f });
+
+	auto p_cb_row = gui->make_child<rv::element>(panel_content,
+		rv::element_size{ rv::styled_size::fill(), rv::styled_size::auto_v() });
+	p_cb_row->direction(rv::layout_direction::horizontal).gap(8.f).align(rv::alignment::center);
+
+	static bool p_feature = false;
+	auto p_cb = gui->make_child<rv::checkbox>(p_cb_row,
+		rv::element_size{ rv::styled_size::px(20.f), rv::styled_size::px(20.f) });
+	p_cb->bind(&p_feature);
+
+	auto p_cb_label = gui->make_child<rv::text_element>(p_cb_row,
+		rv::element_size{}, gui_font);
+	p_cb_label->content("Checkbox ").text_size(16.f);
+
+	auto p_slider_label = gui->make_child<rv::text_element>(panel_content,
+		rv::element_size{}, gui_font);
+	p_slider_label->content("Slider ").text_size(16.f);
+
+	auto p_slider = gui->make_child<rv::slider<>>(panel_content,
+		rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(30.f) }, input);
+	p_slider->range(0.1f, 5.0f).value(1.0f)
+		.on_change([p_slider_label](const float v) {
+			p_slider_label->content(std::format("Slider: {:.1f}", v));
+		})
+		.fill_color({ 0.8f, 0.2f, 0.4f, 1.f });
+	p_slider->padding({ .top = 0, .right = 10.f, .bottom = 0.f, .left = 10.f })
+		.rounding(17.5f);
+
+	auto p_btn = gui->make_child<rv::button>(panel_content,
+		rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(35.f) }, gui_font);
+	p_btn->text("Button")
+		.hover_color({ 0.3f, 0.7f, 0.4f, 1.f })
+		.pressed_color({ 0.15f, 0.5f, 0.25f, 1.f });
+	p_btn->text_size(16.f)
+		.background_color({ 0.2f, 0.6f, 0.3f, 1.f });
+	p_btn->shadow({0.2f, 0.6f, 0.3f, 0.25f});
+
 	MSG msg = { };
 
 	do
@@ -455,10 +513,9 @@ cstd::int32_t main()
 		context->ClearRenderTargetView(tmp_rtv, clear_color.data());
 		
 		renderer->begin_frame(screen_size);
+		input->set_cursor(rv::cursor_type::arrow);
 
-		gui->render(screen_size);
-
-		// red filled rectangle with a basic black dropshadow
+		//// red filled rectangle with a basic black dropshadow
 		renderer->draw_shadow_rect({ 105.f, 105.f }, { 305.f, 255.f }, { 0.f, 0.f, 0.f, 0.5f }, 17.5f, 20.f, 0.f);
 		renderer->draw_rect_filled({ 100.f, 100.f }, { 300.f, 250.f }, { 0.2f, 0.2f, 0.2f, 1.f }, 17.5f);
 		renderer->draw_rect({ 100.f, 100.f }, { 300.f, 250.f }, { 0.3f, 0.3f, 0.3f, 1.f }, 1.f, 17.5f);
@@ -483,7 +540,7 @@ cstd::int32_t main()
 			20.f
 		);
 
-		// red filled rectangle with a really thick shadow
+		//// red filled rectangle with a really thick shadow
 		renderer->draw_shadow_rect({ 100.f, 350.f }, { 300.f, 500.f }, { 0.f, 0.f, 0.f, 0.6f }, 17.5f, 10.f, 20.f);
 		renderer->draw_rect_filled({ 100.f, 350.f }, { 300.f, 500.f }, { 1.f, 0.f, 0.f, 1.f }, 17.5f);
 
@@ -502,7 +559,7 @@ cstd::int32_t main()
 			renderer->draw_circle({ mouse_pos.x, mouse_pos.y }, 25.f, { 0.f, 0.5f, 1.f, 1.f }, 1.f);
 		}
 
-		// win32 scroll example
+		//// win32 scroll example
 		static float cumulative_scroll = 0.f;
 		cumulative_scroll += input->scroll_delta();
 	
@@ -585,6 +642,8 @@ cstd::int32_t main()
 			renderer->add_text_shadow(*font, text_pos, text, {1.f, 0.4f, 1.f , 1.f}, 15.f, size);
 			renderer->draw_text(*font, text_pos, text, { 0.4f, 1.f, 1.f, 1.f }, size);
 		}
+
+		gui->render(screen_size);
 
 		renderer->end_frame();
 

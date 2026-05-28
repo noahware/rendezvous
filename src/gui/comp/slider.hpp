@@ -191,7 +191,7 @@ namespace rv
 		void update_value_from_mouse()
 		{
 			const position mouse_pos = input_->mouse_pos();
-			const float track_x = computed_pos_.x + thumb_radius_;
+			const float track_x = visual_pos().x + thumb_radius_;
 			const float track_width = computed_size_.x - thumb_radius_ * 2.f;
 
 			if (track_width <= 0.f)
@@ -323,7 +323,7 @@ namespace rv
 			base::dragging_ = true;
 
 			const position mouse_pos = base::input_->mouse_pos();
-			const float track_x = base::computed_pos_.x + base::thumb_radius_;
+			const float track_x = base::visual_pos().x + base::thumb_radius_;
 			const float track_width = base::computed_size_.x - base::thumb_radius_ * 2.f;
 
 			if (track_width <= 0.f)
@@ -423,7 +423,7 @@ namespace rv
 		void update_range_from_mouse()
 		{
 			const position mouse_pos = base::input_->mouse_pos();
-			const float track_x = base::computed_pos_.x + base::thumb_radius_;
+			const float track_x = base::visual_pos().x + base::thumb_radius_;
 			const float track_width = base::computed_size_.x - base::thumb_radius_ * 2.f;
 
 			if (track_width <= 0.f)

@@ -63,7 +63,7 @@ namespace rv
 		                              rounding_flags flags = rounding_flags_all,
 		                              bool cut_background = false) noexcept = 0;
 		virtual void draw_text(const gui_font& font, position pos, string_view_t text, color col, float size = 0.f) noexcept = 0;
-		virtual void push_clip_rect(position min, position max) noexcept = 0;
+		virtual void push_clip_rect(position min, position max, float rounding = 0.f, rounding_flags flags = rounding_flags_all) noexcept = 0;
 		virtual void pop_clip_rect() noexcept = 0;
 		virtual float delta_time() const noexcept = 0;
 	};
@@ -105,9 +105,9 @@ namespace rv
 			renderer_->draw_text(impl->underlying(), pos, text, col, size);
 		}
 
-		void push_clip_rect(const position min, const position max) noexcept override
+		void push_clip_rect(const position min, const position max, const float rounding = 0.f, const rounding_flags flags = rounding_flags_all) noexcept override
 		{
-			renderer_->push_clip_rect(min, max);
+			renderer_->push_clip_rect(min, max, rounding, flags);
 		}
 
 		void pop_clip_rect() noexcept override
@@ -168,6 +168,52 @@ namespace rv
 		}
 
 	protected:
+		void process_events_recursive(const shared_ptr_t<element>& el, const position& mouse_pos, const bool mouse_clicked, const bool mouse_down, bool& click_handled, bool& enter_handled, shared_ptr_t<element>& scroll_target)
+		{
+			if (!el->is_visible())
+			{
+				return;
+			}
+
+			const auto& children = el->children();
+			for (auto it = children.rbegin(); it != children.rend(); ++it)
+			{
+				process_events_recursive(*it, mouse_pos, mouse_clicked, mouse_down, click_handled, enter_handled, scroll_target);
+			}
+
+			const position visual_min = el->visual_pos();
+			const position visual_max = { visual_min.x + el->computed_size().x, visual_min.y + el->computed_size().y };
+			const bool hovering = mouse_pos.x >= visual_min.x && mouse_pos.x <= visual_max.x &&
+			                      mouse_pos.y >= visual_min.y && mouse_pos.y <= visual_max.y;
+
+			if (!click_handled && mouse_clicked && hovering)
+			{
+				click_handled = el->on_mouse_click();
+			}
+
+			if (!enter_handled && hovering && !el->is_hovered())
+			{
+				el->set_hovered(true);
+				enter_handled = el->on_mouse_enter();
+			}
+
+			if (!hovering && el->is_hovered())
+			{
+				el->set_hovered(false);
+				el->on_mouse_exit();
+			}
+
+			el->set_pressed(hovering && mouse_down);
+
+			if (hovering && el->style().overflow.value_or(overflow_mode::visible) == overflow_mode::scroll)
+			{
+				if (!scroll_target)
+				{
+					scroll_target = el;
+				}
+			}
+		}
+
 		void process_events()
 		{
 			if (!input_)
@@ -185,38 +231,9 @@ namespace rv
 
 			shared_ptr_t<element> scroll_target;
 
-			for (auto& [id, el] : tree_)
+			if (tree_.root())
 			{
-				if (!el->is_visible())
-				{
-					continue;
-				}
-
-				const bool hovering = el->contains(mouse_pos);
-
-				if (!click_handled && mouse_clicked && hovering)
-				{
-					click_handled = el->on_mouse_click();
-				}
-
-				if (!enter_handled && hovering && !el->is_hovered())
-				{
-					el->set_hovered(true);
-					enter_handled = el->on_mouse_enter();
-				}
-
-				if (!hovering && el->is_hovered())
-				{
-					el->set_hovered(false);
-					el->on_mouse_exit();
-				}
-
-				el->set_pressed(hovering && mouse_down);
-
-				if (hovering && el->style().overflow.value_or(overflow_mode::visible) == overflow_mode::scroll)
-				{
-					scroll_target = el;
-				}
+				process_events_recursive(tree_.root(), mouse_pos, mouse_clicked, mouse_down, click_handled, enter_handled, scroll_target);
 			}
 
 			// apply scroll to deepest scrollable
