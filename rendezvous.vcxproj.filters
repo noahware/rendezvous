@@ -24,7 +24,7 @@
     <ClCompile Include="src\render\render.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\render\impl\dx11.cpp">
+    <ClCompile Include="src\render\impl\dx12.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\gui\elements.cpp">
@@ -53,7 +53,7 @@
     <ClInclude Include="src\render\shaders.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\render\impl\dx11.hpp">
+    <ClInclude Include="src\render\impl\dx12.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\util\math.hpp">

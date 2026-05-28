@@ -1,3 +1,8 @@
+#define RS "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)," \
+           "RootConstants(num32BitConstants = 12, b0, visibility = SHADER_VISIBILITY_PIXEL)," \
+           "DescriptorTable(SRV(t0, numDescriptors = 1), visibility = SHADER_VISIBILITY_PIXEL)," \
+           "StaticSampler(s0, filter = FILTER_MIN_MAG_MIP_LINEAR, addressU = TEXTURE_ADDRESS_CLAMP, addressV = TEXTURE_ADDRESS_CLAMP, addressW = TEXTURE_ADDRESS_CLAMP, visibility = SHADER_VISIBILITY_PIXEL)"
+
 struct vs_input
 {
     float2 position : POSITION;
@@ -65,6 +70,7 @@ float apply_clip(float2 screen_pos)
     return saturate(0.5f - d);
 }
 
+[RootSignature(RS)]
 ps_input vertex_shader(vs_input input)
 {
     ps_input output;
@@ -78,6 +84,7 @@ ps_input vertex_shader(vs_input input)
     return output;
 }
 
+[RootSignature(RS)]
 float4 pixel_shader(ps_input input) : SV_TARGET
 {
     float4 result = input.color * textr.Sample(samplr, input.uv);
@@ -85,6 +92,7 @@ float4 pixel_shader(ps_input input) : SV_TARGET
     return result;
 }
 
+[RootSignature(RS)]
 float4 rect_pixel_shader(ps_input input) : SV_TARGET
 {
     float2 rect_size = input.custom_data.xy;
@@ -135,6 +143,7 @@ float4 rect_pixel_shader(ps_input input) : SV_TARGET
     return result;
 }
 
+[RootSignature(RS)]
 float4 shadow_pixel_shader(ps_input input) : SV_TARGET
 {
     float2 rect_size = input.custom_data.xy;
@@ -161,6 +170,7 @@ float4 shadow_pixel_shader(ps_input input) : SV_TARGET
     return result;
 }
 
+[RootSignature(RS)]
 float4 image_pixel_shader(ps_input input) : SV_TARGET
 {
     float2 rect_size = input.custom_data.xy;
@@ -178,6 +188,7 @@ float4 image_pixel_shader(ps_input input) : SV_TARGET
     return result;
 }
 
+[RootSignature(RS)]
 float4 text_shadow_pixel_shader(ps_input input) : SV_TARGET
 {
     float blur_radius = input.custom_data.x;

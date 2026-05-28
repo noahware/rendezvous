@@ -6,7 +6,7 @@
 #include "gui/comp/checkbox.hpp"
 #include "gui/comp/panel.hpp"
 #include "log/log.hpp"
-#include "render/impl/dx11.hpp"
+#include "render/impl/dx12.hpp"
 #include "input/win32.hpp"
 #include "util/types.hpp"
 
@@ -49,46 +49,89 @@ cstd::int32_t main()
 
 	ShowWindow(hwnd, SW_SHOW);
 
-	DXGI_SWAP_CHAIN_DESC swap_chain_desc = { };
+	rv::dx12_object<IDXGIFactory4> dxgi_factory;
 
-	swap_chain_desc.BufferCount = 2;
-	swap_chain_desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	swap_chain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swap_chain_desc.OutputWindow = hwnd;
-	swap_chain_desc.SampleDesc.Count = 1;
-	swap_chain_desc.Windowed = true;
-	swap_chain_desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-
-	rv::dx11_object<IDXGISwapChain> swap_chain;
-	rv::dx11_object<ID3D11Device> device;
-	rv::dx11_object<ID3D11DeviceContext> context;
-	rv::dx11_object<ID3D11RenderTargetView> rtv;
-
-	const HRESULT status = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, nullptr, 0,
-	                                                     D3D11_SDK_VERSION, &swap_chain_desc, swap_chain.release_and_get(), device.release_and_get(),
-	                                                     nullptr, context.release_and_get());
-
-	if (status != S_OK)
+	if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(dxgi_factory.release_and_get()))))
 	{
-		LOG_ERR("unable to create device and swap chain");
-
+		LOG_ERR("unable to create DXGI factory");
 		return 1;
 	}
 
-	const auto create_rtv = [&]()
+	rv::dx12_object<ID3D12Device> device;
+
+	if (FAILED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(device.release_and_get()))))
+	{
+		LOG_ERR("unable to create D3D12 device");
+		return 1;
+	}
+
+	rv::dx12_object<ID3D12CommandQueue> command_queue;
+
+	{
+		D3D12_COMMAND_QUEUE_DESC queue_desc = { };
+		queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+
+		if (FAILED(device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(command_queue.release_and_get()))))
 		{
-			rv::dx11_object<ID3D11Texture2D> back_buffer;
+			LOG_ERR("unable to create command queue");
+			return 1;
+		}
+	}
 
-			swap_chain->GetBuffer(0, IID_PPV_ARGS(back_buffer.release_and_get()));
-			device->CreateRenderTargetView(back_buffer.value(), nullptr, rtv.release_and_get());
+	rv::dx12_object<IDXGISwapChain3> swap_chain;
 
-			back_buffer.release();
+	{
+		DXGI_SWAP_CHAIN_DESC1 sc_desc = { };
+		sc_desc.BufferCount = rv::frame_count;
+		sc_desc.Width = static_cast<cstd::uint32_t>(screen_size.x);
+		sc_desc.Height = static_cast<cstd::uint32_t>(screen_size.y);
+		sc_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		sc_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		sc_desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+		sc_desc.SampleDesc.Count = 1;
+
+		rv::dx12_object<IDXGISwapChain1> swap_chain1;
+
+		if (FAILED(dxgi_factory->CreateSwapChainForHwnd(command_queue.value(), hwnd, &sc_desc, nullptr, nullptr, swap_chain1.release_and_get())))
+		{
+			LOG_ERR("unable to create swap chain");
+			return 1;
+		}
+
+		IDXGISwapChain3* sc3 = nullptr;
+		swap_chain1->QueryInterface(IID_PPV_ARGS(&sc3));
+		*swap_chain.release_and_get() = sc3;
+	}
+
+	rv::dx12_object<ID3D12DescriptorHeap> rtv_heap;
+	cstd::uint32_t rtv_descriptor_size = 0;
+
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC rtv_heap_desc = { };
+		rtv_heap_desc.NumDescriptors = rv::frame_count;
+		rtv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+
+		device->CreateDescriptorHeap(&rtv_heap_desc, IID_PPV_ARGS(rtv_heap.release_and_get()));
+		rtv_descriptor_size = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	}
+
+	rv::dx12_object<ID3D12Resource> render_targets[rv::frame_count];
+
+	const auto create_rtvs = [&]()
+		{
+			D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle = rtv_heap->GetCPUDescriptorHandleForHeapStart();
+
+			for (cstd::uint32_t i = 0; i < rv::frame_count; ++i)
+			{
+				swap_chain->GetBuffer(i, IID_PPV_ARGS(render_targets[i].release_and_get()));
+				device->CreateRenderTargetView(render_targets[i].value(), nullptr, rtv_handle);
+				rtv_handle.ptr += rtv_descriptor_size;
+			}
 		};
 
+	create_rtvs();
 
-	create_rtv();
-
-	const auto renderer = cstd::make_shared<rv::dx11_renderer>(device.value(), context.value());
+	const auto renderer = cstd::make_shared<rv::dx12_renderer>(device.value(), command_queue.value());
 
 	if (!renderer->init())
 	{
@@ -484,35 +527,50 @@ cstd::int32_t main()
 
 		if (last_screen_size != screen_size)
 		{
-			context->OMSetRenderTargets(0, nullptr, nullptr);
-			rtv.release();
+			renderer->end_frame();
 
-			const HRESULT hr = swap_chain->ResizeBuffers(0,
+			for (cstd::uint32_t i = 0; i < rv::frame_count; ++i)
+			{
+				render_targets[i].release();
+			}
+
+			const HRESULT hr = swap_chain->ResizeBuffers(rv::frame_count,
 				static_cast<cstd::uint32_t>(screen_size.x),
 				static_cast<cstd::uint32_t>(screen_size.y),
-				DXGI_FORMAT_UNKNOWN, 0);
+				DXGI_FORMAT_R8G8B8A8_UNORM, 0);
 
 			if (FAILED(hr))
 			{
 				LOG_ERR("ResizeBuffers failed");
 			}
 
-			swap_chain->ResizeBuffers(0, static_cast<cstd::uint32_t>(screen_size.x),
-			                          static_cast<cstd::uint32_t>(screen_size.y), DXGI_FORMAT_UNKNOWN, 0);
-
-			create_rtv();
+			create_rtvs();
 
 			last_screen_size = screen_size;
 		}
 
-		ID3D11RenderTargetView* const tmp_rtv = rtv.value();
+		const cstd::uint32_t back_buffer_idx = swap_chain->GetCurrentBackBufferIndex();
 
 		constexpr array_t<float, 4> clear_color = { 0.1f, 0.1f, 0.1f, 1.f };
 
-		context->OMSetRenderTargets(1, &tmp_rtv, nullptr);
-		context->ClearRenderTargetView(tmp_rtv, clear_color.data());
-		
 		renderer->begin_frame(screen_size);
+
+		{
+			D3D12_RESOURCE_BARRIER barrier = { };
+			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			barrier.Transition.pResource = render_targets[back_buffer_idx].value();
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			renderer->command_list()->ResourceBarrier(1, &barrier);
+		}
+
+		D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle = rtv_heap->GetCPUDescriptorHandleForHeapStart();
+		rtv_handle.ptr += static_cast<cstd::uint64_t>(back_buffer_idx) * rtv_descriptor_size;
+
+		renderer->command_list()->OMSetRenderTargets(1, &rtv_handle, FALSE, nullptr);
+		renderer->command_list()->ClearRenderTargetView(rtv_handle, clear_color.data(), 0, nullptr);
+		
 		input->set_cursor(rv::cursor_type::arrow);
 
 		//// red filled rectangle with a basic black dropshadow
@@ -645,9 +703,19 @@ cstd::int32_t main()
 
 		gui->render(screen_size);
 
+		{
+			D3D12_RESOURCE_BARRIER barrier = { };
+			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			barrier.Transition.pResource = render_targets[back_buffer_idx].value();
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			renderer->command_list()->ResourceBarrier(1, &barrier);
+		}
+
 		renderer->end_frame();
 
-		swap_chain->Present(0, 0);
+		swap_chain->Present(1, 0);
 
 		input->reset();
 	} while (msg.message != WM_QUIT);
