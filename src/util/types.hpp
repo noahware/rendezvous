@@ -165,7 +165,7 @@ namespace cstd
 
 	namespace ios
 	{
-		inline constexpr int binary = std::ios::binary;
+		inline constexpr auto binary = std::ios::binary;
 	}
 
 	namespace numbers

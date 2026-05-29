@@ -754,6 +754,13 @@ rv::position rv::renderer::calc_text_size(const font &font, const string_view_t 
 optional_t<rv::font> rv::renderer::add_font(const span_t<const cstd::uint8_t> bytes, const float pixel_height,
                                             const cstd::uint32_t min_char, const cstd::uint32_t max_char, const bool anti_aliased)
 {
+    // guard against empty/unreadable font data — stbtt/freetype dereference the
+    // pointer unconditionally, so an empty buffer would crash.
+    if (bytes.empty())
+    {
+        return {};
+    }
+
     constexpr cstd::uint32_t glyph_padding = 2;
 
 #ifdef RV_USE_FREETYPE

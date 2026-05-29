@@ -10,6 +10,8 @@
 *.userosscache
 *.sln.docstates
 
+build/
+
 # vcpkg
 vcpkg_installed/
 
