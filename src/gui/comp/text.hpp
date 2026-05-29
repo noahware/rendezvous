@@ -18,6 +18,7 @@ namespace rv
 		{
 			text_ = string_t(text);
 			wrap_cache_valid_ = false;
+			mark_layout_dirty();
 			return *this;
 		}
 

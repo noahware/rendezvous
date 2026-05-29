@@ -297,9 +297,25 @@ namespace rv
 			return children_;
 		}
 
+		void set_layout_dirty_ptr(bool* ptr) noexcept
+		{
+			layout_dirty_ptr_ = ptr;
+
+			for (const auto& child : children_)
+			{
+				child->set_layout_dirty_ptr(ptr);
+			}
+		}
+
 		void add_child(shared_ptr_t<element> child)
 		{
+			if (layout_dirty_ptr_)
+			{
+				child->set_layout_dirty_ptr(layout_dirty_ptr_);
+			}
+
 			children_.push_back(cstd::move(child));
+			mark_layout_dirty();
 		}
 
 		template <class T, class ...Args>
@@ -320,6 +336,7 @@ namespace rv
 		void set_declared_size(const element_size size) noexcept
 		{
 			style_.size = size;
+			mark_layout_dirty();
 		}
 
 		[[nodiscard]] vector_2d<float> computed_size() const noexcept
@@ -424,6 +441,7 @@ namespace rv
 		element& gap(const optional_t<float> gap) noexcept
 		{
 			style_.gap = gap;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -431,6 +449,7 @@ namespace rv
 		element& direction(const layout_direction direction) noexcept
 		{
 			style_.direction = direction;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -438,6 +457,7 @@ namespace rv
 		element& align(const alignment align) noexcept
 		{
 			style_.align = align;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -445,6 +465,7 @@ namespace rv
 		element& justify(const justify_content justify) noexcept
 		{
 			style_.justify = justify;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -452,6 +473,7 @@ namespace rv
 		element& margin(const border_vector margin) noexcept
 		{
 			style_.margin = margin;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -459,6 +481,7 @@ namespace rv
 		element& margin(const float all) noexcept
 		{
 			style_.margin = border_vector{ all, all, all, all };
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -466,6 +489,7 @@ namespace rv
 		element& padding(const border_vector pad) noexcept
 		{
 			style_.padding = pad;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -473,6 +497,7 @@ namespace rv
 		element& padding(const float all) noexcept
 		{
 			style_.padding = border_vector{ all, all, all, all };
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -480,6 +505,7 @@ namespace rv
 		element& border_width(const border_vector bw) noexcept
 		{
 			style_.border_width = bw;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -487,6 +513,7 @@ namespace rv
 		element& border_width(const float all) noexcept
 		{
 			style_.border_width = border_vector{ all, all, all, all };
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -494,6 +521,7 @@ namespace rv
 		element& row_gap(const float g) noexcept
 		{
 			style_.row_gap = g;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -501,6 +529,7 @@ namespace rv
 		element& column_gap(const float g) noexcept
 		{
 			style_.column_gap = g;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -508,6 +537,7 @@ namespace rv
 		element& align_self(const alignment a) noexcept
 		{
 			style_.align_self = a;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -515,6 +545,7 @@ namespace rv
 		element& min_width(const styled_size s) noexcept
 		{
 			style_.min_width = s;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -522,6 +553,7 @@ namespace rv
 		element& max_width(const styled_size s) noexcept
 		{
 			style_.max_width = s;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -529,6 +561,7 @@ namespace rv
 		element& min_height(const styled_size s) noexcept
 		{
 			style_.min_height = s;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -536,6 +569,7 @@ namespace rv
 		element& max_height(const styled_size s) noexcept
 		{
 			style_.max_height = s;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -543,6 +577,7 @@ namespace rv
 		element& aspect_ratio(const float r) noexcept
 		{
 			style_.aspect_ratio = r;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -550,6 +585,7 @@ namespace rv
 		element& flex_grow(const float g) noexcept
 		{
 			style_.flex_grow = g;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -557,6 +593,7 @@ namespace rv
 		element& flex_shrink(const float s) noexcept
 		{
 			style_.flex_shrink = s;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -564,6 +601,7 @@ namespace rv
 		element& flex_basis(const styled_size b) noexcept
 		{
 			style_.flex_basis = b;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -573,6 +611,7 @@ namespace rv
 			style_.flex_grow = grow;
 			style_.flex_shrink = shrink;
 			style_.flex_basis = basis;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -580,6 +619,7 @@ namespace rv
 		element& positioning(const position_type p) noexcept
 		{
 			style_.position = p;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -587,6 +627,7 @@ namespace rv
 		element& inset_top(const styled_size s) noexcept
 		{
 			style_.inset_top = s;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -594,6 +635,7 @@ namespace rv
 		element& inset_right(const styled_size s) noexcept
 		{
 			style_.inset_right = s;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -601,6 +643,7 @@ namespace rv
 		element& inset_bottom(const styled_size s) noexcept
 		{
 			style_.inset_bottom = s;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -608,6 +651,7 @@ namespace rv
 		element& inset_left(const styled_size s) noexcept
 		{
 			style_.inset_left = s;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -615,6 +659,7 @@ namespace rv
 		element& wrap(const wrap_mode w) noexcept
 		{
 			style_.wrap = w;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -622,6 +667,7 @@ namespace rv
 		element& align_content(const align_content ac) noexcept
 		{
 			style_.align_content_v = ac;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -629,6 +675,7 @@ namespace rv
 		element& overflow(const overflow_mode o) noexcept
 		{
 			style_.overflow = o;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -643,6 +690,7 @@ namespace rv
 		element& dir(const text_direction d) noexcept
 		{
 			style_.dir = d;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -694,6 +742,7 @@ namespace rv
 		element& text_size(const float size) noexcept
 		{
 			style_.font_size = size;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -805,6 +854,7 @@ namespace rv
 		element& visible(const bool visible) noexcept
 		{
 			visible_ = visible;
+			mark_layout_dirty();
 
 			return *this;
 		}
@@ -894,6 +944,14 @@ namespace rv
 
 
 
+		void mark_layout_dirty() noexcept
+		{
+			if (layout_dirty_ptr_)
+			{
+				*layout_dirty_ptr_ = true;
+			}
+		}
+
 		vector_2d<float> computed_size_ = { };
 		position computed_pos_ = { };
 		position visual_pos_ = { };
@@ -915,6 +973,7 @@ namespace rv
 		position scroll_offset_ = { 0.f, 0.f };
 
 		vector_t<shared_ptr_t<element>> children_ = { };
+		bool* layout_dirty_ptr_ = nullptr;
 	};
 
 	// implemented in elements.cpp
@@ -950,6 +1009,16 @@ namespace rv
 			root_ = cstd::move(root);
 		}
 
+		void set_layout_dirty_ptr(bool* ptr) noexcept
+		{
+			layout_dirty_ptr_ = ptr;
+
+			if (root_)
+			{
+				root_->set_layout_dirty_ptr(ptr);
+			}
+		}
+
 		using hash_type = cstd::size_t;
 
 		void add(shared_ptr_t<element> element)
@@ -961,6 +1030,11 @@ namespace rv
 
 		void add(const hash_type hash, shared_ptr_t<element> element)
 		{
+			if (layout_dirty_ptr_)
+			{
+				element->set_layout_dirty_ptr(layout_dirty_ptr_);
+			}
+
 			elements_[hash] = cstd::move(element);
 		}
 
@@ -1022,5 +1096,6 @@ namespace rv
 
 		shared_ptr_t<element> root_;
 		unordered_map_t<hash_type, shared_ptr_t<element>> elements_;
+		bool* layout_dirty_ptr_ = nullptr;
 	};
 }

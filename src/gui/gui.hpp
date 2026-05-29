@@ -129,14 +129,26 @@ namespace rv
 	{
 	public:
 		explicit gui(unique_ptr_t<gui_renderer> renderer, shared_ptr_t<input> input)
-				:	renderer_(cstd::move(renderer)), input_(cstd::move(input)) { }
+				:	renderer_(cstd::move(renderer)), input_(cstd::move(input))
+		{
+			tree_.set_layout_dirty_ptr(&layout_dirty_);
+		}
 
 		void render(const vector_2d<float> display_size)
 		{
 			const auto root = tree_.root();
 
-			layout(*root, display_size, default_style_);
-			resolve_positions(*root, position{ 0.f, 0.f }, default_style_);
+			const bool size_changed = display_size.x != last_display_size_.x
+				|| display_size.y != last_display_size_.y;
+
+			if (layout_dirty_ || size_changed)
+			{
+				layout(*root, display_size, default_style_);
+				resolve_positions(*root, position{ 0.f, 0.f }, default_style_);
+				layout_dirty_ = false;
+				last_display_size_ = display_size;
+			}
+
 			update_all(*root, renderer_->delta_time());
 			process_events();
 
@@ -404,5 +416,8 @@ namespace rv
 		element* tooltip_target_ = nullptr;
 		element* tooltip_hover_ = nullptr;
 		float tooltip_timer_ = 0.f;
+
+		bool layout_dirty_ = true;
+		vector_2d<float> last_display_size_ = { };
 	};
 }

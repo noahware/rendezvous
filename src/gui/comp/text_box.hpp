@@ -303,6 +303,7 @@ namespace rv
 		void set_text(const string_view_t value)
 		{
 			text_ = string_t(value);
+			mark_layout_dirty();
 			buf_.chars.clear();
 
 			const char* s = text_.data();
@@ -339,6 +340,7 @@ namespace rv
 			}
 
 			text_ = cstd::move(rebuilt);
+			mark_layout_dirty();
 
 			if (bound_)
 			{
