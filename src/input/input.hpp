@@ -34,6 +34,19 @@ namespace rv
 		right     = 0x27,
 		down      = 0x28,
 		del       = 0x2E,
+#elif defined(__APPLE__) || defined(__linux__)
+		// X11 / Cocoa keysym-based codes — override in your input backend if needed
+		backspace = 0x08,
+		enter     = 0x0D,
+		shift     = 0x10,
+		control   = 0x11,
+		end       = 0x23,
+		home      = 0x24,
+		left      = 0x25,
+		up        = 0x26,
+		right     = 0x27,
+		down      = 0x28,
+		del       = 0x2E,
 #else
 #error "rv::key codes are not defined for this platform; add a mapping for the active backend."
 #endif

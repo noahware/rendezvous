@@ -1,6 +1,8 @@
 #pragma once
 #include "../render.hpp"
 #include "../texture.hpp"
+
+#if defined(_WIN32)
 #include <d3d11.h>
 
 namespace rv
@@ -139,3 +141,5 @@ namespace rv
 		dx11_object<ID3D11Buffer> clip_cbuffer_;
 	};
 }
+
+#endif // _WIN32

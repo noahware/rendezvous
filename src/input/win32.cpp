@@ -1,4 +1,6 @@
 #include "win32.hpp"
+
+#if defined(_WIN32)
 #include "../log/log.hpp"
 #include <windowsx.h>
 
@@ -114,3 +116,5 @@ bool rv::win32_input::handle_message(const HWND hwnd, const UINT msg, const WPAR
 
 	return false;
 }
+
+#endif // _WIN32

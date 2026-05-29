@@ -1,5 +1,7 @@
 #pragma once
 #include "input.hpp"
+
+#if defined(_WIN32)
 #include <windows.h>
 
 namespace rv
@@ -10,3 +12,5 @@ namespace rv
 		bool handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 	};
 }
+
+#endif // _WIN32

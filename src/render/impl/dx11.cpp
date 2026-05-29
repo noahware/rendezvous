@@ -1,4 +1,6 @@
 #include "dx11.hpp"
+
+#if defined(_WIN32)
 #include "../shaders.hpp"
 
 namespace
@@ -419,4 +421,6 @@ shared_ptr_t<rv::texture> rv::dx11_renderer::create_texture_from_srv(void* raw_s
 
 	return cstd::make_shared<dx11_texture>(this, cstd::move(empty_texture), cstd::move(shader_resource));
 }
+
+#endif // _WIN32
 
