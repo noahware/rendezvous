@@ -69,6 +69,9 @@ namespace rv::gl
 	PFN_glBindBufferBase BindBufferBase = nullptr;
 	PFN_glGetUniformBlockIndex GetUniformBlockIndex = nullptr;
 	PFN_glUniformBlockBinding UniformBlockBinding = nullptr;
+	PFN_glGenVertexArrays GenVertexArrays = nullptr;
+	PFN_glBindVertexArray BindVertexArray = nullptr;
+	PFN_glDeleteVertexArrays DeleteVertexArrays = nullptr;
 }
 
 bool rv::ogl_renderer::load_gl_functions(const bool require_ubo) noexcept
@@ -95,6 +98,7 @@ bool rv::ogl_renderer::load_gl_functions(const bool require_ubo) noexcept
 #define RV_GL_OPT(name) gl::name = reinterpret_cast<PFN_gl##name>(load_proc("gl" #name))
 
 	RV_GL_OPT(BindBufferBase); RV_GL_OPT(GetUniformBlockIndex); RV_GL_OPT(UniformBlockBinding);
+	RV_GL_OPT(GenVertexArrays); RV_GL_OPT(BindVertexArray); RV_GL_OPT(DeleteVertexArrays);
 
 #undef RV_GL_OPT
 
@@ -206,6 +210,21 @@ rv::ogl_renderer::~ogl_renderer()
 	{
 		gl::DeleteBuffers(1, &clip_ubo_);
 	}
+
+	if (vao_ && gl::DeleteVertexArrays)
+	{
+		gl::DeleteVertexArrays(1, &vao_);
+	}
+
+	if (vbo_ && gl::DeleteBuffers)
+	{
+		gl::DeleteBuffers(1, &vbo_);
+	}
+
+	if (ebo_ && gl::DeleteBuffers)
+	{
+		gl::DeleteBuffers(1, &ebo_);
+	}
 }
 
 bool rv::ogl2_renderer::init_backend() noexcept
@@ -244,6 +263,9 @@ bool rv::ogl2_renderer::init_backend() noexcept
 	}
 
 	gl::UseProgram(0);
+
+	gl::GenBuffers(1, &vbo_);
+	gl::GenBuffers(1, &ebo_);
 
 	glEnable(GL_BLEND);
 	gl::BlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -300,6 +322,14 @@ bool rv::ogl3_renderer::init_backend() noexcept
 	gl::BufferData(GL_UNIFORM_BUFFER, sizeof(clip_ubo_data), nullptr, GL_DYNAMIC_DRAW);
 	gl::BindBufferBase(GL_UNIFORM_BUFFER, clip_binding_point, clip_ubo_);
 
+	gl::GenBuffers(1, &vbo_);
+	gl::GenBuffers(1, &ebo_);
+
+	if (gl::GenVertexArrays && gl::BindVertexArray && gl::DeleteVertexArrays)
+	{
+		gl::GenVertexArrays(1, &vao_);
+	}
+
 	glEnable(GL_BLEND);
 	gl::BlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_SCISSOR_TEST);
@@ -336,7 +366,7 @@ void rv::ogl_renderer::flush_pending_vertices() noexcept
 		return;
 	}
 
-	// pre-offset indices (client-side arrays, no glDrawElementsBaseVertex)
+	// pre-offset indices (no glDrawElementsBaseVertex)
 	adjusted_indices_.resize(pending_indices_.size());
 	cstd::memcpy(adjusted_indices_.data(), pending_indices_.data(), pending_indices_.size() * sizeof(cstd::uint32_t));
 
@@ -351,28 +381,44 @@ void rv::ogl_renderer::flush_pending_vertices() noexcept
 		}
 	}
 
-	// client-side vertex arrays
-	gl::BindBuffer(GL_ARRAY_BUFFER, 0);
-	gl::BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	while (glGetError() != GL_NO_ERROR) {}
+	if (vao_)
+	{
+		gl::BindVertexArray(vao_);
+	}
 
-	const auto* vtx_base = reinterpret_cast<const char*>(pending_vertices_.data());
+	// upload vertex data (buffer orphaning for driver-managed double-buffering)
+	gl::BindBuffer(GL_ARRAY_BUFFER, vbo_);
+	gl::BufferData(GL_ARRAY_BUFFER,
+	               static_cast<GLsizeiptr>(pending_vertices_.size() * sizeof(vertex)),
+	               pending_vertices_.data(), GL_STREAM_DRAW);
+
+	// upload index data
+	gl::BindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_);
+	gl::BufferData(GL_ELEMENT_ARRAY_BUFFER,
+	               static_cast<GLsizeiptr>(adjusted_indices_.size() * sizeof(cstd::uint32_t)),
+	               adjusted_indices_.data(), GL_STREAM_DRAW);
+
 	constexpr GLsizei stride = sizeof(vertex);
 
 	gl::EnableVertexAttribArray(0);
-	gl::VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride, vtx_base + offsetof(vertex, pos));
+	gl::VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride,
+	                        reinterpret_cast<const void*>(offsetof(vertex, pos)));
 
 	gl::EnableVertexAttribArray(1);
-	gl::VertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, vtx_base + offsetof(vertex, col));
+	gl::VertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride,
+	                        reinterpret_cast<const void*>(offsetof(vertex, col)));
 
 	gl::EnableVertexAttribArray(2);
-	gl::VertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, vtx_base + offsetof(vertex, uv));
+	gl::VertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride,
+	                        reinterpret_cast<const void*>(offsetof(vertex, uv)));
 
 	gl::EnableVertexAttribArray(3);
-	gl::VertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride, vtx_base + offsetof(vertex, custom_data));
+	gl::VertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride,
+	                        reinterpret_cast<const void*>(offsetof(vertex, custom_data)));
 
 	gl::EnableVertexAttribArray(4);
-	gl::VertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, stride, vtx_base + offsetof(vertex, custom_data) + 16);
+	gl::VertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, stride,
+	                        reinterpret_cast<const void*>(offsetof(vertex, custom_data) + 16));
 
 	// batch iteration
 	shader_type last_shader = static_cast<shader_type>(0xFF);
@@ -466,8 +512,9 @@ void rv::ogl_renderer::flush_pending_vertices() noexcept
 			}
 		}
 
-		const auto* idx_ptr = adjusted_indices_.data() + batch.index_offset;
-		glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(batch.index_count), GL_UNSIGNED_INT, idx_ptr);
+		const auto* idx_offset = reinterpret_cast<const void*>(
+			static_cast<cstd::size_t>(batch.index_offset) * sizeof(cstd::uint32_t));
+		glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(batch.index_count), GL_UNSIGNED_INT, idx_offset);
 	}
 
 	gl::DisableVertexAttribArray(0);
@@ -476,6 +523,13 @@ void rv::ogl_renderer::flush_pending_vertices() noexcept
 	gl::DisableVertexAttribArray(3);
 	gl::DisableVertexAttribArray(4);
 
+	if (vao_)
+	{
+		gl::BindVertexArray(0);
+	}
+
+	gl::BindBuffer(GL_ARRAY_BUFFER, 0);
+	gl::BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	gl::UseProgram(0);
 
 	if (pending_vertices_.size() > peak_vertex_count_)

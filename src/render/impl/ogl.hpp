@@ -41,7 +41,7 @@ typedef ptrdiff_t GLintptr;
 	#define GL_INFO_LOG_LENGTH                0x8B84
 #endif
 #ifndef GL_ARRAY_BUFFER
-	#define GL_ARRAY_BUFFER                   0x8889
+	#define GL_ARRAY_BUFFER                   0x8892
 #endif
 #ifndef GL_ELEMENT_ARRAY_BUFFER
 	#define GL_ELEMENT_ARRAY_BUFFER           0x8893
@@ -57,6 +57,9 @@ typedef ptrdiff_t GLintptr;
 #endif
 #ifndef GL_CLAMP_TO_EDGE
 	#define GL_CLAMP_TO_EDGE                  0x812F
+#endif
+#ifndef GL_STREAM_DRAW
+	#define GL_STREAM_DRAW                    0x88E0
 #endif
 
 // GL function pointer types
@@ -94,6 +97,9 @@ typedef void   (APIENTRY* PFN_glActiveTexture)(GLenum texture);
 typedef void   (APIENTRY* PFN_glBindBufferBase)(GLenum target, GLuint index, GLuint buffer);
 typedef GLuint (APIENTRY* PFN_glGetUniformBlockIndex)(GLuint program, const GLchar* uniformBlockName);
 typedef void   (APIENTRY* PFN_glUniformBlockBinding)(GLuint program, GLuint uniformBlockIndex, GLuint uniformBlockBinding);
+typedef void   (APIENTRY* PFN_glGenVertexArrays)(GLsizei n, GLuint* arrays);
+typedef void   (APIENTRY* PFN_glBindVertexArray)(GLuint array);
+typedef void   (APIENTRY* PFN_glDeleteVertexArrays)(GLsizei n, const GLuint* arrays);
 
 namespace rv
 {
@@ -134,6 +140,9 @@ namespace rv
 		extern PFN_glBindBufferBase BindBufferBase;
 		extern PFN_glGetUniformBlockIndex GetUniformBlockIndex;
 		extern PFN_glUniformBlockBinding UniformBlockBinding;
+		extern PFN_glGenVertexArrays GenVertexArrays;
+		extern PFN_glBindVertexArray BindVertexArray;
+		extern PFN_glDeleteVertexArrays DeleteVertexArrays;
 	}
 
 	class ogl_texture : public texture
@@ -206,6 +215,10 @@ namespace rv
 
 		// non-zero when using UBO clip path (GL3)
 		GLuint clip_ubo_ = 0;
+
+		GLuint vbo_ = 0;
+		GLuint ebo_ = 0;
+		GLuint vao_ = 0;
 
 		vector_t<cstd::uint32_t> adjusted_indices_;
 	};
