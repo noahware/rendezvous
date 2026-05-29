@@ -24,6 +24,7 @@
     <ProjectGuid>{c567bc23-f9fc-4d3d-af1c-29039eabf3d1}</ProjectGuid>
     <RootNamespace>rendezvous</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <VcpkgManifestRoot>$(ProjectDir)..\..</VcpkgManifestRoot>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -114,6 +115,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalOptions>/utf-8 /Zc:preprocessor %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
@@ -132,6 +134,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalOptions>/utf-8 /Zc:preprocessor %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
@@ -144,49 +147,49 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\gui\comp\text_edit.cpp" />
-    <ClCompile Include="src\gui\elements.cpp" />
-    <ClCompile Include="src\gui\layout.cpp" />
-    <ClCompile Include="src\input\win32.cpp" />
-    <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\render\impl\dx11.cpp" />
-    <ClCompile Include="src\render\impl\ogl.cpp" />
-    <ClCompile Include="src\render\render.cpp" />
+    <ClCompile Include="..\..\src\gui\comp\text_edit.cpp" />
+    <ClCompile Include="..\..\src\gui\elements.cpp" />
+    <ClCompile Include="..\..\src\gui\layout.cpp" />
+    <ClCompile Include="..\..\src\input\win32.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="..\..\src\render\impl\dx11.cpp" />
+    <ClCompile Include="..\..\src\render\impl\ogl.cpp" />
+    <ClCompile Include="..\..\src\render\render.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="vcpkg.json" />
+    <None Include="..\..\vcpkg.json" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\gui\animation.hpp" />
-    <ClInclude Include="src\gui\comp\button.hpp" />
-    <ClInclude Include="src\gui\comp\checkbox.hpp" />
-    <ClInclude Include="src\gui\comp\combo_box.hpp" />
-    <ClInclude Include="src\gui\comp\panel.hpp" />
-    <ClInclude Include="src\gui\comp\slider.hpp" />
-    <ClInclude Include="src\gui\comp\text.hpp" />
-    <ClInclude Include="src\gui\comp\text_box.hpp" />
-    <ClInclude Include="src\gui\comp\text_edit.hpp" />
-    <ClInclude Include="src\gui\text_metrics.hpp" />
-    <ClInclude Include="src\gui\element.hpp" />
-    <ClInclude Include="src\gui\gui.hpp" />
-    <ClInclude Include="src\gui\layout.hpp" />
-    <ClInclude Include="src\gui\styled_size.hpp" />
-    <ClInclude Include="src\input\input.hpp" />
-    <ClInclude Include="src\input\win32.hpp" />
-    <ClInclude Include="src\log\log.hpp" />
-    <ClInclude Include="src\render\impl\dx11.hpp" />
-    <ClInclude Include="src\render\impl\ogl.hpp" />
-    <ClInclude Include="src\render\ogl_shaders.hpp" />
-    <ClInclude Include="src\render\position.hpp" />
-    <ClInclude Include="src\render\render.hpp" />
-    <ClInclude Include="src\render\shaders.hpp" />
-    <ClInclude Include="src\render\texture.hpp" />
-    <ClInclude Include="src\util\file.hpp" />
-    <ClInclude Include="src\util\hash.hpp" />
-    <ClInclude Include="src\util\string.hpp" />
-    <ClInclude Include="src\util\math.hpp" />
-    <ClInclude Include="src\util\triangulate.hpp" />
-    <ClInclude Include="src\util\types.hpp" />
+    <ClInclude Include="..\..\src\gui\animation.hpp" />
+    <ClInclude Include="..\..\src\gui\comp\button.hpp" />
+    <ClInclude Include="..\..\src\gui\comp\checkbox.hpp" />
+    <ClInclude Include="..\..\src\gui\comp\combo_box.hpp" />
+    <ClInclude Include="..\..\src\gui\comp\panel.hpp" />
+    <ClInclude Include="..\..\src\gui\comp\slider.hpp" />
+    <ClInclude Include="..\..\src\gui\comp\text.hpp" />
+    <ClInclude Include="..\..\src\gui\comp\text_box.hpp" />
+    <ClInclude Include="..\..\src\gui\comp\text_edit.hpp" />
+    <ClInclude Include="..\..\src\gui\text_metrics.hpp" />
+    <ClInclude Include="..\..\src\gui\element.hpp" />
+    <ClInclude Include="..\..\src\gui\gui.hpp" />
+    <ClInclude Include="..\..\src\gui\layout.hpp" />
+    <ClInclude Include="..\..\src\gui\styled_size.hpp" />
+    <ClInclude Include="..\..\src\input\input.hpp" />
+    <ClInclude Include="..\..\src\input\win32.hpp" />
+    <ClInclude Include="..\..\src\log\log.hpp" />
+    <ClInclude Include="..\..\src\render\impl\dx11.hpp" />
+    <ClInclude Include="..\..\src\render\impl\ogl.hpp" />
+    <ClInclude Include="..\..\src\render\ogl_shaders.hpp" />
+    <ClInclude Include="..\..\src\render\position.hpp" />
+    <ClInclude Include="..\..\src\render\render.hpp" />
+    <ClInclude Include="..\..\src\render\shaders.hpp" />
+    <ClInclude Include="..\..\src\render\texture.hpp" />
+    <ClInclude Include="..\..\src\util\file.hpp" />
+    <ClInclude Include="..\..\src\util\hash.hpp" />
+    <ClInclude Include="..\..\src\util\string.hpp" />
+    <ClInclude Include="..\..\src\util\math.hpp" />
+    <ClInclude Include="..\..\src\util\triangulate.hpp" />
+    <ClInclude Include="..\..\src\util\types.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
