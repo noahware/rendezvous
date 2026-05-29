@@ -1,4 +1,5 @@
 #include "win32.hpp"
+#include "../log/log.hpp"
 #include <windowsx.h>
 
 bool rv::win32_input::handle_message(const HWND hwnd, const UINT msg, const WPARAM wparam, const LPARAM lparam)
@@ -25,7 +26,17 @@ bool rv::win32_input::handle_message(const HWND hwnd, const UINT msg, const WPAR
 			state_.keys_pressed[wparam] = false;
 		}
 		return true;
+	case WM_CHAR:
+	{
+		const auto input_char = static_cast<input_state::char_type>(wparam);
 
+		if (input_char >= 0x20 && input_char != 0x7F)
+		{
+			state_.typed_chars.push_back(input_char);
+		}
+
+		return true;
+	}
 	case WM_LBUTTONDOWN:
 	case WM_LBUTTONDBLCLK:
 		if (!state_.mouse_down[0]) state_.mouse_clicked[0] = true;

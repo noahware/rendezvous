@@ -168,7 +168,7 @@ namespace rv
 		}
 
 	protected:
-		void process_events_recursive(const shared_ptr_t<element>& el, const position& mouse_pos, const bool mouse_clicked, const bool mouse_down, bool& click_handled, bool& enter_handled, shared_ptr_t<element>& scroll_target)
+		void process_events_recursive(const shared_ptr_t<element>& el, const position& mouse_pos, const bool mouse_clicked, const bool mouse_down, bool& click_handled, bool& enter_handled, shared_ptr_t<element>& scroll_target, element*& clicked)
 		{
 			if (!el->is_visible())
 			{
@@ -178,7 +178,7 @@ namespace rv
 			const auto& children = el->children();
 			for (auto it = children.rbegin(); it != children.rend(); ++it)
 			{
-				process_events_recursive(*it, mouse_pos, mouse_clicked, mouse_down, click_handled, enter_handled, scroll_target);
+				process_events_recursive(*it, mouse_pos, mouse_clicked, mouse_down, click_handled, enter_handled, scroll_target, clicked);
 			}
 
 			const position visual_min = el->visual_pos();
@@ -189,6 +189,11 @@ namespace rv
 			if (!click_handled && mouse_clicked && hovering)
 			{
 				click_handled = el->on_mouse_click();
+
+				if (click_handled)
+				{
+					clicked = el.get();
+				}
 			}
 
 			if (!enter_handled && hovering && !el->is_hovered())
@@ -230,10 +235,24 @@ namespace rv
 			bool enter_handled = false;
 
 			shared_ptr_t<element> scroll_target;
+			element* clicked = nullptr;
 
 			if (tree_.root())
 			{
-				process_events_recursive(tree_.root(), mouse_pos, mouse_clicked, mouse_down, click_handled, enter_handled, scroll_target);
+				process_events_recursive(tree_.root(), mouse_pos, mouse_clicked, mouse_down, click_handled, enter_handled, scroll_target, clicked);
+			}
+
+			// focus only changes on a click, so it persists across frames otherwise.
+			// the consuming element keeps focus if focusable; everyone else is cleared
+			// (clicking a button or empty space defocuses).
+			if (mouse_clicked)
+			{
+				const bool keep = clicked && clicked->focusable();
+
+				for (auto& [id, el] : tree_)
+				{
+					el->set_focused(keep && el.get() == clicked);
+				}
 			}
 
 			// apply scroll to deepest scrollable

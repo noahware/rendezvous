@@ -1,6 +1,7 @@
 #pragma once
 #include "../element.hpp"
 #include "../gui.hpp"
+#include "../text_metrics.hpp"
 #include "../../util/string.hpp"
 
 namespace rv
@@ -106,12 +107,7 @@ namespace rv
 					continue;
 				}
 
-				if (prev_cp != 0)
-				{
-					width += font_->kerning(prev_cp, cp) * scale;
-				}
-
-				width += font_->glyph_advance(cp) * scale;
+				width += glyph_step(*font_, prev_cp, cp, scale);
 				prev_cp = cp;
 			}
 
@@ -130,12 +126,7 @@ namespace rv
 			{
 				const cstd::uint32_t cp = decode_utf8(s, end);
 
-				if (prev_cp != 0)
-				{
-					width += font_->kerning(prev_cp, cp) * scale;
-				}
-
-				width += font_->glyph_advance(cp) * scale;
+				width += glyph_step(*font_, prev_cp, cp, scale);
 				prev_cp = cp;
 			}
 
@@ -192,12 +183,7 @@ namespace rv
 				}
 
 				// accumulate width
-				if (prev_cp != 0)
-				{
-					current_width += font_->kerning(prev_cp, cp) * scale;
-				}
-
-				current_width += font_->glyph_advance(cp) * scale;
+				current_width += glyph_step(*font_, prev_cp, cp, scale);
 				prev_cp = cp;
 
 				// check overflow
@@ -229,7 +215,7 @@ namespace rv
 						// no break point - force break at current char
 						lines.emplace_back(line_start, static_cast<cstd::size_t>(char_start - line_start));
 						line_start = char_start;
-						current_width = font_->glyph_advance(cp) * scale;
+						current_width = glyph_step(*font_, 0, cp, scale);
 						prev_cp = cp;
 						last_break = nullptr;
 						width_at_break = 0.f;

@@ -5,6 +5,7 @@
 #include "gui/comp/slider.hpp"
 #include "gui/comp/checkbox.hpp"
 #include "gui/comp/panel.hpp"
+#include "gui/comp/text_box.hpp"
 #include "log/log.hpp"
 #include "render/impl/dx11.hpp"
 #include "input/win32.hpp"
@@ -412,6 +413,36 @@ cstd::int32_t main()
 	auto cb2_label = gui->make_child<rv::text_element>(cb2_row,
 		rv::element_size{}, gui_font);
 	cb2_label->content("Round checkbox").text_size(16.f);
+
+	auto name_label = gui->make_child<rv::text_element>(root,
+		rv::element_size{}, gui_font);
+	name_label->content("Name:").text_size(16.f);
+
+	static string_t name_value = "edit me";
+
+	auto name_input = gui->make_child<rv::text_box>(root,
+		rv::element_size{ rv::styled_size::px(300.f), rv::styled_size::auto_v() }, gui_font, input);
+	name_input->text_size(18.f)
+		.padding({ .top = 8.f, .right = 10.f, .bottom = 8.f, .left = 10.f })
+		.rounding(6.f);
+	name_input->bind(&name_value)
+		.on_submit([](const string_t& v) { LOG_INFO("submitted: {}", v); })
+		.on_change([name_label](const string_t& v)
+		{
+			name_label->content("Name: " + v);
+		});
+
+	auto notes_label = gui->make_child<rv::text_element>(root,
+		rv::element_size{}, gui_font);
+	notes_label->content("Notes (multiline):").text_size(16.f);
+
+	auto notes_input = gui->make_child<rv::text_box>(root,
+		rv::element_size{ rv::styled_size::px(400.f), rv::styled_size::px(120.f) }, gui_font, input);
+	notes_input->multiline(true)
+		.text("Line one\nLine two")
+		.text_size(18.f)
+		.padding({ .top = 8.f, .right = 10.f, .bottom = 8.f, .left = 10.f })
+		.rounding(6.f);
 
 	auto demo_panel = gui->make_child<rv::panel>(root,
 		rv::element_size{ rv::styled_size::px(350.f), rv::styled_size::px(250.f) }, input);

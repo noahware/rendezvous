@@ -377,6 +377,22 @@ namespace rv
 			pressed_ = pressed;
 		}
 
+		[[nodiscard]] bool is_focused() const noexcept
+		{
+			return focused_;
+		}
+
+		void set_focused(const bool focused) noexcept
+		{
+			focused_ = focused;
+		}
+
+		// Widgets that own the keyboard when clicked (e.g. text_box) override this.
+		[[nodiscard]] virtual bool focusable() const noexcept
+		{
+			return false;
+		}
+
 		[[nodiscard]] bool is_visible() const noexcept
 		{
 			return visible_;
@@ -867,6 +883,7 @@ namespace rv
 		element_style style_;
 		bool hovered_ = false;
 		bool pressed_ = false;
+		bool focused_ = false;
 		bool visible_ = true;
 		vector_t<animation_state> animations_;
 

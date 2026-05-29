@@ -20,8 +20,29 @@ namespace rv
 		not_allowed
 	};
 
+	enum class key : cstd::int32_t
+	{
+#if defined(_WIN32)
+		backspace = 0x08,
+		enter     = 0x0D,
+		shift     = 0x10,
+		control   = 0x11,
+		end       = 0x23,
+		home      = 0x24,
+		left      = 0x25,
+		up        = 0x26,
+		right     = 0x27,
+		down      = 0x28,
+		del       = 0x2E,
+#else
+#error "rv::key codes are not defined for this platform; add a mapping for the active backend."
+#endif
+	};
+
 	struct input_state
 	{
+		using char_type = cstd::uint32_t;
+
 		constexpr static cstd::int32_t key_count = 256;
 		constexpr static cstd::int32_t button_count = 5;
 
@@ -31,6 +52,7 @@ namespace rv
 		array_t<bool, button_count> mouse_down = {};
 		array_t<bool, button_count> mouse_clicked = {};
 		array_t<bool, button_count> mouse_released = {};
+		vector_t<char_type> typed_chars = {};
 		position mouse_pos = {};
 		float scroll_delta = 0.f;
 	};
@@ -47,6 +69,7 @@ namespace rv
 			state_.keys_released.fill(false);
 			state_.mouse_clicked.fill(false);
 			state_.mouse_released.fill(false);
+			state_.typed_chars.clear();
 			state_.scroll_delta = 0.f;
 		}
 
@@ -75,6 +98,21 @@ namespace rv
 			return key_in_range(key) && state_.keys_released[key];
 		}
 
+		[[nodiscard]] bool is_key_down(const key k) const noexcept
+		{
+			return is_key_down(static_cast<key_type>(k));
+		}
+
+		[[nodiscard]] bool is_key_pressed(const key k) const noexcept
+		{
+			return is_key_pressed(static_cast<key_type>(k));
+		}
+
+		[[nodiscard]] bool is_key_released(const key k) const noexcept
+		{
+			return is_key_released(static_cast<key_type>(k));
+		}
+
 		[[nodiscard]] bool is_mouse_down(const button_type button) const noexcept
 		{
 			return button_in_range(button) && state_.mouse_down[button];
@@ -98,6 +136,16 @@ namespace rv
 		[[nodiscard]] float scroll_delta() const noexcept
 		{
 			return state_.scroll_delta;
+		}
+
+		[[nodiscard]] span_t<const input_state::char_type> typed_chars() const noexcept
+		{
+			return { state_.typed_chars.data(), state_.typed_chars.size() };
+		}
+
+		void clear_typed_chars()
+		{
+			state_.typed_chars.clear();
 		}
 
 	protected:

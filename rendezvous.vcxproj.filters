@@ -110,5 +110,8 @@
     <ClInclude Include="src\gui\comp\panel.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\gui\comp\text_box.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

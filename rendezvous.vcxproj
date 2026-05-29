@@ -144,6 +144,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\gui\comp\text_edit.cpp" />
     <ClCompile Include="src\gui\elements.cpp" />
     <ClCompile Include="src\gui\layout.cpp" />
     <ClCompile Include="src\input\win32.cpp" />
@@ -161,6 +162,9 @@
     <ClInclude Include="src\gui\comp\panel.hpp" />
     <ClInclude Include="src\gui\comp\slider.hpp" />
     <ClInclude Include="src\gui\comp\text.hpp" />
+    <ClInclude Include="src\gui\comp\text_box.hpp" />
+    <ClInclude Include="src\gui\comp\text_edit.hpp" />
+    <ClInclude Include="src\gui\text_metrics.hpp" />
     <ClInclude Include="src\gui\element.hpp" />
     <ClInclude Include="src\gui\gui.hpp" />
     <ClInclude Include="src\gui\layout.hpp" />

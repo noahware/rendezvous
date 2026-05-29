@@ -62,4 +62,32 @@ namespace rv
 		s++;
 		return '?';
 	}
+
+	inline void encode_utf8(const char32_t cp, string_t& out)
+	{
+		const cstd::uint32_t c = static_cast<cstd::uint32_t>(cp);
+
+		if (c < 0x80)
+		{
+			out.push_back(static_cast<char>(c));
+		}
+		else if (c < 0x800)
+		{
+			out.push_back(static_cast<char>(0xC0 | (c >> 6)));
+			out.push_back(static_cast<char>(0x80 | (c & 0x3F)));
+		}
+		else if (c < 0x10000)
+		{
+			out.push_back(static_cast<char>(0xE0 | (c >> 12)));
+			out.push_back(static_cast<char>(0x80 | ((c >> 6) & 0x3F)));
+			out.push_back(static_cast<char>(0x80 | (c & 0x3F)));
+		}
+		else
+		{
+			out.push_back(static_cast<char>(0xF0 | (c >> 18)));
+			out.push_back(static_cast<char>(0x80 | ((c >> 12) & 0x3F)));
+			out.push_back(static_cast<char>(0x80 | ((c >> 6) & 0x3F)));
+			out.push_back(static_cast<char>(0x80 | (c & 0x3F)));
+		}
+	}
 }
