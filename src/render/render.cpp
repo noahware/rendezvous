@@ -44,6 +44,10 @@ void rv::renderer::begin_frame(const vector_2d<float> display_size) noexcept
     state_.last_time = current_time;
     state_.display_size = display_size;
 
+    pending_vertices_.reserve(peak_vertex_count_);
+    pending_indices_.reserve(peak_index_count_);
+    pending_batches_.reserve(peak_batch_count_);
+
     begin_frame_backend(display_size);
 }
 
@@ -113,9 +117,12 @@ void rv::renderer::draw_vertices(const span_t<const vertex> vertices, const shad
 
     pending_vertices_.insert(pending_vertices_.end(), vertices.begin(), vertices.end());
 
+    const cstd::size_t idx_start = pending_indices_.size();
+    pending_indices_.resize(idx_start + count);
+
     for (cstd::uint32_t i = 0; i < count; ++i)
     {
-        pending_indices_.push_back(i + index_shift);
+        pending_indices_[idx_start + i] = i + index_shift;
     }
 }
 

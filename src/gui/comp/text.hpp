@@ -17,6 +17,7 @@ namespace rv
 		text_element& content(const string_view_t text)
 		{
 			text_ = string_t(text);
+			wrap_cache_valid_ = false;
 			return *this;
 		}
 
@@ -27,7 +28,7 @@ namespace rv
 				return { 0.f, 0.f };
 			}
 
-			const float scale = style_.font_size.value_or(0.f) > 0.f ? style_.font_size.value_or(0.f) / font_->baked_size() : 1.f;
+			const float scale = resolved_scale();
 			const float line_h = font_->line_height() * scale;
 			const bool has_width_constraint = (declared_size().width.mode != size_mode::auto_v);
 
@@ -37,15 +38,15 @@ namespace rv
 				return { w, line_h };
 			}
 
-			const auto wrapped = wrap_text(available.x, scale);
+			update_wrap_cache(available.x, scale);
 			float max_w = 0.f;
 
-			for (const auto& line : wrapped)
+			for (const auto& line : cached_wrapped_)
 			{
 				max_w = cstd::fmaxf(max_w, measure_line(line, scale));
 			}
 
-			return { max_w, line_h * static_cast<float>(wrapped.size()) };
+			return { max_w, line_h * static_cast<float>(cached_wrapped_.size()) };
 		}
 
 	protected:
@@ -56,17 +57,17 @@ namespace rv
 				return;
 			}
 
-			const float scale = style_.font_size.value_or(0.f) > 0.f ? style_.font_size.value_or(0.f) / font_->baked_size() : 1.f;
+			const float scale = resolved_scale();
 			const float line_h = font_->line_height() * scale;
 			const float box_w = max.x - min.x;
 
-			const auto wrapped = wrap_text(box_w, scale);
+			update_wrap_cache(box_w, scale);
 
 			renderer.push_clip_rect(min, max);
 
 			float y = min.y;
 
-			for (const auto& line : wrapped)
+			for (const auto& line : cached_wrapped_)
 			{
 				float x = min.x;
 
@@ -232,7 +233,30 @@ namespace rv
 			return lines;
 		}
 
+		[[nodiscard]] float resolved_scale() const noexcept
+		{
+			return style_.font_size.value_or(0.f) > 0.f ? style_.font_size.value_or(0.f) / font_->baked_size() : 1.f;
+		}
+
+		void update_wrap_cache(const float width, const float scale) const noexcept
+		{
+			if (wrap_cache_valid_ && width == cached_wrap_width_ && scale == cached_wrap_scale_)
+			{
+				return;
+			}
+
+			cached_wrapped_ = wrap_text(width, scale);
+			cached_wrap_width_ = width;
+			cached_wrap_scale_ = scale;
+			wrap_cache_valid_ = true;
+		}
+
 		shared_ptr_t<gui_font> font_;
 		string_t text_;
+
+		mutable vector_t<string_view_t> cached_wrapped_;
+		mutable float cached_wrap_width_ = 0.f;
+		mutable float cached_wrap_scale_ = 0.f;
+		mutable bool wrap_cache_valid_ = false;
 	};
 }

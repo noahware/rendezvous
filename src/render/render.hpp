@@ -171,5 +171,9 @@ namespace rv
 
 		cstd::size_t buffer_vertex_count_ = 0;
 		cstd::size_t buffer_index_count_ = 0;
+
+		cstd::size_t peak_vertex_count_ = 0;
+		cstd::size_t peak_index_count_ = 0;
+		cstd::size_t peak_batch_count_ = 0;
 	};
 }

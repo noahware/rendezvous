@@ -128,9 +128,12 @@ bool rv::dx11_renderer::try_widen_buffer()
 		return true;
 	}
 
-	constexpr cstd::size_t additional_vertices = 256;
+	const cstd::size_t needed = pending_vertices_.size();
+	const cstd::size_t doubled = buffer_vertex_count_ * 2;
+	const cstd::size_t new_size = needed > doubled ? needed : doubled;
+	constexpr cstd::size_t min_capacity = 4096;
 
-	return create_buffer(pending_vertices_.size() + additional_vertices);
+	return create_buffer(new_size < min_capacity ? min_capacity : new_size);
 }
 
 bool rv::dx11_renderer::create_index_buffer(const cstd::size_t index_count)
@@ -159,9 +162,12 @@ bool rv::dx11_renderer::try_widen_index_buffer()
 		return true;
 	}
 
-	constexpr cstd::size_t additional_indices = 512;
+	const cstd::size_t needed = pending_indices_.size();
+	const cstd::size_t doubled = buffer_index_count_ * 2;
+	const cstd::size_t new_size = needed > doubled ? needed : doubled;
+	constexpr cstd::size_t min_capacity = 8192;
 
-	return create_index_buffer(pending_indices_.size() + additional_indices);
+	return create_index_buffer(new_size < min_capacity ? min_capacity : new_size);
 }
 
 void rv::dx11_renderer::begin_frame_backend(const vector_2d<float> display_size) noexcept
@@ -249,35 +255,53 @@ void rv::dx11_renderer::flush_pending_vertices() noexcept
 	ID3D11Buffer* idx_buffer = index_buffer_.value();
 	context_->IASetIndexBuffer(idx_buffer, DXGI_FORMAT_R32_UINT, 0);
 
-	for (const auto& batch : pending_batches_) 
+	shader_type last_shader = static_cast<shader_type>(0xFF);
+	ID3D11ShaderResourceView* last_srv = nullptr;
+	optional_t<clip_rect_data> last_clip;
+	bool clip_initialized = false;
+
+	for (const auto& batch : pending_batches_)
 	{
+		if (batch.shader != last_shader)
+		{
+			last_shader = batch.shader;
+
+			if (batch.shader == shader_type::shadow_shader)
+			{
+				context_->PSSetShader(shadow_pixel_shader_.value(), nullptr, 0);
+			}
+			else if (batch.shader == shader_type::rect_shader)
+			{
+				context_->PSSetShader(rect_pixel_shader_.value(), nullptr, 0);
+			}
+			else if (batch.shader == shader_type::image_shader)
+			{
+				context_->PSSetShader(image_pixel_shader_.value(), nullptr, 0);
+			}
+			else if (batch.shader == shader_type::text_shadow_shader)
+			{
+				context_->PSSetShader(text_shadow_pixel_shader_.value(), nullptr, 0);
+			}
+			else
+			{
+				context_->PSSetShader(pixel_shader_.value(), nullptr, 0);
+			}
+		}
+
 		const auto texture = std::static_pointer_cast<dx11_texture>(batch.texture);
-		const auto shader = texture->shader_resource();
+		auto* srv = texture->shader_resource();
 
-		if (batch.shader == shader_type::shadow_shader) 
+		if (srv != last_srv)
 		{
-			context_->PSSetShader(shadow_pixel_shader_.value(), nullptr, 0);
-		}
-		else if (batch.shader == shader_type::rect_shader) 
-		{
-			context_->PSSetShader(rect_pixel_shader_.value(), nullptr, 0);
-		}
-		else if (batch.shader == shader_type::image_shader)
-		{
-			context_->PSSetShader(image_pixel_shader_.value(), nullptr, 0);
-		}
-		else if (batch.shader == shader_type::text_shadow_shader)
-		{
-			context_->PSSetShader(text_shadow_pixel_shader_.value(), nullptr, 0);
-		}
-		else 
-		{
-			context_->PSSetShader(pixel_shader_.value(), nullptr, 0);
+			last_srv = srv;
+			context_->PSSetShaderResources(0, 1, &srv);
 		}
 
-		context_->PSSetShaderResources(0, 1, &shader);
-
+		if (!clip_initialized || batch.clip_rect != last_clip)
 		{
+			clip_initialized = true;
+			last_clip = batch.clip_rect;
+
 			clip_cbuffer_data cb_data = { };
 
 			if (batch.clip_rect.has_value())
@@ -306,29 +330,36 @@ void rv::dx11_renderer::flush_pending_vertices() noexcept
 
 			ID3D11Buffer* cb = clip_cbuffer_.value();
 			context_->PSSetConstantBuffers(0, 1, &cb);
-		}
 
-		if (batch.clip_rect.has_value())
-		{
-			D3D11_RECT rect;
-			rect.left = static_cast<LONG>(batch.clip_rect->bounds.min.x) - 1;
-			rect.top = static_cast<LONG>(batch.clip_rect->bounds.min.y) - 1;
-			rect.right = static_cast<LONG>(batch.clip_rect->bounds.max.x) + 1;
-			rect.bottom = static_cast<LONG>(batch.clip_rect->bounds.max.y) + 1;
-			context_->RSSetScissorRects(1, &rect);
-		}
-		else
-		{
-			D3D11_RECT rect;
-			rect.left = 0;
-			rect.top = 0;
-			rect.right = static_cast<LONG>(state_.display_size.x);
-			rect.bottom = static_cast<LONG>(state_.display_size.y);
-			context_->RSSetScissorRects(1, &rect);
+			if (batch.clip_rect.has_value())
+			{
+				D3D11_RECT rect;
+				rect.left = static_cast<LONG>(batch.clip_rect->bounds.min.x) - 1;
+				rect.top = static_cast<LONG>(batch.clip_rect->bounds.min.y) - 1;
+				rect.right = static_cast<LONG>(batch.clip_rect->bounds.max.x) + 1;
+				rect.bottom = static_cast<LONG>(batch.clip_rect->bounds.max.y) + 1;
+				context_->RSSetScissorRects(1, &rect);
+			}
+			else
+			{
+				D3D11_RECT rect;
+				rect.left = 0;
+				rect.top = 0;
+				rect.right = static_cast<LONG>(state_.display_size.x);
+				rect.bottom = static_cast<LONG>(state_.display_size.y);
+				context_->RSSetScissorRects(1, &rect);
+			}
 		}
 
 		context_->DrawIndexed(batch.index_count, batch.index_offset, batch.vertex_offset);
 	}
+
+	if (pending_vertices_.size() > peak_vertex_count_)
+		peak_vertex_count_ = pending_vertices_.size();
+	if (pending_indices_.size() > peak_index_count_)
+		peak_index_count_ = pending_indices_.size();
+	if (pending_batches_.size() > peak_batch_count_)
+		peak_batch_count_ = pending_batches_.size();
 
 	pending_vertices_.clear();
 	pending_indices_.clear();
