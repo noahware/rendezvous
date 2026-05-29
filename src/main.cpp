@@ -276,6 +276,9 @@ cstd::int32_t main()
 
 	auto gui_font = cstd::make_shared<rv::gui_font_impl>(*font);
 
+	// font used by the gui for overlay drawing (tooltips)
+	gui->set_font(gui_font);
+
 	auto btn_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(50.f) });
 	btn_row->direction(rv::layout_direction::horizontal).gap(12.f).padding(8.f);
 
@@ -286,6 +289,7 @@ cstd::int32_t main()
 		.hover_color({ 0.25f, 0.55f, 1.f, 1.f })
 		.pressed_color({ 0.1f, 0.35f, 0.8f, 1.f })
 		.on_click([]() { LOG_INFO("primary clicked"); });
+	primary->tooltip("Submit the form\nShortcut: Enter");
 
 	auto secondary = gui->make_child<rv::button>(btn_row,
 		rv::element_size{ rv::styled_size::auto_v(), rv::styled_size::fill() }, gui_font);
@@ -314,6 +318,7 @@ cstd::int32_t main()
 	icon_btn->hover_color({ 0.35f, 0.35f, 0.42f, 1.f })
 		.pressed_color({ 0.18f, 0.18f, 0.22f, 1.f })
 		.on_click([]() { LOG_INFO("icon clicked"); });
+	icon_btn->tooltip("Settings");
 
 	auto label = gui->make_child<rv::text_element>(root,
 		rv::element_size{}, gui_font);
@@ -456,6 +461,7 @@ cstd::int32_t main()
 	combo->options({ "Apple", "Banana", "Cherry", "Date", "Elderberry" })
 		.bind(&selected_fruit)
 		.on_change([](const int i) { LOG_INFO("combo selected: {}", i); });
+	combo->tooltip("Choose which fruit you like best");
 
 	auto demo_panel = gui->make_child<rv::panel>(root,
 		rv::element_size{ rv::styled_size::px(350.f), rv::styled_size::px(250.f) }, input);

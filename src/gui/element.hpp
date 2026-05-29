@@ -705,6 +705,23 @@ namespace rv
 			return *this;
 		}
 
+		element& tooltip(const string_view_t text)
+		{
+			tooltip_ = string_t(text);
+
+			return *this;
+		}
+
+		[[nodiscard]] const string_t& tooltip() const noexcept
+		{
+			return tooltip_;
+		}
+
+		[[nodiscard]] bool has_tooltip() const noexcept
+		{
+			return !tooltip_.empty();
+		}
+
 		void set_flex_lines(vector_t<flex_line> lines) noexcept
 		{
 			flex_lines_ = cstd::move(lines);
@@ -885,6 +902,7 @@ namespace rv
 		bool pressed_ = false;
 		bool focused_ = false;
 		bool visible_ = true;
+		string_t tooltip_;
 		vector_t<animation_state> animations_;
 
 		color visual_bg_ = { 0.f, 0.f, 0.f, 0.f };
