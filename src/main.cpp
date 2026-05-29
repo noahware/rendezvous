@@ -6,6 +6,7 @@
 #include "gui/comp/checkbox.hpp"
 #include "gui/comp/panel.hpp"
 #include "gui/comp/text_box.hpp"
+#include "gui/comp/combo_box.hpp"
 #include "log/log.hpp"
 #include "render/impl/dx11.hpp"
 #include "input/win32.hpp"
@@ -443,6 +444,18 @@ cstd::int32_t main()
 		.text_size(18.f)
 		.padding({ .top = 8.f, .right = 10.f, .bottom = 8.f, .left = 10.f })
 		.rounding(6.f);
+
+	auto combo_label = gui->make_child<rv::text_element>(root,
+		rv::element_size{}, gui_font);
+	combo_label->content("Favorite fruit:").text_size(16.f);
+
+	static int selected_fruit = 0;
+	auto combo = gui->make_child<rv::combo_box>(root,
+		rv::element_size{ rv::styled_size::px(220.f), rv::styled_size::px(32.f) }, gui_font, input);
+	combo->text_size(16.f);
+	combo->options({ "Apple", "Banana", "Cherry", "Date", "Elderberry" })
+		.bind(&selected_fruit)
+		.on_change([](const int i) { LOG_INFO("combo selected: {}", i); });
 
 	auto demo_panel = gui->make_child<rv::panel>(root,
 		rv::element_size{ rv::styled_size::px(350.f), rv::styled_size::px(250.f) }, input);

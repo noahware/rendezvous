@@ -159,6 +159,7 @@
     <ClInclude Include="src\gui\animation.hpp" />
     <ClInclude Include="src\gui\comp\button.hpp" />
     <ClInclude Include="src\gui\comp\checkbox.hpp" />
+    <ClInclude Include="src\gui\comp\combo_box.hpp" />
     <ClInclude Include="src\gui\comp\panel.hpp" />
     <ClInclude Include="src\gui\comp\slider.hpp" />
     <ClInclude Include="src\gui\comp\text.hpp" />
