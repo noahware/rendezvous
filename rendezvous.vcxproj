@@ -120,7 +120,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d11.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -140,7 +140,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d11.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -150,6 +150,7 @@
     <ClCompile Include="src\input\win32.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\render\impl\dx11.cpp" />
+    <ClCompile Include="src\render\impl\ogl.cpp" />
     <ClCompile Include="src\render\render.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -174,6 +175,8 @@
     <ClInclude Include="src\input\win32.hpp" />
     <ClInclude Include="src\log\log.hpp" />
     <ClInclude Include="src\render\impl\dx11.hpp" />
+    <ClInclude Include="src\render\impl\ogl.hpp" />
+    <ClInclude Include="src\render\ogl_shaders.hpp" />
     <ClInclude Include="src\render\position.hpp" />
     <ClInclude Include="src\render\render.hpp" />
     <ClInclude Include="src\render\shaders.hpp" />

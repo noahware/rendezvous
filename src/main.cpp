@@ -9,6 +9,7 @@
 #include "gui/comp/combo_box.hpp"
 #include "log/log.hpp"
 #include "render/impl/dx11.hpp"
+#include "render/impl/ogl.hpp"
 #include "input/win32.hpp"
 #include "util/types.hpp"
 
@@ -27,14 +28,28 @@ static LRESULT CALLBACK wnd_proc(const HWND hwnd, const UINT msg, const WPARAM w
 		screen_size.y = static_cast<float>(HIWORD(lparam));
 	}
 
-	input->handle_message(hwnd, msg, wparam, lparam);
+	if (input)
+	{
+		input->handle_message(hwnd, msg, wparam, lparam);
+	}
 
     return DefWindowProcW(hwnd, msg, wparam, lparam);
 }
 
-cstd::int32_t main()
+cstd::int32_t main(int argc, char* argv[])
 {
 	LOG_INFO("rendezvous");
+
+	// runtime backend selection: --opengl for OGL2, --opengl3 for OGL3
+	enum class backend_type { dx11, ogl2, ogl3 } backend = backend_type::dx11;
+	for (int i = 1; i < argc; ++i)
+	{
+		if (string_view_t(argv[i]) == "--opengl3")
+			backend = backend_type::ogl3;
+		else if (string_view_t(argv[i]) == "--opengl")
+			backend = backend_type::ogl2;
+	}
+	const bool use_opengl = (backend == backend_type::ogl2 || backend == backend_type::ogl3);
 
 	WNDCLASSEXW wnd_class = { };
 	wnd_class.cbSize = sizeof(wnd_class);
@@ -51,33 +66,19 @@ cstd::int32_t main()
 
 	ShowWindow(hwnd, SW_SHOW);
 
-	DXGI_SWAP_CHAIN_DESC swap_chain_desc = { };
-
-	swap_chain_desc.BufferCount = 2;
-	swap_chain_desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	swap_chain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swap_chain_desc.OutputWindow = hwnd;
-	swap_chain_desc.SampleDesc.Count = 1;
-	swap_chain_desc.Windowed = true;
-	swap_chain_desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-
+	// DX11 objects (only used when !use_opengl)
 	rv::dx11_object<IDXGISwapChain> swap_chain;
 	rv::dx11_object<ID3D11Device> device;
 	rv::dx11_object<ID3D11DeviceContext> context;
 	rv::dx11_object<ID3D11RenderTargetView> rtv;
 
-	const HRESULT status = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, nullptr, 0,
-	                                                     D3D11_SDK_VERSION, &swap_chain_desc, swap_chain.release_and_get(), device.release_and_get(),
-	                                                     nullptr, context.release_and_get());
+	// OGL2 objects (only used when use_opengl)
+	HDC hdc = nullptr;
+	HGLRC hglrc = nullptr;
 
-	if (status != S_OK)
-	{
-		LOG_ERR("unable to create device and swap chain");
+	shared_ptr_t<rv::renderer> renderer;
 
-		return 1;
-	}
-
-	const auto create_rtv = [&]()
+	auto create_rtv = [&]()
 		{
 			rv::dx11_object<ID3D11Texture2D> back_buffer;
 
@@ -87,10 +88,112 @@ cstd::int32_t main()
 			back_buffer.release();
 		};
 
+	if (use_opengl)
+	{
+		hdc = GetDC(hwnd);
 
-	create_rtv();
+		PIXELFORMATDESCRIPTOR pfd = { };
+		pfd.nSize = sizeof(pfd);
+		pfd.nVersion = 1;
+		pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+		pfd.iPixelType = PFD_TYPE_RGBA;
+		pfd.cColorBits = 32;
+		pfd.cDepthBits = 24;
+		pfd.iLayerType = PFD_MAIN_PLANE;
 
-	const auto renderer = cstd::make_shared<rv::dx11_renderer>(device.value(), context.value());
+		const int pixel_format = ChoosePixelFormat(hdc, &pfd);
+		if (!pixel_format || !SetPixelFormat(hdc, pixel_format, &pfd))
+		{
+			LOG_ERR("failed to set pixel format");
+			return 1;
+		}
+
+		if (backend == backend_type::ogl3)
+		{
+			LOG_INFO("using OpenGL 3 backend");
+
+			// create temp context to load wglCreateContextAttribsARB
+			HGLRC tmp_ctx = wglCreateContext(hdc);
+			if (!tmp_ctx || !wglMakeCurrent(hdc, tmp_ctx))
+			{
+				LOG_ERR("failed to create temp WGL context");
+				return 1;
+			}
+
+			using wglCreateContextAttribsARB_t = HGLRC(APIENTRY*)(HDC, HGLRC, const int*);
+			auto wglCreateContextAttribsARB = reinterpret_cast<wglCreateContextAttribsARB_t>(
+				wglGetProcAddress("wglCreateContextAttribsARB"));
+
+			if (!wglCreateContextAttribsARB)
+			{
+				LOG_ERR("wglCreateContextAttribsARB not available");
+				wglMakeCurrent(nullptr, nullptr);
+				wglDeleteContext(tmp_ctx);
+				return 1;
+			}
+
+			constexpr int attribs[] =
+			{
+				0x2091, 3,    // WGL_CONTEXT_MAJOR_VERSION_ARB
+				0x2092, 3,    // WGL_CONTEXT_MINOR_VERSION_ARB
+				0x9126, 0x2,  // WGL_CONTEXT_PROFILE_MASK_ARB = COMPATIBILITY_PROFILE_BIT
+				0
+			};
+
+			wglMakeCurrent(nullptr, nullptr);
+			wglDeleteContext(tmp_ctx);
+
+			hglrc = wglCreateContextAttribsARB(hdc, nullptr, attribs);
+			if (!hglrc || !wglMakeCurrent(hdc, hglrc))
+			{
+				LOG_ERR("failed to create GL 3.3 core context");
+				return 1;
+			}
+
+			renderer = cstd::make_shared<rv::ogl3_renderer>();
+		}
+		else
+		{
+			LOG_INFO("using OpenGL 2 backend");
+
+			hglrc = wglCreateContext(hdc);
+			if (!hglrc || !wglMakeCurrent(hdc, hglrc))
+			{
+				LOG_ERR("failed to create WGL context");
+				return 1;
+			}
+
+			renderer = cstd::make_shared<rv::ogl2_renderer>();
+		}
+	}
+	else
+	{
+		LOG_INFO("using Direct3D 11 backend");
+
+		DXGI_SWAP_CHAIN_DESC swap_chain_desc = { };
+
+		swap_chain_desc.BufferCount = 2;
+		swap_chain_desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		swap_chain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swap_chain_desc.OutputWindow = hwnd;
+		swap_chain_desc.SampleDesc.Count = 1;
+		swap_chain_desc.Windowed = true;
+		swap_chain_desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+
+		const HRESULT status = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, nullptr, 0,
+		                                                     D3D11_SDK_VERSION, &swap_chain_desc, swap_chain.release_and_get(), device.release_and_get(),
+		                                                     nullptr, context.release_and_get());
+
+		if (status != S_OK)
+		{
+			LOG_ERR("unable to create device and swap chain");
+			return 1;
+		}
+
+		create_rtv();
+
+		renderer = cstd::make_shared<rv::dx11_renderer>(device.value(), context.value());
+	}
 
 	if (!renderer->init())
 	{
@@ -532,35 +635,46 @@ cstd::int32_t main()
 			continue;
 		}
 
-		if (last_screen_size != screen_size)
+		if (use_opengl)
 		{
-			context->OMSetRenderTargets(0, nullptr, nullptr);
-			rtv.release();
-
-			const HRESULT hr = swap_chain->ResizeBuffers(0,
-				static_cast<cstd::uint32_t>(screen_size.x),
-				static_cast<cstd::uint32_t>(screen_size.y),
-				DXGI_FORMAT_UNKNOWN, 0);
-
-			if (FAILED(hr))
+			last_screen_size = screen_size;
+			glDisable(GL_SCISSOR_TEST);
+			glClearColor(0.1f, 0.1f, 0.1f, 1.f);
+			glClear(GL_COLOR_BUFFER_BIT);
+			glEnable(GL_SCISSOR_TEST);
+		}
+		else
+		{
+			if (last_screen_size != screen_size)
 			{
-				LOG_ERR("ResizeBuffers failed");
+				context->OMSetRenderTargets(0, nullptr, nullptr);
+				rtv.release();
+
+				const HRESULT hr = swap_chain->ResizeBuffers(0,
+					static_cast<cstd::uint32_t>(screen_size.x),
+					static_cast<cstd::uint32_t>(screen_size.y),
+					DXGI_FORMAT_UNKNOWN, 0);
+
+				if (FAILED(hr))
+				{
+					LOG_ERR("ResizeBuffers failed");
+				}
+
+				swap_chain->ResizeBuffers(0, static_cast<cstd::uint32_t>(screen_size.x),
+				                          static_cast<cstd::uint32_t>(screen_size.y), DXGI_FORMAT_UNKNOWN, 0);
+
+				create_rtv();
+
+				last_screen_size = screen_size;
 			}
 
-			swap_chain->ResizeBuffers(0, static_cast<cstd::uint32_t>(screen_size.x),
-			                          static_cast<cstd::uint32_t>(screen_size.y), DXGI_FORMAT_UNKNOWN, 0);
+			ID3D11RenderTargetView* const tmp_rtv = rtv.value();
 
-			create_rtv();
+			constexpr array_t<float, 4> clear_color = { 0.1f, 0.1f, 0.1f, 1.f };
 
-			last_screen_size = screen_size;
+			context->OMSetRenderTargets(1, &tmp_rtv, nullptr);
+			context->ClearRenderTargetView(tmp_rtv, clear_color.data());
 		}
-
-		ID3D11RenderTargetView* const tmp_rtv = rtv.value();
-
-		constexpr array_t<float, 4> clear_color = { 0.1f, 0.1f, 0.1f, 1.f };
-
-		context->OMSetRenderTargets(1, &tmp_rtv, nullptr);
-		context->ClearRenderTargetView(tmp_rtv, clear_color.data());
 		
 		renderer->begin_frame(screen_size);
 		input->set_cursor(rv::cursor_type::arrow);
@@ -697,10 +811,32 @@ cstd::int32_t main()
 
 		renderer->end_frame();
 
-		swap_chain->Present(0, 0);
+		if (use_opengl)
+		{
+			SwapBuffers(hdc);
+		}
+		else
+		{
+			swap_chain->Present(0, 0);
+		}
 
 		input->reset();
 	} while (msg.message != WM_QUIT);
+
+	// cleanup
+	if (use_opengl)
+	{
+		renderer.reset();
+		if (hglrc)
+		{
+			wglMakeCurrent(nullptr, nullptr);
+			wglDeleteContext(hglrc);
+		}
+		if (hdc)
+		{
+			ReleaseDC(hwnd, hdc);
+		}
+	}
 
 	return 0;
 }
