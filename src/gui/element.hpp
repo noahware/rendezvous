@@ -9,6 +9,30 @@ namespace rv
 {
 	class gui_renderer;
 
+	class gui;
+	class button;
+	class checkbox;
+	class text_element;
+	class text_box;
+	class combo_box;
+	class panel;
+	template <class T> class slider;
+	template <class T> class range_slider;
+
+	#define RV_WIDGET_FACTORY_DECLS                                                                 \
+		button& add_button(string_view_t text = {});                                              \
+		checkbox& add_checkbox(string_view_t label = {});                                         \
+		text_element& add_label(string_view_t text = {});                                         \
+		text_box& add_text_input(string_view_t text = {});                                        \
+		text_box& add_text_area(string_view_t text = {});                                         \
+		slider<float>& add_slider(float mn = 0.f, float mx = 1.f, float v = 0.f);                 \
+		range_slider<float>& add_range_slider(float mn = 0.f, float mx = 1.f, float lo = 0.f, float hi = 1.f); \
+		combo_box& add_combo_box(vector_t<string_t> options = {});                                \
+		panel& add_panel();                                                                       \
+		element& add_row();                                                                       \
+		element& add_column();                                                                    \
+		element& add_container(string_view_t title = {});
+
 	template <class T, class ...Args>
 	[[nodiscard]] shared_ptr_t<T> make_element(Args&&... args)
 	{
@@ -190,7 +214,7 @@ namespace rv
 		};
 	}
 
-	class element
+	class element : public enable_shared_from_this_t<element>
 	{
 	public:
 		virtual ~element() = default;
@@ -198,6 +222,8 @@ namespace rv
 
 		explicit element(const element_size size) noexcept
 				:	style_{ .size = size } { }
+
+		RV_WIDGET_FACTORY_DECLS
 
 		virtual void update(float dt)
 		{
@@ -314,8 +340,23 @@ namespace rv
 				child->set_layout_dirty_ptr(layout_dirty_ptr_);
 			}
 
+			if (const auto g = gui_.lock())
+			{
+				child->set_gui(g);
+			}
+
 			children_.push_back(cstd::move(child));
 			mark_layout_dirty();
+		}
+
+		void set_gui(const shared_ptr_t<gui>& g)
+		{
+			gui_ = g;
+
+			for (const auto& child : children_)
+			{
+				child->set_gui(g);
+			}
 		}
 
 		template <class T, class ...Args>
@@ -974,6 +1015,7 @@ namespace rv
 
 		vector_t<shared_ptr_t<element>> children_ = { };
 		bool* layout_dirty_ptr_ = nullptr;
+		weak_ptr_t<gui> gui_;
 	};
 
 	// implemented in elements.cpp

@@ -48,6 +48,12 @@ template <class T>
 using shared_ptr_t = std::shared_ptr<T>;
 
 template <class T>
+using enable_shared_from_this_t = std::enable_shared_from_this<T>;
+
+template <class T>
+using weak_ptr_t = std::weak_ptr<T>;
+
+template <class T>
 using unique_ptr_t = std::unique_ptr<T>;
 
 template <class T>

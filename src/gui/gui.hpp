@@ -146,6 +146,13 @@ namespace rv
 			tree_.set_layout_dirty_ptr(&layout_dirty_);
 		}
 
+		void attach(const shared_ptr_t<gui>& self)
+		{
+			tree_.root()->set_gui(self);
+		}
+
+		RV_WIDGET_FACTORY_DECLS
+
 		void render(const vector_2d<float> display_size)
 		{
 			const auto root = tree_.root();
@@ -210,6 +217,11 @@ namespace rv
 		[[nodiscard]] const shared_ptr_t<input>& get_input() const noexcept
 		{
 			return input_;
+		}
+
+		[[nodiscard]] const shared_ptr_t<gui_font>& font() const noexcept
+		{
+			return font_;
 		}
 
 		template <class T, class ...Args>
@@ -432,4 +444,13 @@ namespace rv
 		bool layout_dirty_ = true;
 		vector_2d<float> last_display_size_ = { };
 	};
+
+	// the gui directly, so the add_* factories can reach the gui through their weak back-pointer.
+	[[nodiscard]] inline shared_ptr_t<gui> make_gui(unique_ptr_t<gui_renderer> renderer, shared_ptr_t<input> input)
+	{
+		auto g = cstd::make_shared<gui>(cstd::move(renderer), cstd::move(input));
+		g->attach(g);
+
+		return g;
+	}
 }

@@ -1,5 +1,6 @@
 #include "gui/element.hpp"
 #include "gui/gui.hpp"
+#include "gui/builders.hpp"
 #include "gui/comp/button.hpp"
 #include "gui/comp/text.hpp"
 #include "gui/comp/slider.hpp"
@@ -118,7 +119,7 @@ int main(int argc, char* argv[])
 	auto input = cstd::make_shared<rv::x11_input>();
 
 	auto gui_renderer = cstd::make_unique<rv::gui_renderer_impl>(renderer);
-	auto gui = cstd::make_unique<rv::gui>(cstd::move(gui_renderer), input);
+	auto gui = rv::make_gui(cstd::move(gui_renderer), input);
 
 	gui->default_style().gap = 8.f;
 	gui->default_style().direction = rv::layout_direction::vertical;
@@ -156,6 +157,25 @@ int main(int argc, char* argv[])
 	// GUI elements
 	if (gui_font)
 	{
+		static bool fac_enabled = true;
+		static float fac_volume = 0.5f;
+		static string_t fac_name = "rendezvous";
+		static int fac_choice = 1;
+
+		auto& general = gui->add_container("General");
+		general.add_checkbox("Enable feature").bind(&fac_enabled);
+		general.add_label("Volume");
+		general.add_slider(0.f, 1.f, 0.5f).bind(&fac_volume);
+		general.add_label("Name");
+		general.add_text_input("name").bind(&fac_name);
+
+		auto& options = gui->add_container("Options");
+		options.add_combo_box({ "Low", "Medium", "High" }).bind(&fac_choice);
+
+		auto& action_row = options.add_row();
+		action_row.add_button("Apply").on_click([]() { LOG_INFO("apply: {} {:.2f} {}", fac_enabled, fac_volume, fac_choice); });
+		action_row.add_button("Cancel").on_click([]() { LOG_INFO("cancel"); });
+
 		// --- button row ---------------------------------------------------
 		auto btn_row = gui->make_child<rv::element>(gui_root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(50.f) });
 		btn_row->direction(rv::layout_direction::horizontal).gap(12.f).padding(8.f);
