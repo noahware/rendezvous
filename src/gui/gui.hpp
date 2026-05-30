@@ -14,6 +14,8 @@ namespace rv
 		[[nodiscard]] virtual float glyph_advance(cstd::uint32_t codepoint) const noexcept = 0;
 		[[nodiscard]] virtual float kerning(cstd::uint32_t left, cstd::uint32_t right) const noexcept = 0;
 		[[nodiscard]] virtual float line_height() const noexcept = 0;
+		[[nodiscard]] virtual float ascent() const noexcept = 0;
+		[[nodiscard]] virtual float descent() const noexcept = 0;
 		[[nodiscard]] virtual float baked_size() const noexcept = 0;
 	};
 
@@ -36,6 +38,16 @@ namespace rv
 		[[nodiscard]] float line_height() const noexcept override
 		{
 			return font_.line_height();
+		}
+
+		[[nodiscard]] float ascent() const noexcept override
+		{
+			return font_.ascent();
+		}
+
+		[[nodiscard]] float descent() const noexcept override
+		{
+			return font_.descent();
 		}
 
 		[[nodiscard]] float baked_size() const noexcept override
