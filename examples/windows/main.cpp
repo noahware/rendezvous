@@ -385,242 +385,81 @@ cstd::int32_t main(int argc, char* argv[])
 
 	static bool fac_enabled = true;
 	static float fac_volume = 0.5f;
-	static string_t fac_name = "rendezvous";
-	static int fac_choice = 1;
+	static string_t fac_name = "edit me";
+	static string_t fac_notes = "Line one\nLine two";
+	static int fac_fruit = 0;
 
-	auto& general = gui->add_container("General");
-	general.add_checkbox("Enable feature").bind(&fac_enabled);
-	general.add_label("Volume");
-	general.add_slider(0.f, 1.f, 0.5f).bind(&fac_volume);
-	general.add_label("Name");
-	general.add_text_input("name").bind(&fac_name);
-
-	auto& options = gui->add_container("Options");
-	options.add_combo_box({ "Low", "Medium", "High" }).bind(&fac_choice);
-
-	auto& action_row = options.add_row();
-	action_row.add_button("Apply").on_click([]() { LOG_INFO("apply: {} {:.2f} {}", fac_enabled, fac_volume, fac_choice); });
-	action_row.add_button("Cancel").on_click([]() { LOG_INFO("cancel"); });
-
-	auto btn_row = gui->make_child<rv::element>(root, rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(50.f) });
-	btn_row->direction(rv::layout_direction::horizontal).gap(12.f).padding(8.f);
-
-	auto primary = gui->make_child<rv::button>(btn_row,
-		rv::element_size{ rv::styled_size::auto_v(), rv::styled_size::fill() }, gui_font);
-	primary->background_color({ 0.15f, 0.45f, 0.95f, 1.f }).rounding(8.f).text_size(18.f);
-	primary->text("Primary")
+	// Buttons. Widget-specific setters (hover/pressed/on_click) chain first while the result is
+	// still a button&; base-element setters (background_color/rounding/tooltip) come after.
+	auto& buttons = gui->add_container("Buttons");
+	auto& btn_row = buttons.add_row();
+	btn_row.add_button("Primary")
 		.hover_color({ 0.25f, 0.55f, 1.f, 1.f })
 		.pressed_color({ 0.1f, 0.35f, 0.8f, 1.f })
-		.on_click([]() { LOG_INFO("primary clicked"); });
-	primary->tooltip("Submit the form\nShortcut: Enter");
-
-	auto secondary = gui->make_child<rv::button>(btn_row,
-		rv::element_size{ rv::styled_size::auto_v(), rv::styled_size::fill() }, gui_font);
-	secondary->background_color({ 0.12f, 0.12f, 0.15f, 0.f })
-		.rounding(8.f)
-		.border_color({ 0.35f, 0.35f, 0.4f, 1.f })
-		.border_width(1.f);
-	secondary->text_size(18.f);
-	secondary->text("Secondary")
+		.on_click([]() { LOG_INFO("primary clicked"); })
+		.background_color({ 0.15f, 0.45f, 0.95f, 1.f }).rounding(8.f)
+		.tooltip("Submit the form\nShortcut: Enter");
+	btn_row.add_button("Secondary")
 		.hover_color({ 1.0f, 0.2f, 0.25f, 1.f })
 		.pressed_color({ 0.08f, 1.0f, 0.1f, 1.f })
 		.on_click([]() { LOG_INFO("secondary clicked"); })
-		.transition_speed(6.f);
-
-	auto danger = gui->make_child<rv::button>(btn_row,
-		rv::element_size{ rv::styled_size::auto_v(), rv::styled_size::fill() }, gui_font);
-	danger->background_color({ 0.85f, 0.15f, 0.15f, 1.f }).rounding(8.f).text_size(18.f);
-	danger->text("Delete")
+		.background_color({ 0.12f, 0.12f, 0.15f, 0.f }).rounding(8.f)
+		.border_color({ 0.35f, 0.35f, 0.4f, 1.f }).border_width(1.f);
+	btn_row.add_button("Delete")
 		.hover_color({ 0.95f, 0.25f, 0.25f, 1.f })
 		.pressed_color({ 0.65f, 0.1f, 0.1f, 1.f })
-		.on_click([]() { LOG_INFO("delete clicked"); });
+		.on_click([]() { LOG_INFO("delete clicked"); })
+		.background_color({ 0.85f, 0.15f, 0.15f, 1.f }).rounding(8.f);
 
-	auto icon_btn = gui->make_child<rv::button>(btn_row,
-		rv::element_size{ rv::styled_size::px(40.f), rv::styled_size::px(40.f) }, gui_font);
-	icon_btn->background_color({ 0.25f, 0.25f, 0.3f, 1.f }).rounding(20.f);
-	icon_btn->hover_color({ 0.35f, 0.35f, 0.42f, 1.f })
-		.pressed_color({ 0.18f, 0.18f, 0.22f, 1.f })
-		.on_click([]() { LOG_INFO("icon clicked"); });
-	icon_btn->tooltip("Settings");
+	// Text.
+	auto& text_demo = gui->add_container("Text");
+	text_demo.add_label("Hello World").text_size(24.f).text_color({ 1.f, 0.f, 0.f, 1.f });
+	text_demo.add_label("The quick brown fox jumps over the lazy dog and keeps on running.");
 
-	auto label = gui->make_child<rv::text_element>(root,
-		rv::element_size{}, gui_font);
-	label->content("Hello World").text_size(24.f).text_color({ 1.f, 0.f, 0.f, 1.f });
+	// Controls with live labels + two-way binding.
+	auto& controls = gui->add_container("Controls");
+	controls.add_checkbox("Enable feature").bind(&fac_enabled)
+		.on_change([](const bool v) { LOG_INFO("checkbox: {}", v); });
 
-	auto para = gui->make_child<rv::text_element>(root,
-		rv::element_size{ rv::styled_size::px(400.f), rv::styled_size::auto_v() }, gui_font);
-	para->content("The quick brown fox jumps over the lazy dog. This text should wrap across multiple lines automatically.")
-		.text_size(18.f);
+	auto& vol_label = controls.add_label("Volume: 50%");
+	controls.add_slider(0.f, 1.f, 0.5f)
+		.on_change([lbl = &vol_label](const float v) { lbl->content(std::format("Volume: {}%", static_cast<int>(v * 100.f))); })
+		.fill_color({ 0.2f, 0.8f, 0.4f, 1.f })
+		.bind(&fac_volume);
 
-	auto centered = gui->make_child<rv::text_element>(root,
-		rv::element_size{ rv::styled_size::fill(), rv::styled_size::auto_v() }, gui_font);
-	centered->content("Centered Heading")
-		.text_alignment(rv::text_align::center).text_size(28.f);
-
-	auto slider_label = gui->make_child<rv::text_element>(root,
-		rv::element_size{}, gui_font);
-	slider_label->content("Volume: 50%").text_size(16.f);
-
-	auto vol_slider = gui->make_child<rv::slider<>>(root,
-		rv::element_size{ rv::styled_size::px(300.f), rv::styled_size::px(30.f) }, input);
-
-	vol_slider->value(0.5f)
-		.on_change([slider_label](const float v)
+	auto& range_label = controls.add_label("Range: 25% - 75%");
+	controls.add_range_slider(0.f, 1.f, 0.25f, 0.75f)
+		.on_range_change([lbl = &range_label](const float lo, const float hi)
 		{
-			const int pct = static_cast<int>(v * 100.f);
-			slider_label->content("Volume: " + string_t(std::to_string(pct)) + "%");
+			lbl->content(std::format("Range: {}% - {}%", static_cast<int>(lo * 100.f), static_cast<int>(hi * 100.f)));
 		})
-		.padding({ .top = 0, .right = 10.f, .bottom = 0.f, .left = 10.f })
-		.rounding(17.5f);
+		.fill_color({ 0.9f, 0.4f, 0.2f, 1.f });
 
-	auto range_label = gui->make_child<rv::text_element>(root,
-		rv::element_size{}, gui_font);
-	range_label->content("Range: 25% - 75%").text_size(16.f);
+	controls.add_label("Favorite fruit:");
+	controls.add_combo_box({ "Apple", "Banana", "Cherry", "Date", "Elderberry" })
+		.bind(&fac_fruit)
+		.on_change([](const int i) { LOG_INFO("combo selected: {}", i); })
+		.tooltip("Choose which fruit you like best");
 
-	auto price_range = gui->make_child<rv::range_slider<>>(root,
-		rv::element_size{ rv::styled_size::px(300.f), rv::styled_size::px(30.f) }, input);
+	// Text input.
+	auto& inputs = gui->add_container("Text input");
+	auto& name_label = inputs.add_label("Name: edit me");
+	inputs.add_text_input("edit me")
+		.bind(&fac_name)
+		.on_change([lbl = &name_label](const string_t& v) { lbl->content("Name: " + v); })
+		.on_submit([](const string_t& v) { LOG_INFO("submitted: {}", v); });
+	inputs.add_label("Notes (multiline):");
+	inputs.add_text_area("Line one\nLine two").bind(&fac_notes);
 
-	price_range->values(0.25f, 0.75f)
-		.on_range_change([range_label](const float lo, const float hi)
-		{
-			const int lo_pct = static_cast<int>(lo * 100.f);
-			const int hi_pct = static_cast<int>(hi * 100.f);
-			range_label->content("Range: " + string_t(std::to_string(lo_pct)) + "% - " + string_t(std::to_string(hi_pct)) + "%");
-		})
-		.fill_color({ 0.9f, 0.4f, 0.2f, 1.f })
-		.padding({ .top = 0, .right = 10.f, .bottom = 0.f, .left = 10.f })
-		.rounding(17.5f);
-
-	auto int_label = gui->make_child<rv::text_element>(root,
-		rv::element_size{}, gui_font);
-	int_label->content("Level: 5").text_size(16.f);
-
-	auto int_slider = gui->make_child<rv::slider<int>>(root,
-		rv::element_size{ rv::styled_size::px(300.f), rv::styled_size::px(30.f) }, input);
-	int_slider->range(0, 10).value(5)
-		.on_change([int_label](const int v)
-		{
-			int_label->content("Level: " + string_t(std::to_string(v)));
-		})
-		.fill_color({ 0.2f, 0.8f, 0.4f, 1.f });
-
-	static float bound_volume = 0.5f;
-	static int bound_level = 5;
-	vol_slider->bind(&bound_volume);
-	int_slider->bind(&bound_level);
-
-	static bool feature_enabled = true;
-
-	auto cb = gui->make_child<rv::checkbox>(root,
-		rv::element_size{ rv::styled_size::auto_v(), rv::styled_size::auto_v() }, gui_font);
-	cb->label("Enable feature").checked(true).bind(&feature_enabled)
-		.on_change([](const bool v)
-		{
-			LOG_INFO("checkbox: {}", v);
-		})
-		.text_size(16.f);
-
-	auto cb2 = gui->make_child<rv::checkbox>(root,
-		rv::element_size{ rv::styled_size::auto_v(), rv::styled_size::auto_v() }, gui_font);
-	cb2->label("Round checkbox")
-		.on_change([](const bool v)
-		{
-			LOG_INFO("round checkbox: {}", v);
-		})
-		.text_size(16.f).rounding(10.f);
-
-	auto name_label = gui->make_child<rv::text_element>(root,
-		rv::element_size{}, gui_font);
-	name_label->content("Name:").text_size(16.f);
-
-	static string_t name_value = "edit me";
-
-	auto name_input = gui->make_child<rv::text_box>(root,
-		rv::element_size{ rv::styled_size::px(300.f), rv::styled_size::auto_v() }, gui_font, input);
-	name_input->text_size(18.f)
-		.padding({ .top = 8.f, .right = 10.f, .bottom = 8.f, .left = 10.f })
-		.rounding(6.f);
-	name_input->bind(&name_value)
-		.on_submit([](const string_t& v) { LOG_INFO("submitted: {}", v); })
-		.on_change([name_label](const string_t& v)
-		{
-			name_label->content("Name: " + v);
-		});
-
-	auto notes_label = gui->make_child<rv::text_element>(root,
-		rv::element_size{}, gui_font);
-	notes_label->content("Notes (multiline):").text_size(16.f);
-
-	auto notes_input = gui->make_child<rv::text_box>(root,
-		rv::element_size{ rv::styled_size::px(400.f), rv::styled_size::px(120.f) }, gui_font, input);
-	notes_input->multiline(true)
-		.text("Line one\nLine two")
-		.text_size(18.f)
-		.padding({ .top = 8.f, .right = 10.f, .bottom = 8.f, .left = 10.f })
-		.rounding(6.f);
-
-	auto combo_label = gui->make_child<rv::text_element>(root,
-		rv::element_size{}, gui_font);
-	combo_label->content("Favorite fruit:").text_size(16.f);
-
-	static int selected_fruit = 0;
-	auto combo = gui->make_child<rv::combo_box>(root,
-		rv::element_size{ rv::styled_size::px(220.f), rv::styled_size::px(32.f) }, gui_font, input);
-	combo->text_size(16.f);
-	combo->options({ "Apple", "Banana", "Cherry", "Date", "Elderberry" })
-		.bind(&selected_fruit)
-		.on_change([](const int i) { LOG_INFO("combo selected: {}", i); });
-	combo->tooltip("Choose which fruit you like best");
-
-	auto demo_panel = gui->make_child<rv::panel>(root,
-		rv::element_size{ rv::styled_size::px(350.f), rv::styled_size::px(250.f) }, input);
-	
-	demo_panel->draggable(true)
-		.resizable(true)
-		.min_panel_size(250.f, 150.f)
-		.shadow({ 0.f, 0.f, 0.f, 0.6f }, 10.f)
-		.positioning(rv::position_type::absolute)
-		.inset_top(rv::styled_size::px(150.f))
-		.inset_left(rv::styled_size::px(600.f));
-
-	auto panel_content = gui->make_child<rv::element>(demo_panel,
-		rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
-	panel_content->direction(rv::layout_direction::vertical).padding(16.f).gap(12.f)
-		.overflow(rv::overflow_mode::scroll);
-
-	auto p_text = gui->make_child<rv::text_element>(panel_content,
-		rv::element_size{ rv::styled_size::fill(), rv::styled_size::auto_v() }, gui_font);
-	p_text->content("The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.")
-		.text_size(16.f).text_color({ 0.7f, 0.7f, 0.75f, 1.f });
-
+	// A floating, draggable/resizable panel — also built entirely with factories.
 	static bool p_feature = false;
-	auto p_cb = gui->make_child<rv::checkbox>(panel_content,
-		rv::element_size{ rv::styled_size::auto_v(), rv::styled_size::auto_v() }, gui_font);
-	p_cb->text_size(16.f);
-	p_cb->label("Checkbox").bind(&p_feature);
-
-	auto p_slider_label = gui->make_child<rv::text_element>(panel_content,
-		rv::element_size{}, gui_font);
-	p_slider_label->content("Slider ").text_size(16.f);
-
-	auto p_slider = gui->make_child<rv::slider<>>(panel_content,
-		rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(30.f) }, input);
-	p_slider->range(0.1f, 5.0f).value(1.0f)
-		.on_change([p_slider_label](const float v) {
-			p_slider_label->content(std::format("Slider: {:.1f}", v));
-		})
-		.fill_color({ 0.8f, 0.2f, 0.4f, 1.f });
-	p_slider->padding({ .top = 0, .right = 10.f, .bottom = 0.f, .left = 10.f })
-		.rounding(17.5f);
-
-	auto p_btn = gui->make_child<rv::button>(panel_content,
-		rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(35.f) }, gui_font);
-	p_btn->text("Button")
-		.hover_color({ 0.3f, 0.7f, 0.4f, 1.f })
-		.pressed_color({ 0.15f, 0.5f, 0.25f, 1.f });
-	p_btn->text_size(16.f)
-		.background_color({ 0.2f, 0.6f, 0.3f, 1.f });
-	p_btn->shadow({0.2f, 0.6f, 0.3f, 0.25f});
+	auto& demo_panel = gui->add_panel();
+	demo_panel.padding(16.f).gap(12.f)
+		.inset_top(rv::styled_size::px(150.f)).inset_left(rv::styled_size::px(660.f));
+	demo_panel.add_label("Draggable / resizable panel").text_color({ 0.7f, 0.7f, 0.75f, 1.f });
+	demo_panel.add_checkbox("Checkbox").bind(&p_feature);
+	demo_panel.add_slider(0.f, 1.f, 0.5f).fill_color({ 0.8f, 0.2f, 0.4f, 1.f });
+	demo_panel.add_button("Button").background_color({ 0.2f, 0.6f, 0.3f, 1.f }).rounding(6.f);
 
 	MSG msg = { };
 
