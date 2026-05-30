@@ -265,39 +265,25 @@ int main(int argc, char* argv[])
 		int_slider->bind(&bound_level);
 
 		// --- checkboxes ---------------------------------------------------
-		auto cb_row = gui->make_child<rv::element>(gui_root,
-			rv::element_size{ rv::styled_size::fill(), rv::styled_size::auto_v() });
-		cb_row->direction(rv::layout_direction::horizontal).gap(8.f).align(rv::alignment::center);
-
 		static bool feature_enabled = true;
 
-		auto cb = gui->make_child<rv::checkbox>(cb_row,
-			rv::element_size{ rv::styled_size::px(20.f), rv::styled_size::px(20.f) });
-		cb->checked(true).bind(&feature_enabled)
+		auto cb = gui->make_child<rv::checkbox>(gui_root,
+			rv::element_size{ rv::styled_size::auto_v(), rv::styled_size::auto_v() }, gui_font);
+		cb->label("Enable feature").checked(true).bind(&feature_enabled)
 			.on_change([](const bool v)
 			{
 				LOG_INFO("checkbox: {}", v);
-			});
+			})
+			.text_size(16.f);
 
-		auto cb_label = gui->make_child<rv::text_element>(cb_row,
-			rv::element_size{}, gui_font);
-		cb_label->content("Enable feature").text_size(16.f);
-
-		auto cb2_row = gui->make_child<rv::element>(gui_root,
-			rv::element_size{ rv::styled_size::fill(), rv::styled_size::auto_v() });
-		cb2_row->direction(rv::layout_direction::horizontal).gap(8.f).align(rv::alignment::center);
-
-		auto cb2 = gui->make_child<rv::checkbox>(cb2_row,
-			rv::element_size{ rv::styled_size::px(20.f), rv::styled_size::px(20.f) });
-		cb2->rounding(10.f);
-		cb2->on_change([](const bool v)
+		auto cb2 = gui->make_child<rv::checkbox>(gui_root,
+			rv::element_size{ rv::styled_size::auto_v(), rv::styled_size::auto_v() }, gui_font);
+		cb2->label("Round checkbox")
+			.on_change([](const bool v)
 			{
 				LOG_INFO("round checkbox: {}", v);
-			});
-
-		auto cb2_label = gui->make_child<rv::text_element>(cb2_row,
-			rv::element_size{}, gui_font);
-		cb2_label->content("Round checkbox").text_size(16.f);
+			})
+			.text_size(16.f).rounding(10.f);
 
 		// --- text boxes ---------------------------------------------------
 		auto name_label = gui->make_child<rv::text_element>(gui_root,
@@ -366,18 +352,11 @@ int main(int argc, char* argv[])
 		p_text->content("The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.")
 			.text_size(16.f).text_color({ 0.7f, 0.7f, 0.75f, 1.f });
 
-		auto p_cb_row = gui->make_child<rv::element>(panel_content,
-			rv::element_size{ rv::styled_size::fill(), rv::styled_size::auto_v() });
-		p_cb_row->direction(rv::layout_direction::horizontal).gap(8.f).align(rv::alignment::center);
-
 		static bool p_feature = false;
-		auto p_cb = gui->make_child<rv::checkbox>(p_cb_row,
-			rv::element_size{ rv::styled_size::px(20.f), rv::styled_size::px(20.f) });
-		p_cb->bind(&p_feature);
-
-		auto p_cb_label = gui->make_child<rv::text_element>(p_cb_row,
-			rv::element_size{}, gui_font);
-		p_cb_label->content("Checkbox ").text_size(16.f);
+		auto p_cb = gui->make_child<rv::checkbox>(panel_content,
+			rv::element_size{ rv::styled_size::auto_v(), rv::styled_size::auto_v() }, gui_font);
+		p_cb->text_size(16.f);
+		p_cb->label("Checkbox").bind(&p_feature);
 
 		auto p_slider_label = gui->make_child<rv::text_element>(panel_content,
 			rv::element_size{}, gui_font);
