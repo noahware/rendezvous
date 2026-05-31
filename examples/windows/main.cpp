@@ -40,9 +40,9 @@ static LRESULT CALLBACK wnd_proc(const HWND hwnd, const UINT msg, const WPARAM w
 static rv::plot_lines& add_data_visualization_demo(rv::gui& g)
 {
 	auto& viz = g.add_container("Visualization");
-	viz.add_label("Frame time (ms) - hover to inspect");
+	viz.add_label("Frame time (ms) - scroll to zoom, drag to pan");
 	auto& fps_plot = viz.add_plot_lines();
-	fps_plot.capacity(180).overlay("frame ms").line_color({ 0.4f, 0.9f, 0.6f, 1.f });
+	fps_plot.unbounded().view_window(300).overlay("frame ms").line_color({ 0.4f, 0.9f, 0.6f, 1.f });
 
 	viz.add_label("Static sine wave");
 	vector_t<float> sine_samples(96);

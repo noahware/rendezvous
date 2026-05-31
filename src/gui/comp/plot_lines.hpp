@@ -22,6 +22,7 @@ namespace rv
 			data_.assign(values.begin(), values.end());
 			offset_ = 0;
 			streaming_ = false;
+			reset_view();
 
 			return *this;
 		}
@@ -30,12 +31,11 @@ namespace rv
 		{
 			streaming_ = true;
 
-			if (capacity_ == 0)
+			if (unbounded_)
 			{
-				capacity_ = 128;
+				data_.push_back(v);
 			}
-
-			if (data_.size() < capacity_)
+			else if (data_.size() < capacity_)
 			{
 				data_.push_back(v);
 			}
@@ -60,8 +60,35 @@ namespace rv
 
 		plot_lines& capacity(const cstd::size_t n) noexcept
 		{
-			capacity_ = n;
+			capacity_ = n == 0 ? 1 : n;
+			unbounded_ = false;
 			streaming_ = true;
+
+			return *this;
+		}
+
+		plot_lines& unbounded(const bool on = true) noexcept
+		{
+			unbounded_ = on;
+			streaming_ = true;
+
+			return *this;
+		}
+
+		plot_lines& view_window(const cstd::size_t samples) noexcept
+		{
+			configured_window_ = samples;
+
+			if (samples == 0)
+			{
+				fit_all_ = true;
+			}
+			else
+			{
+				fit_all_ = false;
+				follow_live_ = true;
+				view_span_ = static_cast<float>(samples);
+			}
 
 			return *this;
 		}
@@ -117,6 +144,86 @@ namespace rv
 			return *this;
 		}
 
+		plot_lines& interactive(const bool on) noexcept
+		{
+			interactive_ = on;
+
+			return *this;
+		}
+
+		bool on_mouse_click() override
+		{
+			if (interactive_ && input_)
+			{
+				dragging_ = true;
+				last_mouse_x_ = input_->mouse_pos().x;
+			}
+
+			return interactive_;
+		}
+
+		void update(const float dt) override
+		{
+			element::update(dt);
+
+			const cstd::size_t count = data_.size();
+
+			if (count < 2)
+			{
+				dragging_ = false;
+				return;
+			}
+
+			const float fcount = static_cast<float>(count);
+			const float w = computed_size_.x;
+
+			if (fit_all_)
+			{
+				view_span_ = fcount;
+				view_offset_ = 0.f;
+			}
+			else
+			{
+				view_span_ = clampf(view_span_, 2.f, fcount);
+
+				if (follow_live_)
+				{
+					view_offset_ = fcount - view_span_;
+				}
+			}
+
+			if (interactive_ && input_ && hovered_ && w > 0.f)
+			{
+				apply_zoom(input_->scroll_delta(), w, fcount);
+			}
+
+			if (dragging_)
+			{
+				if (!input_ || !input_->is_mouse_down(0))
+				{
+					dragging_ = false;
+				}
+				else if (!fit_all_ && w > 0.f)
+				{
+					const float mx = input_->mouse_pos().x;
+					view_offset_ -= (mx - last_mouse_x_) * ((view_span_ - 1.f) / w);
+					last_mouse_x_ = mx;
+					follow_live_ = false;
+				}
+				else if (input_)
+				{
+					last_mouse_x_ = input_->mouse_pos().x;
+				}
+			}
+
+			if (!fit_all_)
+			{
+				const float max_off = cstd::fmaxf(0.f, fcount - view_span_);
+				view_offset_ = clampf(view_offset_, 0.f, max_off);
+				follow_live_ = (view_offset_ + view_span_ >= fcount - 0.5f);
+			}
+		}
+
 	protected:
 		void init_defaults() noexcept
 		{
@@ -126,12 +233,59 @@ namespace rv
 			style_.rounding = 6.f;
 		}
 
+		void reset_view() noexcept
+		{
+			follow_live_ = true;
+			view_offset_ = 0.f;
+			dragging_ = false;
+
+			if (configured_window_ > 0)
+			{
+				fit_all_ = false;
+				view_span_ = static_cast<float>(configured_window_);
+			}
+			else
+			{
+				fit_all_ = true;
+				view_span_ = 0.f;
+			}
+		}
+
+		[[nodiscard]] static float clampf(const float v, const float lo, const float hi) noexcept
+		{
+			return cstd::fmaxf(lo, cstd::fminf(hi, v));
+		}
+
+		void apply_zoom(const float scroll, const float w, const float fcount) noexcept
+		{
+			if (scroll == 0.f)
+			{
+				return;
+			}
+
+			const float fx = clampf((input_->mouse_pos().x - visual_pos().x) / w, 0.f, 1.f);
+			const float cursor = view_offset_ + fx * (view_span_ - 1.f);
+			const float factor = clampf(1.f - 0.15f * scroll, 0.2f, 2.f);
+			const float new_span = clampf(view_span_ * factor, 2.f, fcount);
+
+			if (new_span >= fcount)
+			{
+				fit_all_ = true;
+			}
+			else
+			{
+				fit_all_ = false;
+				view_span_ = new_span;
+				view_offset_ = cursor - fx * (new_span - 1.f);
+			}
+		}
+
 		[[nodiscard]] float sample(const cstd::size_t i) const noexcept
 		{
 			return data_[(offset_ + i) % data_.size()];
 		}
 
-		void resolve_scale(float& lo, float& hi) const noexcept
+		void resolve_scale(const cstd::size_t i0, const cstd::size_t i1, float& lo, float& hi) const noexcept
 		{
 			if (!autoscale_)
 			{
@@ -140,10 +294,10 @@ namespace rv
 			}
 			else
 			{
-				lo = sample(0);
+				lo = sample(i0);
 				hi = lo;
 
-				for (cstd::size_t i = 1; i < data_.size(); ++i)
+				for (cstd::size_t i = i0 + 1; i <= i1; ++i)
 				{
 					const float v = sample(i);
 					lo = cstd::fminf(lo, v);
@@ -191,67 +345,99 @@ namespace rv
 
 		void render_self(gui_renderer& renderer, const position min, const position max) const override
 		{
+			renderer.push_clip_rect(min, max, style_.rounding.value_or(0.f));
+
 			const cstd::size_t count = data_.size();
 
 			if (count == 0)
 			{
 				draw_overlay(renderer, min);
+				renderer.pop_clip_rect();
 				return;
 			}
 
 			const float w = max.x - min.x;
 			const float h = max.y - min.y;
+			const float fcount = static_cast<float>(count);
+
+			const float vo = (!fit_all_ && count >= 2) ? view_offset_ : 0.f;
+			const float vs = (!fit_all_ && count >= 2) ? view_span_ : fcount;
+			const float denom = vs > 1.f ? vs - 1.f : 1.f;
+
+			cstd::size_t i0 = 0;
+			cstd::size_t i1 = count - 1;
+
+			if (!fit_all_ && count >= 2)
+			{
+				i0 = static_cast<cstd::size_t>(cstd::fmaxf(0.f, vo));
+				const float last_f = vo + vs - 1.f;
+				i1 = static_cast<cstd::size_t>(cstd::fmaxf(0.f, last_f)) + 1;
+				i1 = i1 > count - 1 ? count - 1 : i1;
+				i0 = i0 > count - 1 ? count - 1 : i0;
+				i1 = i1 < i0 ? i0 : i1;
+			}
 
 			float lo = 0.f;
 			float hi = 1.f;
-			resolve_scale(lo, hi);
-
+			resolve_scale(i0, i1, lo, hi);
 			const float inv_range = 1.f / (hi - lo);
-			const float step = count > 1 ? w / static_cast<float>(count - 1) : 0.f;
 
 			const auto point_at = [&](const cstd::size_t i) noexcept -> position
 			{
-				const float t = (sample(i) - lo) * inv_range;
-				const float cl = cstd::fmaxf(0.f, cstd::fminf(1.f, t));
-				return { min.x + step * static_cast<float>(i), max.y - cl * h };
+				const float cl = clampf((sample(i) - lo) * inv_range, 0.f, 1.f);
+				return { min.x + (static_cast<float>(i) - vo) / denom * w, max.y - cl * h };
 			};
 
-			if (fill_ && count > 1)
+			const cstd::size_t vis = i1 - i0 + 1;
+			const cstd::size_t max_pts = static_cast<cstd::size_t>(cstd::fmaxf(2.f, w));
+			const cstd::size_t stride = vis > max_pts ? vis / max_pts : 1;
+
+			if (i1 > i0)
 			{
-				for (cstd::size_t i = 0; i < count; ++i)
+				if (fill_)
 				{
-					renderer.add_path_point(point_at(i));
+					emit_path(renderer, point_at, i0, i1, stride);
+					renderer.add_path_point({ point_at(i1).x, max.y });
+					renderer.add_path_point({ point_at(i0).x, max.y });
+					renderer.draw_filled_path(fill_color_);
 				}
 
-				renderer.add_path_point({ max.x, max.y });
-				renderer.add_path_point({ min.x, max.y });
-				renderer.draw_filled_path(fill_color_);
-			}
-
-			if (count > 1)
-			{
-				for (cstd::size_t i = 0; i < count; ++i)
-				{
-					renderer.add_path_point(point_at(i));
-				}
-
+				emit_path(renderer, point_at, i0, i1, stride);
 				renderer.draw_lined_path(line_color_, line_thickness_, false, 1.f,
 				                         cap_style::round, join_style::miter);
 			}
 			else
 			{
-				renderer.draw_circle_filled(point_at(0), line_thickness_ + 1.f, line_color_);
+				renderer.draw_circle_filled(point_at(i0), line_thickness_ + 1.f, line_color_);
 			}
 
-			draw_probe(renderer, min, max, count, point_at);
+			draw_probe(renderer, min, max, count, vo, denom, i0, i1, point_at);
 			draw_overlay(renderer, min);
+
+			renderer.pop_clip_rect();
+		}
+
+		template <class Fn>
+		static void emit_path(gui_renderer& renderer, Fn&& point_at, const cstd::size_t i0,
+		                      const cstd::size_t i1, const cstd::size_t stride)
+		{
+			for (cstd::size_t i = i0; i <= i1; i += stride)
+			{
+				renderer.add_path_point(point_at(i));
+			}
+
+			if ((i1 - i0) % stride != 0)
+			{
+				renderer.add_path_point(point_at(i1));
+			}
 		}
 
 		template <class Fn>
 		void draw_probe(gui_renderer& renderer, const position min, const position max,
-		                const cstd::size_t count, Fn&& point_at) const
+		                const cstd::size_t count, const float vo, const float denom,
+		                const cstd::size_t i0, const cstd::size_t i1, Fn&& point_at) const
 		{
-			if (!hovered_ || !input_)
+			if (!hovered_ || dragging_ || !input_)
 			{
 				return;
 			}
@@ -263,16 +449,12 @@ namespace rv
 				return;
 			}
 
-			const position mouse = input_->mouse_pos();
-			const float t = (mouse.x - min.x) / w;
-			const float clamped = cstd::fmaxf(0.f, cstd::fminf(1.f, t));
+			const float fx = clampf((input_->mouse_pos().x - min.x) / w, 0.f, 1.f);
+			cstd::size_t idx = static_cast<cstd::size_t>(vo + fx * denom + 0.5f);
 
-			cstd::size_t idx = static_cast<cstd::size_t>(clamped * static_cast<float>(count - 1) + 0.5f);
-
-			if (idx >= count)
-			{
-				idx = count - 1;
-			}
+			idx = idx < i0 ? i0 : idx;
+			idx = idx > i1 ? i1 : idx;
+			idx = idx > count - 1 ? count - 1 : idx;
 
 			const position pt = point_at(idx);
 
@@ -318,9 +500,18 @@ namespace rv
 		vector_t<float> data_;
 		cstd::size_t capacity_ = 128;
 		cstd::size_t offset_ = 0;
+		cstd::size_t configured_window_ = 0;
 		bool streaming_ = false;
+		bool unbounded_ = false;
 		bool autoscale_ = true;
 		bool fill_ = true;
+		bool interactive_ = true;
+		bool fit_all_ = true;
+		bool follow_live_ = true;
+		bool dragging_ = false;
+		float view_offset_ = 0.f;
+		float view_span_ = 0.f;
+		float last_mouse_x_ = 0.f;
 		float scale_min_ = 0.f;
 		float scale_max_ = 1.f;
 		float line_thickness_ = 1.5f;
