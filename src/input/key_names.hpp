@@ -8,6 +8,11 @@ namespace rv
 		switch (k)
 		{
 		case key::none:             return "None";
+		case key::mouse_left:       return "Mouse Left";
+		case key::mouse_right:      return "Mouse Right";
+		case key::mouse_middle:     return "Mouse Middle";
+		case key::mouse_4:          return "Mouse 4";
+		case key::mouse_5:          return "Mouse 5";
 		case key::backspace:        return "Backspace";
 		case key::tab:              return "Tab";
 		case key::enter:            return "Enter";

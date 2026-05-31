@@ -24,6 +24,13 @@ namespace rv
 	{
 		none          = 0x00,
 
+		// Mouse buttons
+		mouse_left    = 0x01,
+		mouse_right   = 0x02,
+		mouse_middle  = 0x04,
+		mouse_4       = 0x05,
+		mouse_5       = 0x06,
+
 		// Typing
 		backspace     = 0x08,
 		tab           = 0x09,

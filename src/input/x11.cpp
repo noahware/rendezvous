@@ -198,9 +198,11 @@ rv::x11_input::button_type rv::x11_input::translate_button(const cstd::uint32_t 
 {
 	switch (button)
 	{
-		case Button1: return 0;
-		case Button2: return 2;
-		case Button3: return 1;
+		case Button1: return 0;  // left
+		case Button2: return 2;  // middle
+		case Button3: return 1;  // right
+		case 8:       return 3;  // side back (mouse 4)
+		case 9:       return 4;  // side forward (mouse 5)
 		default:      return -1;
 	}
 }

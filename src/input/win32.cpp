@@ -75,6 +75,24 @@ bool rv::win32_input::handle_message(const HWND hwnd, const UINT msg, const WPAR
 		state_.mouse_clicked[2] = false;
 		return true;
 
+	case WM_XBUTTONDOWN:
+	case WM_XBUTTONDBLCLK:
+	{
+		const int btn = (GET_XBUTTON_WPARAM(wparam) == XBUTTON1) ? 3 : 4;
+		if (!state_.mouse_down[btn]) state_.mouse_clicked[btn] = true;
+		state_.mouse_down[btn] = true;
+		return true;
+	}
+
+	case WM_XBUTTONUP:
+	{
+		const int btn = (GET_XBUTTON_WPARAM(wparam) == XBUTTON1) ? 3 : 4;
+		if (state_.mouse_down[btn]) state_.mouse_released[btn] = true;
+		state_.mouse_down[btn] = false;
+		state_.mouse_clicked[btn] = false;
+		return true;
+	}
+
 	case WM_MOUSEWHEEL:
 		state_.scroll_delta += static_cast<float>(GET_WHEEL_DELTA_WPARAM(wparam)) / static_cast<float>(WHEEL_DELTA);
 		return true;

@@ -97,7 +97,7 @@ namespace rv
 		{
 			if (listening_)
 			{
-				cancel();
+				commit(key::mouse_left);
 			}
 			else
 			{
@@ -258,6 +258,7 @@ namespace rv
 
 		void scan_keys()
 		{
+			// keyboard scan
 			for (cstd::int32_t i = 0; i < input_state::key_count; ++i)
 			{
 				if (!input_->is_key_pressed(i))
@@ -265,7 +266,7 @@ namespace rv
 					continue;
 				}
 
-				// skip mouse button codes
+				// skip mouse button VK codes — those are handled below via the mouse arrays
 				if (i >= 0x01 && i <= 0x06)
 				{
 					continue;
@@ -286,6 +287,19 @@ namespace rv
 
 				commit(static_cast<key>(i));
 				return;
+			}
+
+			// mouse button scan (left click is handled via on_mouse_click)
+			constexpr key mouse_buttons[] = { key::mouse_right, key::mouse_middle, key::mouse_4, key::mouse_5 };
+			constexpr input::button_type mouse_indices[] = { 1, 2, 3, 4 };
+
+			for (cstd::int32_t b = 0; b < 4; ++b)
+			{
+				if (input_->is_mouse_clicked(mouse_indices[b]))
+				{
+					commit(mouse_buttons[b]);
+					return;
+				}
 			}
 		}
 
