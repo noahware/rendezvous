@@ -21,6 +21,12 @@
 rv::vector_2d<float> screen_size = { 1280.f, 720.f };
 shared_ptr_t<rv::win32_input> input = { };
 
+// Live debug values surfaced by the value inspector + plot_var demo.
+static float g_dbg_fps = 0.f;
+static float g_dbg_ms = 0.f;
+static int g_dbg_frames = 0;
+static bool g_dbg_vsync = true;
+
 static LRESULT CALLBACK wnd_proc(const HWND hwnd, const UINT msg, const WPARAM wparam, const LPARAM lparam)
 {
 	if (msg == WM_SIZE && wparam != SIZE_MINIMIZED)
@@ -51,6 +57,16 @@ static rv::plot_lines& add_data_visualization_demo(rv::gui& g)
 		sine_samples[i] = cstd::sinf(static_cast<float>(i) * 0.13f);
 	}
 	viz.add_plot_lines().data(sine_samples).range(-1.f, 1.f);
+
+	// Live value inspection: a name->value table reading pointers each frame,
+	// plus a plot_var that auto-samples a bound variable (no manual push_value).
+	auto& dbg = g.add_container("Live values");
+	dbg.add_inspector()
+		.watch("fps", &g_dbg_fps)
+		.watch("frame ms", &g_dbg_ms)
+		.watch("frame #", &g_dbg_frames)
+		.watch("vsync", &g_dbg_vsync);
+	dbg.add_plot_var("fps", &g_dbg_fps);
 
 	return fps_plot;
 }
@@ -409,7 +425,7 @@ cstd::int32_t main(int argc, char* argv[])
 
 	// Buttons. Widget-specific setters (hover/pressed/on_click) chain first while the result is
 	// still a button&; base-element setters (background_color/rounding/tooltip) come after.
-	auto& buttons = gui->add_container("Buttons");
+	/*auto& buttons = gui->add_container("Buttons");
 	auto& btn_row = buttons.add_row();
 	btn_row.add_button("Primary")
 		.hover_color({ 0.25f, 0.55f, 1.f, 1.f })
@@ -457,7 +473,7 @@ cstd::int32_t main(int argc, char* argv[])
 	controls.add_combo_box({ "Apple", "Banana", "Cherry", "Date", "Elderberry" })
 		.bind(&fac_fruit)
 		.on_change([](const int i) { LOG_INFO("combo selected: {}", i); })
-		.tooltip("Choose which fruit you like best");
+		.tooltip("Choose which fruit you like best");*/
 
 	// Text input.
 	auto& inputs = gui->add_container("Text input");
@@ -665,7 +681,10 @@ cstd::int32_t main(int argc, char* argv[])
 			renderer->draw_text(*font, text_pos, text, { 0.4f, 1.f, 1.f, 1.f }, size);
 		}
 
-		fps_plot.push_value(renderer->state().delta_time * 1000.f);
+		g_dbg_ms = renderer->state().delta_time * 1000.f;
+		g_dbg_fps = g_dbg_ms > 0.f ? 1000.f / g_dbg_ms : 0.f;
+		++g_dbg_frames;
+		fps_plot.push_value(g_dbg_ms);
 
 		gui->render(screen_size);
 

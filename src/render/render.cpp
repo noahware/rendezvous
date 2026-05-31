@@ -1481,6 +1481,50 @@ void rv::renderer::draw_filled_path(const color col, const float fringe_width)
     path_points_.clear();
 }
 
+void rv::renderer::draw_filled_path_monotone(const color col, const float baseline_y)
+{
+    const cstd::uint32_t n = static_cast<cstd::uint32_t>(path_points_.size());
+
+    if (n < 2)
+    {
+        path_points_.clear();
+
+        return;
+    }
+
+    vector_t<vertex> vertices;
+    vertices.reserve(n * 2);
+
+    for (const position &p : path_points_)
+    {
+        vertices.push_back(vertex{.pos = to_ndc(p), .col = col});
+        vertices.push_back(vertex{.pos = to_ndc(position{p.x, baseline_y}), .col = col});
+    }
+
+    vector_t<cstd::uint32_t> indices;
+    indices.reserve((n - 1) * 6);
+
+    for (cstd::uint32_t i = 0; i + 1 < n; ++i)
+    {
+        const cstd::uint32_t t0 = i * 2;
+        const cstd::uint32_t b0 = i * 2 + 1;
+        const cstd::uint32_t t1 = (i + 1) * 2;
+        const cstd::uint32_t b1 = (i + 1) * 2 + 1;
+
+        indices.push_back(t0);
+        indices.push_back(t1);
+        indices.push_back(b1);
+
+        indices.push_back(t0);
+        indices.push_back(b1);
+        indices.push_back(b0);
+    }
+
+    draw_indexed_vertices(vertices, indices);
+
+    path_points_.clear();
+}
+
 void rv::renderer::draw_shadow_lined_path(const color col, const float thickness, const float shadow_blur, const bool closed)
 {
     draw_lined_path(col, thickness, closed, shadow_blur, cap_style::round, join_style::bevel);

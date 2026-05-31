@@ -132,7 +132,11 @@ namespace rv
 		void add_path_point(position pos);
 		void draw_lined_path(color col, float thickness = 1.f, bool closed = true, float fringe_width = 1.f, cap_style cap = cap_style::flat, join_style join = join_style::miter);
 		void draw_filled_path(color col, float fringe_width = 1.f);
-		
+		// Fills the area between the accumulated path points (treated as an x-monotone top
+		// edge, ordered left-to-right) and a horizontal baseline. Triangulated as a strip in
+		// O(n) — avoids the O(n^2) ear-clipping of draw_filled_path. Clears the path buffer.
+		void draw_filled_path_monotone(color col, float baseline_y);
+
 		void draw_shadow_lined_path(color col, float thickness = 1.f, float shadow_blur = 15.f, bool closed = true);
 		void draw_shadow_filled_path(color col, float shadow_blur = 15.f);
 

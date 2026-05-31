@@ -4,7 +4,6 @@
 #include "../text_metrics.hpp"
 #include "../../input/input.hpp"
 #include "../../util/string.hpp"
-#include <charconv>
 
 namespace rv
 {
@@ -70,6 +69,14 @@ namespace rv
 		plot_lines& unbounded(const bool on = true) noexcept
 		{
 			unbounded_ = on;
+			streaming_ = true;
+
+			return *this;
+		}
+
+		plot_lines& bind(const float* ptr) noexcept
+		{
+			bound_ = ptr;
 			streaming_ = true;
 
 			return *this;
@@ -165,6 +172,11 @@ namespace rv
 		void update(const float dt) override
 		{
 			element::update(dt);
+
+			if (bound_)
+			{
+				push_value(*bound_);
+			}
 
 			const cstd::size_t count = data_.size();
 
@@ -331,16 +343,7 @@ namespace rv
 
 		[[nodiscard]] static string_t format_sample(const cstd::size_t idx, const float v)
 		{
-			char buf[64];
-			char* p = buf;
-			char* const last = buf + sizeof(buf);
-
-			p = std::to_chars(p, last, idx).ptr;
-			*p++ = ':';
-			*p++ = ' ';
-			p = std::to_chars(p, last, v, std::chars_format::fixed, 3).ptr;
-
-			return string_t(buf, p);
+			return cstd::format("{}: {:.3f}", idx, v);
 		}
 
 		void render_self(gui_renderer& renderer, const position min, const position max) const override
@@ -397,9 +400,7 @@ namespace rv
 				if (fill_)
 				{
 					emit_path(renderer, point_at, i0, i1, stride);
-					renderer.add_path_point({ point_at(i1).x, max.y });
-					renderer.add_path_point({ point_at(i0).x, max.y });
-					renderer.draw_filled_path(fill_color_);
+					renderer.draw_filled_path_monotone(fill_color_, max.y);
 				}
 
 				emit_path(renderer, point_at, i0, i1, stride);
@@ -503,6 +504,7 @@ namespace rv
 		cstd::size_t configured_window_ = 0;
 		bool streaming_ = false;
 		bool unbounded_ = false;
+		const float* bound_ = nullptr;
 		bool autoscale_ = true;
 		bool fill_ = true;
 		bool interactive_ = true;

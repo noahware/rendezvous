@@ -17,6 +17,7 @@ namespace rv
 	class combo_box;
 	class panel;
 	class plot_lines;
+	class value_inspector;
 	template <class T> class slider;
 	template <class T> class range_slider;
 
@@ -31,6 +32,8 @@ namespace rv
 		combo_box& add_combo_box(vector_t<string_t> options = {});                                \
 		panel& add_panel();                                                                       \
 		plot_lines& add_plot_lines();                                                             \
+		plot_lines& add_plot_var(string_view_t label, const float* value);                        \
+		value_inspector& add_inspector();                                                         \
 		element& add_row();                                                                       \
 		element& add_column();                                                                    \
 		element& add_container(string_view_t title = {});

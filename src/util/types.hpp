@@ -9,6 +9,8 @@
 #include <array>
 #include <optional>
 #include <span>
+#include <format>
+#include <utility>
 #include <chrono>
 #include <unordered_map>
 #include <functional>
@@ -33,6 +35,9 @@ namespace cstd
 
 	template <class T>
 	inline constexpr bool is_integral_v = std::is_integral_v<T>;
+
+	template <class T, class U>
+	inline constexpr bool is_same_v = std::is_same_v<T, U>;
 }
 
 template <class T, cstd::size_t Count>
@@ -88,6 +93,13 @@ namespace cstd
 	inline void memcpy(void* destination, const void* source, size_t size)
 	{
 		std::memcpy(destination, source, size);
+	}
+
+	// Text formatting. Wraps std::format so callers never touch std directly.
+	template <class... Args>
+	[[nodiscard]] inline string_t format(const std::format_string<Args...> fmt, Args&&... args)
+	{
+		return std::format(fmt, std::forward<Args>(args)...);
 	}
 
 	inline float sqrtf(const float x)

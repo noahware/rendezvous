@@ -21,6 +21,12 @@
 
 rv::vector_2d<float> screen_size = { 1280.f, 720.f };
 
+// Live debug values surfaced by the value inspector + plot_var demo.
+static float g_dbg_fps = 0.f;
+static float g_dbg_ms = 0.f;
+static int g_dbg_frames = 0;
+static bool g_dbg_vsync = true;
+
 static rv::plot_lines& add_data_visualization_demo(rv::gui& g)
 {
 	auto& viz = g.add_container("Visualization");
@@ -35,6 +41,16 @@ static rv::plot_lines& add_data_visualization_demo(rv::gui& g)
 		sine_samples[i] = cstd::sinf(static_cast<float>(i) * 0.13f);
 	}
 	viz.add_plot_lines().data(sine_samples).range(-1.f, 1.f);
+
+	// Live value inspection: a name->value table reading pointers each frame,
+	// plus a plot_var that auto-samples a bound variable (no manual push_value).
+	auto& dbg = g.add_container("Live values");
+	dbg.add_inspector()
+		.watch("fps", &g_dbg_fps)
+		.watch("frame ms", &g_dbg_ms)
+		.watch("frame #", &g_dbg_frames)
+		.watch("vsync", &g_dbg_vsync);
+	dbg.add_plot_var("fps", &g_dbg_fps);
 
 	return fps_plot;
 }
@@ -404,7 +420,10 @@ int main(int argc, char* argv[])
 			renderer->draw_text(*font, text_pos, text, { 0.4f, 1.f, 1.f, 1.f }, size);
 		}
 
-		fps_plot.push_value(renderer->state().delta_time * 1000.f);
+		g_dbg_ms = renderer->state().delta_time * 1000.f;
+		g_dbg_fps = g_dbg_ms > 0.f ? 1000.f / g_dbg_ms : 0.f;
+		++g_dbg_frames;
+		fps_plot.push_value(g_dbg_ms);
 
 		gui->render(screen_size);
 		renderer->end_frame();

@@ -9,6 +9,7 @@
 #include "comp/slider.hpp"
 #include "comp/panel.hpp"
 #include "comp/plot_lines.hpp"
+#include "comp/value_inspector.hpp"
 
 // Single convenience include that pulls in every widget and defines the add_* factory methods
 // for both `element` and `gui`. Include this (instead of the individual comp headers) to build
@@ -31,6 +32,7 @@ namespace rv
 	[[nodiscard]] inline element_size default_combo_size() noexcept     { return { styled_size::fill(), styled_size::px(32.f) }; }
 	[[nodiscard]] inline element_size default_panel_size() noexcept     { return { styled_size::px(320.f), styled_size::px(220.f) }; }
 	[[nodiscard]] inline element_size default_plot_size() noexcept      { return { styled_size::fill(), styled_size::px(120.f) }; }
+	[[nodiscard]] inline element_size default_inspector_size() noexcept { return { styled_size::fill(), styled_size::auto_v() }; }
 	[[nodiscard]] inline element_size default_row_size() noexcept       { return { styled_size::fill(), styled_size::auto_v() }; }
 	[[nodiscard]] inline element_size default_column_size() noexcept    { return { styled_size::auto_v(), styled_size::auto_v() }; }
 	[[nodiscard]] inline element_size default_container_size() noexcept { return { styled_size::fill(), styled_size::auto_v() }; }
@@ -83,6 +85,12 @@ namespace rv
 		inline plot_lines& CLS::add_plot_lines() {                                                     \
 			auto g = GUI; auto w = g->make_child<plot_lines>(PARENT, default_plot_size(), g->font(), g->get_input()); \
 			w->autoscale(); return *w; }                                                               \
+		inline plot_lines& CLS::add_plot_var(const string_view_t label, const float* value) {          \
+			auto g = GUI; auto w = g->make_child<plot_lines>(PARENT, default_plot_size(), g->font(), g->get_input()); \
+			w->capacity(300).bind(value).overlay(label); return *w; }                                  \
+		inline value_inspector& CLS::add_inspector() {                                                 \
+			auto g = GUI; auto w = g->make_child<value_inspector>(PARENT, default_inspector_size(), g->font()); \
+			w->text_size(default_text_size(*g)); return *w; }                                          \
 		inline element& CLS::add_row() {                                                               \
 			auto g = GUI; auto w = g->make_child<element>(PARENT, default_row_size());                  \
 			w->direction(layout_direction::horizontal).gap(default_gap(*g)); return *w; }               \

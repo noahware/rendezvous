@@ -81,6 +81,7 @@ namespace rv
 		virtual void draw_lined_path(color col, float thickness = 1.f, bool closed = true, float fringe = 1.f,
 		                             cap_style cap = cap_style::flat, join_style join = join_style::miter) noexcept = 0;
 		virtual void draw_filled_path(color col, float fringe = 1.f) noexcept = 0;
+		virtual void draw_filled_path_monotone(color col, float baseline_y) noexcept = 0;
 		virtual void push_clip_rect(position min, position max, float rounding = 0.f, rounding_flags flags = rounding_flags_all) noexcept = 0;
 		virtual void pop_clip_rect() noexcept = 0;
 		virtual float delta_time() const noexcept = 0;
@@ -142,6 +143,11 @@ namespace rv
 		void draw_filled_path(const color col, const float fringe) noexcept override
 		{
 			renderer_->draw_filled_path(col, fringe);
+		}
+
+		void draw_filled_path_monotone(const color col, const float baseline_y) noexcept override
+		{
+			renderer_->draw_filled_path_monotone(col, baseline_y);
 		}
 
 		void push_clip_rect(const position min, const position max, const float rounding = 0.f, const rounding_flags flags = rounding_flags_all) noexcept override
