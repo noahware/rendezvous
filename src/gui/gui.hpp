@@ -76,6 +76,11 @@ namespace rv
 		                              rounding_flags flags = rounding_flags_all,
 		                              bool cut_background = false) noexcept = 0;
 		virtual void draw_text(const gui_font& font, position pos, string_view_t text, color col, float size = 0.f) noexcept = 0;
+		virtual void draw_line(position a, position b, color col, float thickness = 1.f) noexcept = 0;
+		virtual void add_path_point(position p) noexcept = 0;
+		virtual void draw_lined_path(color col, float thickness = 1.f, bool closed = true, float fringe = 1.f,
+		                             cap_style cap = cap_style::flat, join_style join = join_style::miter) noexcept = 0;
+		virtual void draw_filled_path(color col, float fringe = 1.f) noexcept = 0;
 		virtual void push_clip_rect(position min, position max, float rounding = 0.f, rounding_flags flags = rounding_flags_all) noexcept = 0;
 		virtual void pop_clip_rect() noexcept = 0;
 		virtual float delta_time() const noexcept = 0;
@@ -116,6 +121,27 @@ namespace rv
 		{
 			const auto* impl = static_cast<const gui_font_impl*>(&gf);
 			renderer_->draw_text(impl->underlying(), pos, text, col, size);
+		}
+
+		void draw_line(const position a, const position b, const color col, const float thickness) noexcept override
+		{
+			renderer_->draw_line(a, b, col, thickness);
+		}
+
+		void add_path_point(const position p) noexcept override
+		{
+			renderer_->add_path_point(p);
+		}
+
+		void draw_lined_path(const color col, const float thickness, const bool closed, const float fringe,
+		                     const cap_style cap, const join_style join) noexcept override
+		{
+			renderer_->draw_lined_path(col, thickness, closed, fringe, cap, join);
+		}
+
+		void draw_filled_path(const color col, const float fringe) noexcept override
+		{
+			renderer_->draw_filled_path(col, fringe);
 		}
 
 		void push_clip_rect(const position min, const position max, const float rounding = 0.f, const rounding_flags flags = rounding_flags_all) noexcept override

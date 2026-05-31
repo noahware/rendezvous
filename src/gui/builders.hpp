@@ -8,6 +8,7 @@
 #include "comp/combo_box.hpp"
 #include "comp/slider.hpp"
 #include "comp/panel.hpp"
+#include "comp/plot_lines.hpp"
 
 // Single convenience include that pulls in every widget and defines the add_* factory methods
 // for both `element` and `gui`. Include this (instead of the individual comp headers) to build
@@ -29,6 +30,7 @@ namespace rv
 	[[nodiscard]] inline element_size default_slider_size() noexcept    { return { styled_size::fill(), styled_size::px(28.f) }; }
 	[[nodiscard]] inline element_size default_combo_size() noexcept     { return { styled_size::fill(), styled_size::px(32.f) }; }
 	[[nodiscard]] inline element_size default_panel_size() noexcept     { return { styled_size::px(320.f), styled_size::px(220.f) }; }
+	[[nodiscard]] inline element_size default_plot_size() noexcept      { return { styled_size::fill(), styled_size::px(120.f) }; }
 	[[nodiscard]] inline element_size default_row_size() noexcept       { return { styled_size::fill(), styled_size::auto_v() }; }
 	[[nodiscard]] inline element_size default_column_size() noexcept    { return { styled_size::auto_v(), styled_size::auto_v() }; }
 	[[nodiscard]] inline element_size default_container_size() noexcept { return { styled_size::fill(), styled_size::auto_v() }; }
@@ -78,6 +80,9 @@ namespace rv
 		inline panel& CLS::add_panel() {                                                               \
 			auto g = GUI; auto w = g->make_child<panel>(PARENT, default_panel_size(), g->get_input());   \
 			w->draggable(true).resizable(true); w->shadow(default_panel_shadow(), 10.f); return *w; }   \
+		inline plot_lines& CLS::add_plot_lines() {                                                     \
+			auto g = GUI; auto w = g->make_child<plot_lines>(PARENT, default_plot_size(), g->font(), g->get_input()); \
+			w->autoscale(); return *w; }                                                               \
 		inline element& CLS::add_row() {                                                               \
 			auto g = GUI; auto w = g->make_child<element>(PARENT, default_row_size());                  \
 			w->direction(layout_direction::horizontal).gap(default_gap(*g)); return *w; }               \

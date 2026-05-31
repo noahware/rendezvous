@@ -21,6 +21,24 @@
 
 rv::vector_2d<float> screen_size = { 1280.f, 720.f };
 
+static rv::plot_lines& add_data_visualization_demo(rv::gui& g)
+{
+	auto& viz = g.add_container("Visualization");
+	viz.add_label("Frame time (ms) - hover to inspect");
+	auto& fps_plot = viz.add_plot_lines();
+	fps_plot.capacity(180).overlay("frame ms").line_color({ 0.4f, 0.9f, 0.6f, 1.f });
+
+	viz.add_label("Static sine wave");
+	vector_t<float> sine_samples(96);
+	for (cstd::size_t i = 0; i < sine_samples.size(); ++i)
+	{
+		sine_samples[i] = cstd::sinf(static_cast<float>(i) * 0.13f);
+	}
+	viz.add_plot_lines().data(sine_samples).range(-1.f, 1.f);
+
+	return fps_plot;
+}
+
 int main(int argc, char* argv[])
 {
 	LOG_INFO("rendezvous (linux)");
@@ -228,6 +246,8 @@ int main(int argc, char* argv[])
 
 		// A floating, draggable/resizable panel — also built entirely with factories.
 		static bool p_feature = false;
+		auto& fps_plot = add_data_visualization_demo(*gui);
+
 		auto& demo_panel = gui->add_panel();
 		demo_panel.padding(16.f).gap(12.f)
 			.inset_top(rv::styled_size::px(150.f)).inset_left(rv::styled_size::px(660.f));
@@ -383,6 +403,8 @@ int main(int argc, char* argv[])
 			renderer->add_text_shadow(*font, text_pos, text, { 1.f, 0.4f, 1.f, 1.f }, 15.f, size);
 			renderer->draw_text(*font, text_pos, text, { 0.4f, 1.f, 1.f, 1.f }, size);
 		}
+
+		fps_plot.push_value(renderer->state().delta_time * 1000.f);
 
 		gui->render(screen_size);
 		renderer->end_frame();
