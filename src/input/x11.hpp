@@ -20,6 +20,7 @@ namespace rv
 
 	private:
 		static key_type translate_key(KeySym sym);
+		static key_type generic_modifier(key_type specific);
 		static button_type translate_button(cstd::uint32_t button);
 
 		// Interns and caches the selection-related atoms on first use.

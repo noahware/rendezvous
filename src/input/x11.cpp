@@ -19,6 +19,13 @@ void rv::x11_input::handle_event(const XEvent& event)
 				state_.keys_pressed[k] = true;
 			}
 
+			const auto generic = generic_modifier(k);
+			if (generic >= 0)
+			{
+				state_.keys_down[generic] = true;
+				state_.keys_pressed[generic] = true;
+			}
+
 			array_t<char, 8> buf = {};
 			const cstd::int32_t len = XLookupString(const_cast<XKeyEvent*>(&event.xkey), buf.data(),
 			                                        static_cast<cstd::int32_t>(buf.size()), nullptr, nullptr);
@@ -40,6 +47,13 @@ void rv::x11_input::handle_event(const XEvent& event)
 			{
 				state_.keys_down[k] = false;
 				state_.keys_released[k] = true;
+			}
+
+			const auto generic = generic_modifier(k);
+			if (generic >= 0)
+			{
+				state_.keys_down[generic] = false;
+				state_.keys_released[generic] = true;
 			}
 			break;
 		}
@@ -97,23 +111,86 @@ rv::x11_input::key_type rv::x11_input::translate_key(const KeySym sym)
 {
 	switch (sym)
 	{
-		case XK_BackSpace: return static_cast<key_type>(key::backspace);
-		case XK_Return:    return static_cast<key_type>(key::enter);
-		case XK_Shift_L:
-		case XK_Shift_R:   return static_cast<key_type>(key::shift);
-		case XK_Control_L:
-		case XK_Control_R: return static_cast<key_type>(key::control);
-		case XK_End:       return static_cast<key_type>(key::end);
-		case XK_Home:      return static_cast<key_type>(key::home);
-		case XK_Left:      return static_cast<key_type>(key::left);
-		case XK_Up:        return static_cast<key_type>(key::up);
-		case XK_Right:     return static_cast<key_type>(key::right);
-		case XK_Down:      return static_cast<key_type>(key::down);
-		case XK_Delete:    return static_cast<key_type>(key::del);
+		case XK_BackSpace:   return static_cast<key_type>(key::backspace);
+		case XK_Tab:         return static_cast<key_type>(key::tab);
+		case XK_Return:      return static_cast<key_type>(key::enter);
+		case XK_Escape:      return static_cast<key_type>(key::escape);
+		case XK_space:       return static_cast<key_type>(key::space);
+		case XK_Shift_L:     return static_cast<key_type>(key::left_shift);
+		case XK_Shift_R:     return static_cast<key_type>(key::right_shift);
+		case XK_Control_L:   return static_cast<key_type>(key::left_control);
+		case XK_Control_R:   return static_cast<key_type>(key::right_control);
+		case XK_Alt_L:       return static_cast<key_type>(key::left_alt);
+		case XK_Alt_R:       return static_cast<key_type>(key::right_alt);
+		case XK_Pause:       return static_cast<key_type>(key::pause);
+		case XK_Caps_Lock:   return static_cast<key_type>(key::caps_lock);
+		case XK_Page_Up:     return static_cast<key_type>(key::page_up);
+		case XK_Page_Down:   return static_cast<key_type>(key::page_down);
+		case XK_End:         return static_cast<key_type>(key::end);
+		case XK_Home:        return static_cast<key_type>(key::home);
+		case XK_Left:        return static_cast<key_type>(key::left);
+		case XK_Up:          return static_cast<key_type>(key::up);
+		case XK_Right:       return static_cast<key_type>(key::right);
+		case XK_Down:        return static_cast<key_type>(key::down);
+		case XK_Print:       return static_cast<key_type>(key::print_screen);
+		case XK_Insert:      return static_cast<key_type>(key::insert);
+		case XK_Delete:      return static_cast<key_type>(key::del);
+		case XK_Num_Lock:    return static_cast<key_type>(key::num_lock);
+		case XK_Scroll_Lock: return static_cast<key_type>(key::scroll_lock);
+
+		case XK_KP_0:        return static_cast<key_type>(key::numpad_0);
+		case XK_KP_1:        return static_cast<key_type>(key::numpad_1);
+		case XK_KP_2:        return static_cast<key_type>(key::numpad_2);
+		case XK_KP_3:        return static_cast<key_type>(key::numpad_3);
+		case XK_KP_4:        return static_cast<key_type>(key::numpad_4);
+		case XK_KP_5:        return static_cast<key_type>(key::numpad_5);
+		case XK_KP_6:        return static_cast<key_type>(key::numpad_6);
+		case XK_KP_7:        return static_cast<key_type>(key::numpad_7);
+		case XK_KP_8:        return static_cast<key_type>(key::numpad_8);
+		case XK_KP_9:        return static_cast<key_type>(key::numpad_9);
+		case XK_KP_Multiply: return static_cast<key_type>(key::numpad_multiply);
+		case XK_KP_Add:      return static_cast<key_type>(key::numpad_add);
+		case XK_KP_Subtract: return static_cast<key_type>(key::numpad_subtract);
+		case XK_KP_Decimal:  return static_cast<key_type>(key::numpad_decimal);
+		case XK_KP_Divide:   return static_cast<key_type>(key::numpad_divide);
+
+		case XK_F1:  return static_cast<key_type>(key::f1);
+		case XK_F2:  return static_cast<key_type>(key::f2);
+		case XK_F3:  return static_cast<key_type>(key::f3);
+		case XK_F4:  return static_cast<key_type>(key::f4);
+		case XK_F5:  return static_cast<key_type>(key::f5);
+		case XK_F6:  return static_cast<key_type>(key::f6);
+		case XK_F7:  return static_cast<key_type>(key::f7);
+		case XK_F8:  return static_cast<key_type>(key::f8);
+		case XK_F9:  return static_cast<key_type>(key::f9);
+		case XK_F10: return static_cast<key_type>(key::f10);
+		case XK_F11: return static_cast<key_type>(key::f11);
+		case XK_F12: return static_cast<key_type>(key::f12);
+
 		default:
-			if (sym >= 0x20 && sym <= 0xFF)
-				return static_cast<key_type>(sym);
+			// Uppercase letters: X11 keysyms 'a'-'z' (0x61-0x7A) → our enum 'a'-'z' (0x41-0x5A)
+			if (sym >= XK_a && sym <= XK_z)
+				return static_cast<key_type>(key::a) + static_cast<key_type>(sym - XK_a);
+			if (sym >= XK_A && sym <= XK_Z)
+				return static_cast<key_type>(key::a) + static_cast<key_type>(sym - XK_A);
+			// Digits '0'-'9' match directly
+			if (sym >= XK_0 && sym <= XK_9)
+				return static_cast<key_type>(key::num_0) + static_cast<key_type>(sym - XK_0);
 			return -1;
+	}
+}
+
+rv::x11_input::key_type rv::x11_input::generic_modifier(const key_type specific)
+{
+	switch (static_cast<key>(specific))
+	{
+		case key::left_shift:
+		case key::right_shift:   return static_cast<key_type>(key::shift);
+		case key::left_control:
+		case key::right_control: return static_cast<key_type>(key::control);
+		case key::left_alt:
+		case key::right_alt:     return static_cast<key_type>(key::alt);
+		default:                 return -1;
 	}
 }
 

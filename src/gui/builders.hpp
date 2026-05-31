@@ -11,6 +11,7 @@
 #include "comp/panel.hpp"
 #include "comp/plot_lines.hpp"
 #include "comp/value_inspector.hpp"
+#include "comp/key_bind.hpp"
 
 // Single convenience include that pulls in every widget and defines the add_* factory methods
 // for both `element` and `gui`. Include this (instead of the individual comp headers) to build
@@ -35,6 +36,7 @@ namespace rv
 	[[nodiscard]] inline element_size default_panel_size() noexcept     { return { styled_size::px(320.f), styled_size::px(220.f) }; }
 	[[nodiscard]] inline element_size default_plot_size() noexcept      { return { styled_size::fill(), styled_size::px(120.f) }; }
 	[[nodiscard]] inline element_size default_inspector_size() noexcept { return { styled_size::fill(), styled_size::auto_v() }; }
+	[[nodiscard]] inline element_size default_key_bind_size() noexcept  { return { styled_size::px(120.f), styled_size::px(32.f) }; }
 	[[nodiscard]] inline element_size default_row_size() noexcept       { return { styled_size::fill(), styled_size::auto_v() }; }
 	[[nodiscard]] inline element_size default_column_size() noexcept    { return { styled_size::auto_v(), styled_size::auto_v() }; }
 	[[nodiscard]] inline element_size default_container_size() noexcept { return { styled_size::fill(), styled_size::auto_v() }; }
@@ -106,7 +108,10 @@ namespace rv
 			auto g = GUI; auto w = g->make_child<element>(PARENT, default_container_size());            \
 			style_as_container(*w, *g);                                                                 \
 			if (!title.empty()) { auto t = g->make_child<text_element>(w, default_label_size(), g->font()); t->content(title).text_size(default_title_size); } \
-			return *w; }
+			return *w; }                                                                               \
+		inline key_bind& CLS::add_key_bind(const key initial_key) {                                    \
+			auto g = GUI; auto w = g->make_child<key_bind>(PARENT, default_key_bind_size(), g->font(), g->get_input()); \
+			w->text_size(default_text_size(*g)); if (initial_key != key{}) w->value(initial_key); return *w; }
 
 	// element: lock the weak gui back-ref (kept alive for the call); gui: just itself.
 	RV_WIDGET_FACTORY_DEFS(element, gui_.lock(), shared_from_this())

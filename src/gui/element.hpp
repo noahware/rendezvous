@@ -9,6 +9,7 @@ namespace rv
 {
 	class gui_renderer;
 
+	enum class key : cstd::int32_t;
 	class gui;
 	class button;
 	class checkbox;
@@ -19,6 +20,7 @@ namespace rv
 	class panel;
 	class plot_lines;
 	class value_inspector;
+	class key_bind;
 	template <class T> class slider;
 	template <class T> class range_slider;
 
@@ -38,7 +40,8 @@ namespace rv
 		value_inspector& add_inspector();                                                         \
 		element& add_row();                                                                       \
 		element& add_column();                                                                    \
-		element& add_container(string_view_t title = {});
+		element& add_container(string_view_t title = {});                                    \
+		key_bind& add_key_bind(key initial_key = {});
 
 	template <class T, class ...Args>
 	[[nodiscard]] shared_ptr_t<T> make_element(Args&&... args)

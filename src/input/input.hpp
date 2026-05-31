@@ -22,44 +22,130 @@ namespace rv
 
 	enum class key : cstd::int32_t
 	{
-#if defined(_WIN32)
-		backspace = 0x08,
-		enter     = 0x0D,
-		shift     = 0x10,
-		control   = 0x11,
-		end       = 0x23,
-		home      = 0x24,
-		left      = 0x25,
-		up        = 0x26,
-		right     = 0x27,
-		down      = 0x28,
-		del       = 0x2E,
-		// Letter keys (VK codes) used for clipboard shortcuts.
-		a         = 0x41,
-		c         = 0x43,
-		v         = 0x56,
-		x         = 0x58,
-#elif defined(__APPLE__) || defined(__linux__)
-		// X11 / Cocoa keysym-based codes — override in your input backend if needed
-		backspace = 0x08,
-		enter     = 0x0D,
-		shift     = 0x10,
-		control   = 0x11,
-		end       = 0x23,
-		home      = 0x24,
-		left      = 0x25,
-		up        = 0x26,
-		right     = 0x27,
-		down      = 0x28,
-		del       = 0x2E,
-		// Letter keys (unshifted X11 keysyms) used for clipboard shortcuts.
-		a         = 0x61,
-		c         = 0x63,
-		v         = 0x76,
-		x         = 0x78,
-#else
-#error "rv::key codes are not defined for this platform; add a mapping for the active backend."
-#endif
+		none          = 0x00,
+
+		// Typing
+		backspace     = 0x08,
+		tab           = 0x09,
+		enter         = 0x0D,
+		escape        = 0x1B,
+		space         = 0x20,
+
+		// Modifiers (generic)
+		shift         = 0x10,
+		control       = 0x11,
+		alt           = 0x12,
+		pause         = 0x13,
+		caps_lock     = 0x14,
+
+		// Navigation
+		page_up       = 0x21,
+		page_down     = 0x22,
+		end           = 0x23,
+		home          = 0x24,
+		left          = 0x25,
+		up            = 0x26,
+		right         = 0x27,
+		down          = 0x28,
+		print_screen  = 0x2C,
+		insert        = 0x2D,
+		del           = 0x2E,
+
+		// Digits
+		num_0         = 0x30,
+		num_1         = 0x31,
+		num_2         = 0x32,
+		num_3         = 0x33,
+		num_4         = 0x34,
+		num_5         = 0x35,
+		num_6         = 0x36,
+		num_7         = 0x37,
+		num_8         = 0x38,
+		num_9         = 0x39,
+
+		// Letters
+		a             = 0x41,
+		b             = 0x42,
+		c             = 0x43,
+		d             = 0x44,
+		e             = 0x45,
+		f             = 0x46,
+		g             = 0x47,
+		h             = 0x48,
+		i             = 0x49,
+		j             = 0x4A,
+		k             = 0x4B,
+		l             = 0x4C,
+		m             = 0x4D,
+		n             = 0x4E,
+		o             = 0x4F,
+		p             = 0x50,
+		q             = 0x51,
+		r             = 0x52,
+		s             = 0x53,
+		t             = 0x54,
+		u             = 0x55,
+		v             = 0x56,
+		w             = 0x57,
+		x             = 0x58,
+		y             = 0x59,
+		z             = 0x5A,
+
+		// Numpad
+		numpad_0      = 0x60,
+		numpad_1      = 0x61,
+		numpad_2      = 0x62,
+		numpad_3      = 0x63,
+		numpad_4      = 0x64,
+		numpad_5      = 0x65,
+		numpad_6      = 0x66,
+		numpad_7      = 0x67,
+		numpad_8      = 0x68,
+		numpad_9      = 0x69,
+		numpad_multiply = 0x6A,
+		numpad_add    = 0x6B,
+		numpad_subtract = 0x6D,
+		numpad_decimal = 0x6E,
+		numpad_divide = 0x6F,
+
+		// Function keys
+		f1            = 0x70,
+		f2            = 0x71,
+		f3            = 0x72,
+		f4            = 0x73,
+		f5            = 0x74,
+		f6            = 0x75,
+		f7            = 0x76,
+		f8            = 0x77,
+		f9            = 0x78,
+		f10           = 0x79,
+		f11           = 0x7A,
+		f12           = 0x7B,
+
+		// Lock keys
+		num_lock      = 0x90,
+		scroll_lock   = 0x91,
+
+		// Left/right modifiers
+		left_shift    = 0xA0,
+		right_shift   = 0xA1,
+		left_control  = 0xA2,
+		right_control = 0xA3,
+		left_alt      = 0xA4,
+		right_alt     = 0xA5,
+
+		// Punctuation / OEM keys
+		semicolon     = 0xBA,
+		equals        = 0xBB,
+		comma         = 0xBC,
+		minus         = 0xBD,
+		period        = 0xBE,
+		slash         = 0xBF,
+		backtick      = 0xC0,
+		left_bracket  = 0xDB,
+		backslash     = 0xDC,
+		right_bracket = 0xDD,
+		quote         = 0xDE,
 	};
 
 	struct input_state

@@ -12,6 +12,7 @@
 #include "render/impl/dx11.hpp"
 #include "render/impl/ogl.hpp"
 #include "input/win32.hpp"
+#include "input/key_names.hpp"
 #include "util/types.hpp"
 
 // uncomment this if you want to try the example image rendering
@@ -490,6 +491,7 @@ cstd::int32_t main(int argc, char* argv[])
 	// A floating, draggable/resizable panel — also built entirely with factories.
 	static bool p_feature = false;
 	auto& demo_panel = gui->add_panel();
+	demo_panel.set_declared_size({ rv::styled_size::px(320.f), rv::styled_size::px(320.f) });
 	demo_panel.padding(16.f).gap(12.f)
 		.inset_top(rv::styled_size::px(150.f)).inset_left(rv::styled_size::px(660.f));
 	demo_panel.add_label("Draggable / resizable panel").text_color({ 0.7f, 0.7f, 0.75f, 1.f });
@@ -503,6 +505,12 @@ cstd::int32_t main(int argc, char* argv[])
 	demo_panel.add_color_picker(panel_tint)
 		.bind(&panel_tint)
 		.on_change([btn = &tinted_btn](const rv::color c) { btn->background_color(c); });
+
+	static rv::key bound_key = rv::key::none;
+	demo_panel.add_label("Keybind:").text_color({ 0.7f, 0.7f, 0.75f, 1.f });
+	demo_panel.add_key_bind()
+		.bind(&bound_key)
+		.on_change([](const rv::key k) { LOG_INFO("key bound: {}", rv::key_name(k)); });
 
 	MSG msg = { };
 
