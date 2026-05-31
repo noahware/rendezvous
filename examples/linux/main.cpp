@@ -117,6 +117,7 @@ int main(int argc, char* argv[])
 	}
 
 	auto input = cstd::make_shared<rv::x11_input>();
+	input->set_window(display, win);
 
 	auto gui_renderer = cstd::make_unique<rv::gui_renderer_impl>(renderer);
 	auto gui = rv::make_gui(cstd::move(gui_renderer), input);

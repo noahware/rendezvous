@@ -10,6 +10,9 @@ namespace rv
 	{
 	public:
 		bool handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
+
+		void set_clipboard_text(const string_t& text) override;
+		[[nodiscard]] string_t get_clipboard_text() override;
 	};
 }
 

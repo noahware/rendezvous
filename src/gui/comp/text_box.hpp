@@ -412,7 +412,86 @@ namespace rv
 				}
 			}
 
+			if (ctrl)
+			{
+				if (input_->is_key_pressed(key::a)) { select_all(); edited = true; }
+				if (input_->is_key_pressed(key::c)) { copy_selection(); }
+				if (input_->is_key_pressed(key::x)) { if (copy_selection()) { delete_selection(); edited = true; } }
+				if (input_->is_key_pressed(key::v)) { if (paste_clipboard()) { edited = true; } }
+			}
+
 			return edited;
+		}
+
+		// Selects the entire buffer and parks the caret at the end.
+		void select_all() noexcept
+		{
+			stb_.select_start = 0;
+			stb_.select_end = stb_.cursor = static_cast<int>(buf_.chars.size());
+		}
+
+		// Encodes the current selection to UTF-8 and copies it to the clipboard.
+		// Returns false (and does nothing) when there is no selection.
+		bool copy_selection()
+		{
+			if (stb_.select_start == stb_.select_end)
+			{
+				return false;
+			}
+
+			const int lo = (stb_.select_start < stb_.select_end) ? stb_.select_start : stb_.select_end;
+			const int hi = (stb_.select_start < stb_.select_end) ? stb_.select_end : stb_.select_start;
+
+			string_t out;
+
+			for (int i = lo; i < hi; ++i)
+			{
+				encode_utf8(buf_.chars[static_cast<cstd::size_t>(i)], out);
+			}
+
+			input_->set_clipboard_text(out);
+			return true;
+		}
+
+		// Removes the active selection in one edit step.
+		void delete_selection()
+		{
+			if (stb_.select_start != stb_.select_end)
+			{
+				te_key(buf_, stb_, STB_TEXTEDIT_K_BACKSPACE);
+			}
+		}
+
+		// Inserts the clipboard contents at the caret, replacing any selection.
+		// Returns false when nothing was inserted.
+		bool paste_clipboard()
+		{
+			const string_t clip = input_->get_clipboard_text();
+
+			if (clip.empty())
+			{
+				return false;
+			}
+
+			const char* s = clip.data();
+			const char* end = s + clip.size();
+			bool inserted = false;
+
+			while (s < end)
+			{
+				const cstd::uint32_t cp = decode_utf8(s, end);
+
+				// Single-line fields never accept line breaks.
+				if (!multiline_ && (cp == U'\n' || cp == U'\r'))
+				{
+					continue;
+				}
+
+				te_key(buf_, stb_, cp);
+				inserted = true;
+			}
+
+			return inserted;
 		}
 
 		// Pixel x-offset of character index `target` within the row starting at `row_start`.

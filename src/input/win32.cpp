@@ -117,4 +117,82 @@ bool rv::win32_input::handle_message(const HWND hwnd, const UINT msg, const WPAR
 	return false;
 }
 
+void rv::win32_input::set_clipboard_text(const string_t& text)
+{
+	const int wide_len = ::MultiByteToWideChar(CP_UTF8, 0, text.data(),
+		static_cast<int>(text.size()), nullptr, 0);
+
+	if (!::OpenClipboard(nullptr))
+	{
+		return;
+	}
+
+	::EmptyClipboard();
+
+	const HGLOBAL handle = ::GlobalAlloc(GMEM_MOVEABLE,
+		(static_cast<cstd::size_t>(wide_len) + 1) * sizeof(wchar_t));
+
+	if (handle)
+	{
+		auto* const dst = static_cast<wchar_t*>(::GlobalLock(handle));
+
+		if (dst)
+		{
+			if (wide_len > 0)
+			{
+				::MultiByteToWideChar(CP_UTF8, 0, text.data(),
+					static_cast<int>(text.size()), dst, wide_len);
+			}
+
+			dst[wide_len] = L'\0';
+			::GlobalUnlock(handle);
+
+			if (!::SetClipboardData(CF_UNICODETEXT, handle))
+			{
+				::GlobalFree(handle);
+			}
+		}
+		else
+		{
+			::GlobalFree(handle);
+		}
+	}
+
+	::CloseClipboard();
+}
+
+string_t rv::win32_input::get_clipboard_text()
+{
+	if (!::OpenClipboard(nullptr))
+	{
+		return {};
+	}
+
+	string_t result;
+	const HANDLE handle = ::GetClipboardData(CF_UNICODETEXT);
+
+	if (handle)
+	{
+		const auto* const src = static_cast<const wchar_t*>(::GlobalLock(handle));
+
+		if (src)
+		{
+			const int utf8_len = ::WideCharToMultiByte(CP_UTF8, 0, src, -1,
+				nullptr, 0, nullptr, nullptr);
+
+			if (utf8_len > 1)
+			{
+				result.resize(static_cast<cstd::size_t>(utf8_len) - 1);
+				::WideCharToMultiByte(CP_UTF8, 0, src, -1, result.data(),
+					utf8_len, nullptr, nullptr);
+			}
+
+			::GlobalUnlock(handle);
+		}
+	}
+
+	::CloseClipboard();
+	return result;
+}
+
 #endif // _WIN32

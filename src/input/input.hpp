@@ -34,6 +34,11 @@ namespace rv
 		right     = 0x27,
 		down      = 0x28,
 		del       = 0x2E,
+		// Letter keys (VK codes) used for clipboard shortcuts.
+		a         = 0x41,
+		c         = 0x43,
+		v         = 0x56,
+		x         = 0x58,
 #elif defined(__APPLE__) || defined(__linux__)
 		// X11 / Cocoa keysym-based codes — override in your input backend if needed
 		backspace = 0x08,
@@ -47,6 +52,11 @@ namespace rv
 		right     = 0x27,
 		down      = 0x28,
 		del       = 0x2E,
+		// Letter keys (unshifted X11 keysyms) used for clipboard shortcuts.
+		a         = 0x61,
+		c         = 0x63,
+		v         = 0x76,
+		x         = 0x78,
 #else
 #error "rv::key codes are not defined for this platform; add a mapping for the active backend."
 #endif
@@ -75,6 +85,20 @@ namespace rv
 	public:
 		using key_type = std::int32_t;
 		using button_type = std::int32_t;
+
+		virtual ~input() = default;
+
+		// Clipboard access. The base implementation is an in-process fallback;
+		// platform backends override these with the real OS clipboard.
+		virtual void set_clipboard_text(const string_t& text)
+		{
+			clipboard_ = text;
+		}
+
+		[[nodiscard]] virtual string_t get_clipboard_text()
+		{
+			return clipboard_;
+		}
 
 		void reset()
 		{
@@ -174,5 +198,6 @@ namespace rv
 
 		input_state state_;
 		cursor_type current_cursor_ = cursor_type::arrow;
+		string_t clipboard_;
 	};
 }
