@@ -16,6 +16,17 @@
 
 using rv::decode_utf8;
 
+namespace
+{
+    inline void fill_sequential_indices(const rv::vertex_writer &w, const cstd::uint32_t count) noexcept
+    {
+        for (cstd::uint32_t i = 0; i < count; ++i)
+        {
+            w.indices[i] = w.base_index + i;
+        }
+    }
+}
+
 bool rv::renderer::init()
 {
     if (!init_backend())
@@ -91,11 +102,12 @@ void rv::renderer::pop_clip_rect() noexcept
     }
 }
 
-void rv::renderer::draw_vertices(const span_t<const vertex> vertices, const shader_type shader) noexcept
+rv::vertex_writer rv::renderer::reserve_indexed(const cstd::size_t vertex_count, const cstd::size_t index_count,
+                                                const shader_type shader) noexcept
 {
-    if (vertices.empty())
+    if (vertex_count == 0 || index_count == 0)
     {
-        return;
+        return vertex_writer{{}, {}, 0};
     }
 
     const optional_t<clip_rect_data> current_clip = clip_rects_.empty() ? optional_t<clip_rect_data>() : clip_rects_.back();
@@ -109,52 +121,78 @@ void rv::renderer::draw_vertices(const span_t<const vertex> vertices, const shad
     }
 
     auto &current_batch = pending_batches_.back();
-    const cstd::uint32_t index_shift = current_batch.vertex_count;
-    const cstd::uint32_t count = static_cast<cstd::uint32_t>(vertices.size());
+    const cstd::uint32_t base_index = current_batch.vertex_count;
 
-    current_batch.vertex_count += count;
-    current_batch.index_count += count;
+    current_batch.vertex_count += static_cast<cstd::uint32_t>(vertex_count);
+    current_batch.index_count += static_cast<cstd::uint32_t>(index_count);
 
-    pending_vertices_.insert(pending_vertices_.end(), vertices.begin(), vertices.end());
-
+    const cstd::size_t vtx_start = pending_vertices_.size();
     const cstd::size_t idx_start = pending_indices_.size();
-    pending_indices_.resize(idx_start + count);
+
+    pending_vertices_.resize(vtx_start + vertex_count);
+    pending_indices_.resize(idx_start + index_count);
+
+    last_reserve_vertices_ = vertex_count;
+    last_reserve_indices_ = index_count;
+
+    return vertex_writer{{pending_vertices_.data() + vtx_start, vertex_count},
+                         {pending_indices_.data() + idx_start, index_count}, base_index};
+}
+
+void rv::renderer::shrink_reserved(const cstd::size_t used_vertices, const cstd::size_t used_indices) noexcept
+{
+    if (pending_batches_.empty() || used_vertices > last_reserve_vertices_ || used_indices > last_reserve_indices_)
+    {
+        return;
+    }
+
+    const cstd::uint32_t trimmed_vertices = static_cast<cstd::uint32_t>(last_reserve_vertices_ - used_vertices);
+    const cstd::uint32_t trimmed_indices = static_cast<cstd::uint32_t>(last_reserve_indices_ - used_indices);
+
+    pending_vertices_.resize(pending_vertices_.size() - trimmed_vertices);
+    pending_indices_.resize(pending_indices_.size() - trimmed_indices);
+
+    auto &current_batch = pending_batches_.back();
+    current_batch.vertex_count -= trimmed_vertices;
+    current_batch.index_count -= trimmed_indices;
+
+    last_reserve_vertices_ = used_vertices;
+    last_reserve_indices_ = used_indices;
+}
+
+void rv::renderer::draw_vertices(const span_t<const vertex> vertices, const shader_type shader) noexcept
+{
+    const cstd::uint32_t count = static_cast<cstd::uint32_t>(vertices.size());
+    const vertex_writer w = reserve_indexed(count, count, shader);
+
+    if (w.vertices.empty())
+    {
+        return;
+    }
+
+    cstd::memcpy(w.vertices.data(), vertices.data(), count * sizeof(vertex));
 
     for (cstd::uint32_t i = 0; i < count; ++i)
     {
-        pending_indices_[idx_start + i] = i + index_shift;
+        w.indices[i] = w.base_index + i;
     }
 }
 
 void rv::renderer::draw_indexed_vertices(const span_t<const vertex> vertices, const span_t<const cstd::uint32_t> indices,
                                          const shader_type shader) noexcept
 {
-    if (vertices.empty() || indices.empty())
+    const vertex_writer w = reserve_indexed(vertices.size(), indices.size(), shader);
+
+    if (w.vertices.empty())
     {
         return;
     }
 
-    const optional_t<clip_rect_data> current_clip = clip_rects_.empty() ? optional_t<clip_rect_data>() : clip_rects_.back();
+    cstd::memcpy(w.vertices.data(), vertices.data(), vertices.size() * sizeof(vertex));
 
-    if (pending_batches_.empty() || current_texture_ != pending_batches_.back().texture ||
-        pending_batches_.back().shader != shader || pending_batches_.back().clip_rect != current_clip)
+    for (cstd::size_t i = 0; i < indices.size(); ++i)
     {
-        pending_batches_.push_back(vertex_batch{static_cast<cstd::uint32_t>(pending_vertices_.size()), 0,
-                                                static_cast<cstd::uint32_t>(pending_indices_.size()), 0, current_texture_, shader,
-                                                current_clip});
-    }
-
-    auto &current_batch = pending_batches_.back();
-    const cstd::uint32_t index_shift = current_batch.vertex_count;
-
-    current_batch.vertex_count += static_cast<cstd::uint32_t>(vertices.size());
-    current_batch.index_count += static_cast<cstd::uint32_t>(indices.size());
-
-    pending_vertices_.insert(pending_vertices_.end(), vertices.begin(), vertices.end());
-
-    for (const cstd::uint32_t index : indices)
-    {
-        pending_indices_.push_back(index + index_shift);
+        w.indices[i] = indices[i] + w.base_index;
     }
 }
 
@@ -185,14 +223,16 @@ void rv::renderer::draw_rect(const position min, const position max, const color
         return vertex{.pos = {x, y}, .col = c, .uv = {u, v}, .custom_data = data}; 
     };
 
-    const array_t<vertex, 6> vertices = 
-    {
-        make_vertex(n0.x, n0.y, col, -qw, -qh), make_vertex(n1.x, n0.y, col, qw, -qh),
-        make_vertex(n0.x, n1.y, col, -qw, qh),  make_vertex(n1.x, n0.y, col, qw, -qh),
-        make_vertex(n1.x, n1.y, col, qw, qh),   make_vertex(n0.x, n1.y, col, -qw, qh),
-    };
+    const vertex_writer w = reserve_indexed(6, 6, shader_type::rect_shader);
 
-    draw_vertices(vertices, shader_type::rect_shader);
+    w.vertices[0] = make_vertex(n0.x, n0.y, col, -qw, -qh);
+    w.vertices[1] = make_vertex(n1.x, n0.y, col, qw, -qh);
+    w.vertices[2] = make_vertex(n0.x, n1.y, col, -qw, qh);
+    w.vertices[3] = make_vertex(n1.x, n0.y, col, qw, -qh);
+    w.vertices[4] = make_vertex(n1.x, n1.y, col, qw, qh);
+    w.vertices[5] = make_vertex(n0.x, n1.y, col, -qw, qh);
+
+    fill_sequential_indices(w, 6);
 }
 
 void rv::renderer::draw_rect_filled(const position min, const position max, const color col, const float rounding,
@@ -232,14 +272,16 @@ void rv::renderer::draw_rect_filled_multi_color(const position min, const positi
         return vertex{.pos = {x, y}, .col = c, .uv = {u, v}, .custom_data = data}; 
     };
 
-    const array_t<vertex, 6> vertices = 
-    {
-        make_vertex(n0.x, n0.y, col_tl, -qw, -qh), make_vertex(n1.x, n0.y, col_tr, qw, -qh),
-        make_vertex(n0.x, n1.y, col_bl, -qw, qh),  make_vertex(n1.x, n0.y, col_tr, qw, -qh),
-        make_vertex(n1.x, n1.y, col_br, qw, qh),   make_vertex(n0.x, n1.y, col_bl, -qw, qh),
-    };
+    const vertex_writer w = reserve_indexed(6, 6, shader_type::rect_shader);
 
-    draw_vertices(vertices, shader_type::rect_shader);
+    w.vertices[0] = make_vertex(n0.x, n0.y, col_tl, -qw, -qh);
+    w.vertices[1] = make_vertex(n1.x, n0.y, col_tr, qw, -qh);
+    w.vertices[2] = make_vertex(n0.x, n1.y, col_bl, -qw, qh);
+    w.vertices[3] = make_vertex(n1.x, n0.y, col_tr, qw, -qh);
+    w.vertices[4] = make_vertex(n1.x, n1.y, col_br, qw, qh);
+    w.vertices[5] = make_vertex(n0.x, n1.y, col_bl, -qw, qh);
+
+    fill_sequential_indices(w, 6);
 }
 
 void rv::renderer::draw_shadow_rect(const position min, const position max, const color col, const float rounding,
@@ -280,17 +322,16 @@ void rv::renderer::draw_shadow_rect(const position min, const position max, cons
         return vertex{.pos = {x, y}, .col = col, .uv = {u, v}, .custom_data = data}; 
     };
 
-    const array_t<vertex, 6> vertices = 
-    {
-        make_vertex(n0.x, n0.y, -qw, -qh), 
-        make_vertex(n1.x, n0.y, qw, -qh), 
-        make_vertex(n0.x, n1.y, -qw, qh),
-        make_vertex(n1.x, n0.y, qw, -qh),  
-        make_vertex(n1.x, n1.y, qw, qh),  
-        make_vertex(n0.x, n1.y, -qw, qh),
-    };
+    const vertex_writer w = reserve_indexed(6, 6, shader_type::shadow_shader);
 
-    draw_vertices(vertices, shader_type::shadow_shader);
+    w.vertices[0] = make_vertex(n0.x, n0.y, -qw, -qh);
+    w.vertices[1] = make_vertex(n1.x, n0.y, qw, -qh);
+    w.vertices[2] = make_vertex(n0.x, n1.y, -qw, qh);
+    w.vertices[3] = make_vertex(n1.x, n0.y, qw, -qh);
+    w.vertices[4] = make_vertex(n1.x, n1.y, qw, qh);
+    w.vertices[5] = make_vertex(n0.x, n1.y, -qw, qh);
+
+    fill_sequential_indices(w, 6);
 }
 
 void rv::renderer::draw_line(const position a, const position b, const color col, const float thickness) noexcept
@@ -329,14 +370,16 @@ void rv::renderer::draw_circle(const position pos, const float radius, const col
         return vertex{.pos = {x, y}, .col = col, .uv = {u, v}, .custom_data = data}; 
     };
 
-    const array_t<vertex, 6> vertices = 
-    {
-        make_vertex(n0.x, n0.y, -qw, -qh), make_vertex(n1.x, n0.y, qw, -qh),
-        make_vertex(n0.x, n1.y, -qw, qh),  make_vertex(n1.x, n0.y, qw, -qh),
-        make_vertex(n1.x, n1.y, qw, qh),   make_vertex(n0.x, n1.y, -qw, qh),
-    };
+    const vertex_writer w = reserve_indexed(6, 6, shader_type::rect_shader);
 
-    draw_vertices(vertices, shader_type::rect_shader);
+    w.vertices[0] = make_vertex(n0.x, n0.y, -qw, -qh);
+    w.vertices[1] = make_vertex(n1.x, n0.y, qw, -qh);
+    w.vertices[2] = make_vertex(n0.x, n1.y, -qw, qh);
+    w.vertices[3] = make_vertex(n1.x, n0.y, qw, -qh);
+    w.vertices[4] = make_vertex(n1.x, n1.y, qw, qh);
+    w.vertices[5] = make_vertex(n0.x, n1.y, -qw, qh);
+
+    fill_sequential_indices(w, 6);
 }
 
 void rv::renderer::draw_circle_filled(const position pos, const float radius, const color col,
@@ -358,14 +401,16 @@ void rv::renderer::draw_circle_filled(const position pos, const float radius, co
         return vertex{.pos = {x, y}, .col = col, .uv = {u, v}, .custom_data = data}; 
     };
 
-    const array_t<vertex, 6> vertices = 
-    {
-        make_vertex(n0.x, n0.y, -qw, -qh), make_vertex(n1.x, n0.y, qw, -qh),
-        make_vertex(n0.x, n1.y, -qw, qh),  make_vertex(n1.x, n0.y, qw, -qh),
-        make_vertex(n1.x, n1.y, qw, qh),   make_vertex(n0.x, n1.y, -qw, qh),
-    };
+    const vertex_writer w = reserve_indexed(6, 6, shader_type::rect_shader);
 
-    draw_vertices(vertices, shader_type::rect_shader);
+    w.vertices[0] = make_vertex(n0.x, n0.y, -qw, -qh);
+    w.vertices[1] = make_vertex(n1.x, n0.y, qw, -qh);
+    w.vertices[2] = make_vertex(n0.x, n1.y, -qw, qh);
+    w.vertices[3] = make_vertex(n1.x, n0.y, qw, -qh);
+    w.vertices[4] = make_vertex(n1.x, n1.y, qw, qh);
+    w.vertices[5] = make_vertex(n0.x, n1.y, -qw, qh);
+
+    fill_sequential_indices(w, 6);
 }
 
 void rv::renderer::draw_circle_filled_radial(const position pos, const float radius, const color col_in, const color col_out,
@@ -388,14 +433,16 @@ void rv::renderer::draw_circle_filled_radial(const position pos, const float rad
         return vertex{.pos = {x, y}, .col = col_out, .uv = {u, v}, .custom_data = data}; 
     };
 
-    const array_t<vertex, 6> vertices = 
-    {
-        make_vertex(n0.x, n0.y, -qw, -qh), make_vertex(n1.x, n0.y, qw, -qh),
-        make_vertex(n0.x, n1.y, -qw, qh),  make_vertex(n1.x, n0.y, qw, -qh),
-        make_vertex(n1.x, n1.y, qw, qh),   make_vertex(n0.x, n1.y, -qw, qh),
-    };
+    const vertex_writer w = reserve_indexed(6, 6, shader_type::rect_shader);
 
-    draw_vertices(vertices, shader_type::rect_shader);
+    w.vertices[0] = make_vertex(n0.x, n0.y, -qw, -qh);
+    w.vertices[1] = make_vertex(n1.x, n0.y, qw, -qh);
+    w.vertices[2] = make_vertex(n0.x, n1.y, -qw, qh);
+    w.vertices[3] = make_vertex(n1.x, n0.y, qw, -qh);
+    w.vertices[4] = make_vertex(n1.x, n1.y, qw, qh);
+    w.vertices[5] = make_vertex(n0.x, n1.y, -qw, qh);
+
+    fill_sequential_indices(w, 6);
 }
 
 void rv::renderer::draw_shadow_circle(const position pos, const float radius, const color col, const float shadow_blur,
@@ -421,17 +468,16 @@ void rv::renderer::draw_shadow_circle(const position pos, const float radius, co
         return vertex{.pos = {x, y}, .col = col, .uv = {u, v}, .custom_data = data}; 
     };
 
-    const array_t<vertex, 6> vertices = 
-    {
-        make_vertex(n0.x, n0.y, -qw, -qh), 
-        make_vertex(n1.x, n0.y, qw, -qh), 
-        make_vertex(n0.x, n1.y, -qw, qh),
-        make_vertex(n1.x, n0.y, qw, -qh),  
-        make_vertex(n1.x, n1.y, qw, qh),  
-        make_vertex(n0.x, n1.y, -qw, qh),
-    };
+    const vertex_writer w = reserve_indexed(6, 6, shader_type::shadow_shader);
 
-    draw_vertices(vertices, shader_type::shadow_shader);
+    w.vertices[0] = make_vertex(n0.x, n0.y, -qw, -qh);
+    w.vertices[1] = make_vertex(n1.x, n0.y, qw, -qh);
+    w.vertices[2] = make_vertex(n0.x, n1.y, -qw, qh);
+    w.vertices[3] = make_vertex(n1.x, n0.y, qw, -qh);
+    w.vertices[4] = make_vertex(n1.x, n1.y, qw, qh);
+    w.vertices[5] = make_vertex(n0.x, n1.y, -qw, qh);
+
+    fill_sequential_indices(w, 6);
 }
 
 void rv::renderer::draw_image(const shared_ptr_t<texture> tex, const position min, const position max, const position uv_min,
@@ -488,18 +534,19 @@ void rv::renderer::draw_image_rounded(const shared_ptr_t<texture> tex, const pos
         return vertex{.pos = {x, y}, .col = tint, .uv = {u, v}, .custom_data = d};
     };
 
-    const array_t<vertex, 6> vertices = 
-    {
-        make_vertex(n0.x, n0.y, u0, v0, -qw, -qh), 
-        make_vertex(n1.x, n0.y, u1, v0, qw, -qh),
-        make_vertex(n0.x, n1.y, u0, v1, -qw, qh),  
-        make_vertex(n1.x, n0.y, u1, v0, qw, -qh),
-        make_vertex(n1.x, n1.y, u1, v1, qw, qh),   
-        make_vertex(n0.x, n1.y, u0, v1, -qw, qh),
-    };
-
     current_texture_ = tex;
-    draw_vertices(vertices, shader_type::image_shader);
+
+    const vertex_writer w = reserve_indexed(6, 6, shader_type::image_shader);
+
+    w.vertices[0] = make_vertex(n0.x, n0.y, u0, v0, -qw, -qh);
+    w.vertices[1] = make_vertex(n1.x, n0.y, u1, v0, qw, -qh);
+    w.vertices[2] = make_vertex(n0.x, n1.y, u0, v1, -qw, qh);
+    w.vertices[3] = make_vertex(n1.x, n0.y, u1, v0, qw, -qh);
+    w.vertices[4] = make_vertex(n1.x, n1.y, u1, v1, qw, qh);
+    w.vertices[5] = make_vertex(n0.x, n1.y, u0, v1, -qw, qh);
+
+    fill_sequential_indices(w, 6);
+
     current_texture_ = default_texture_;
 }
 
@@ -524,13 +571,13 @@ void rv::renderer::draw_text(const font &font, const position pos, const string_
     const char *s = text.data();
     const char *end = s + text.size();
 
-    vector_t<vertex> vertices;
-    vector_t<cstd::uint32_t> indices;
-
-    vertices.reserve(text.size() * 4);
-    indices.reserve(text.size() * 6);
+    // Reserve worst case (every byte a visible glyph) and write glyph quads straight into the
+    // pending buffers; trim the unused tail afterwards. No per-call heap allocation or copy.
+    const vertex_writer w = reserve_indexed(text.size() * 4, text.size() * 6, shader_type::default_shader);
 
     cstd::uint32_t prev_codepoint = 0;
+    cstd::size_t vcount = 0;
+    cstd::size_t icount = 0;
 
     while (s < end)
     {
@@ -569,29 +616,29 @@ void rv::renderer::draw_text(const font &font, const position pos, const string_
             const ndc_position a = to_ndc({x0, y0});
             const ndc_position b = to_ndc({x1, y1});
 
-            const cstd::uint32_t base = static_cast<cstd::uint32_t>(vertices.size());
+            const cstd::uint32_t base = w.base_index + static_cast<cstd::uint32_t>(vcount);
 
-            vertices.push_back(vertex{.pos = {a.x, a.y}, .col = col, .uv = {g.uv0.x, g.uv0.y}});
-            vertices.push_back(vertex{.pos = {b.x, a.y}, .col = col, .uv = {g.uv1.x, g.uv0.y}});
-            vertices.push_back(vertex{.pos = {b.x, b.y}, .col = col, .uv = {g.uv1.x, g.uv1.y}});
-            vertices.push_back(vertex{.pos = {a.x, b.y}, .col = col, .uv = {g.uv0.x, g.uv1.y}});
+            w.vertices[vcount + 0] = vertex{.pos = {a.x, a.y}, .col = col, .uv = {g.uv0.x, g.uv0.y}};
+            w.vertices[vcount + 1] = vertex{.pos = {b.x, a.y}, .col = col, .uv = {g.uv1.x, g.uv0.y}};
+            w.vertices[vcount + 2] = vertex{.pos = {b.x, b.y}, .col = col, .uv = {g.uv1.x, g.uv1.y}};
+            w.vertices[vcount + 3] = vertex{.pos = {a.x, b.y}, .col = col, .uv = {g.uv0.x, g.uv1.y}};
 
-            indices.push_back(base);
-            indices.push_back(base + 1);
-            indices.push_back(base + 2);
-            indices.push_back(base);
-            indices.push_back(base + 2);
-            indices.push_back(base + 3);
+            w.indices[icount + 0] = base;
+            w.indices[icount + 1] = base + 1;
+            w.indices[icount + 2] = base + 2;
+            w.indices[icount + 3] = base;
+            w.indices[icount + 4] = base + 2;
+            w.indices[icount + 5] = base + 3;
+
+            vcount += 4;
+            icount += 6;
         }
 
         pen += g.advance * scale;
         prev_codepoint = codepoint;
     }
 
-    if (!vertices.empty())
-    {
-        draw_indexed_vertices(vertices, indices);
-    }
+    shrink_reserved(vcount, icount);
 
     current_texture_ = default_texture_;
 }
@@ -617,13 +664,13 @@ void rv::renderer::add_text_shadow(const font &font, const position pos, const s
     const char *s = text.data();
     const char *end = s + text.size();
 
-    vector_t<vertex> vertices;
-    vector_t<cstd::uint32_t> indices;
-
-    vertices.reserve(text.size() * 4);
-    indices.reserve(text.size() * 6);
+    // Reserve worst case and write glyph-shadow quads directly into the pending buffers;
+    // trim the unused tail afterwards. No per-call heap allocation or copy.
+    const vertex_writer w = reserve_indexed(text.size() * 4, text.size() * 6, shader_type::text_shadow_shader);
 
     cstd::uint32_t prev_codepoint = 0;
+    cstd::size_t vcount = 0;
+    cstd::size_t icount = 0;
 
     while (s < end)
     {
@@ -662,7 +709,7 @@ void rv::renderer::add_text_shadow(const font &font, const position pos, const s
 
             const float du_per_pixel = (g.uv1.x - g.uv0.x) / (g.size.x * scale);
             const float dv_per_pixel = (g.uv1.y - g.uv0.y) / (g.size.y * scale);
-            
+
             const float u0 = g.uv0.x - shadow_blur * du_per_pixel;
             const float v0 = g.uv0.y - shadow_blur * dv_per_pixel;
             const float u1 = g.uv1.x + shadow_blur * du_per_pixel;
@@ -673,29 +720,29 @@ void rv::renderer::add_text_shadow(const font &font, const position pos, const s
                 g.uv0.x, g.uv0.y, g.uv1.x, g.uv1.y
             };
 
-            const cstd::uint32_t base = static_cast<cstd::uint32_t>(vertices.size());
+            const cstd::uint32_t base = w.base_index + static_cast<cstd::uint32_t>(vcount);
 
-            vertices.push_back(vertex{.pos = {a.x, a.y}, .col = col, .uv = {u0, v0}, .custom_data = data});
-            vertices.push_back(vertex{.pos = {b.x, a.y}, .col = col, .uv = {u1, v0}, .custom_data = data});
-            vertices.push_back(vertex{.pos = {b.x, b.y}, .col = col, .uv = {u1, v1}, .custom_data = data});
-            vertices.push_back(vertex{.pos = {a.x, b.y}, .col = col, .uv = {u0, v1}, .custom_data = data});
+            w.vertices[vcount + 0] = vertex{.pos = {a.x, a.y}, .col = col, .uv = {u0, v0}, .custom_data = data};
+            w.vertices[vcount + 1] = vertex{.pos = {b.x, a.y}, .col = col, .uv = {u1, v0}, .custom_data = data};
+            w.vertices[vcount + 2] = vertex{.pos = {b.x, b.y}, .col = col, .uv = {u1, v1}, .custom_data = data};
+            w.vertices[vcount + 3] = vertex{.pos = {a.x, b.y}, .col = col, .uv = {u0, v1}, .custom_data = data};
 
-            indices.push_back(base);
-            indices.push_back(base + 1);
-            indices.push_back(base + 2);
-            indices.push_back(base);
-            indices.push_back(base + 2);
-            indices.push_back(base + 3);
+            w.indices[icount + 0] = base;
+            w.indices[icount + 1] = base + 1;
+            w.indices[icount + 2] = base + 2;
+            w.indices[icount + 3] = base;
+            w.indices[icount + 4] = base + 2;
+            w.indices[icount + 5] = base + 3;
+
+            vcount += 4;
+            icount += 6;
         }
 
         pen += g.advance * scale;
         prev_codepoint = codepoint;
     }
 
-    if (!vertices.empty())
-    {
-        draw_indexed_vertices(vertices, indices, shader_type::text_shadow_shader);
-    }
+    shrink_reserved(vcount, icount);
 
     current_texture_ = default_texture_;
 }
@@ -1194,8 +1241,18 @@ void rv::renderer::draw_lined_path(const color col, const float thickness, const
         return closed ? path_points_[0] : path_points_[i];
     };
 
-    vector_t<vertex> vertices;
-    vertices.reserve(n * 4);
+    const cstd::size_t segments = closed ? n : n - 1;
+
+    // Reserve a worst-case block (base quads + round-cap geometry for two caps) and write
+    // directly into the pending buffers, trimming the unused tail afterwards. Indices are
+    // computed as local 0-based vertex indices and shifted by base_index on write.
+    const vertex_writer w = reserve_indexed(n * 4 + 32, segments * 18 + 320, shader_type::default_shader);
+
+    cstd::size_t vcount = 0;
+    cstd::size_t icount = 0;
+
+    const auto push_vertex = [&](const vertex &v) noexcept { w.vertices[vcount++] = v; };
+    const auto push_index = [&](const cstd::uint32_t local) noexcept { w.indices[icount++] = w.base_index + local; };
 
     for (cstd::size_t i = 0; i < n; i++)
     {
@@ -1205,41 +1262,37 @@ void rv::renderer::draw_lined_path(const color col, const float thickness, const
         const auto core = current_join * half;
         const auto outer = current_join * (half + fringe_width);
 
-        vertices.push_back(vertex{.pos = to_ndc({current_pos.x + outer.x, current_pos.y + outer.y}), .col = transparent});
-        vertices.push_back(vertex{.pos = to_ndc({current_pos.x + core.x, current_pos.y + core.y}), .col = col});
-        vertices.push_back(vertex{.pos = to_ndc({current_pos.x - core.x, current_pos.y - core.y}), .col = col});
-        vertices.push_back(vertex{.pos = to_ndc({current_pos.x - outer.x, current_pos.y - outer.y}), .col = transparent});
+        push_vertex(vertex{.pos = to_ndc({current_pos.x + outer.x, current_pos.y + outer.y}), .col = transparent});
+        push_vertex(vertex{.pos = to_ndc({current_pos.x + core.x, current_pos.y + core.y}), .col = col});
+        push_vertex(vertex{.pos = to_ndc({current_pos.x - core.x, current_pos.y - core.y}), .col = col});
+        push_vertex(vertex{.pos = to_ndc({current_pos.x - outer.x, current_pos.y - outer.y}), .col = transparent});
     }
-
-    vector_t<cstd::uint32_t> indices;
-    const cstd::size_t segments = closed ? n : n - 1;
-    indices.reserve(segments * 18);
 
     for (cstd::size_t i = 0; i < segments; i++)
     {
         const cstd::uint32_t idx = static_cast<cstd::uint32_t>(i * 4);
         const cstd::uint32_t nxt = static_cast<cstd::uint32_t>(((i + 1) % n) * 4);
 
-        indices.push_back(idx);
-        indices.push_back(nxt);
-        indices.push_back(nxt + 1);
-        indices.push_back(idx);
-        indices.push_back(nxt + 1);
-        indices.push_back(idx + 1);
+        push_index(idx);
+        push_index(nxt);
+        push_index(nxt + 1);
+        push_index(idx);
+        push_index(nxt + 1);
+        push_index(idx + 1);
 
-        indices.push_back(idx + 1);
-        indices.push_back(nxt + 1);
-        indices.push_back(nxt + 2);
-        indices.push_back(idx + 1);
-        indices.push_back(nxt + 2);
-        indices.push_back(idx + 2);
+        push_index(idx + 1);
+        push_index(nxt + 1);
+        push_index(nxt + 2);
+        push_index(idx + 1);
+        push_index(nxt + 2);
+        push_index(idx + 2);
 
-        indices.push_back(idx + 2);
-        indices.push_back(nxt + 2);
-        indices.push_back(nxt + 3);
-        indices.push_back(idx + 2);
-        indices.push_back(nxt + 3);
-        indices.push_back(idx + 3);
+        push_index(idx + 2);
+        push_index(nxt + 2);
+        push_index(nxt + 3);
+        push_index(idx + 2);
+        push_index(nxt + 3);
+        push_index(idx + 3);
     }
 
     if (!closed)
@@ -1255,8 +1308,8 @@ void rv::renderer::draw_lined_path(const color col, const float thickness, const
                 const float phi = std::atan2f(dir.y, dir.x);
                 const float theta_start = phi + cstd::numbers::pi_f / 2.f;
 
-                const cstd::uint32_t center_idx = static_cast<cstd::uint32_t>(vertices.size());
-                vertices.push_back(vertex{.pos = to_ndc(p), .col = col});
+                const cstd::uint32_t center_idx = static_cast<cstd::uint32_t>(vcount);
+                push_vertex(vertex{.pos = to_ndc(p), .col = col});
 
                 cstd::uint32_t prev_outer_idx = v_outer_start;
                 cstd::uint32_t prev_core_idx = v_core_start;
@@ -1277,35 +1330,35 @@ void rv::renderer::draw_lined_path(const color col, const float thickness, const
                         const float cx = cstd::cosf(a);
                         const float cy = cstd::sinf(a);
 
-                        cur_outer_idx = static_cast<cstd::uint32_t>(vertices.size());
-                        vertices.push_back(
+                        cur_outer_idx = static_cast<cstd::uint32_t>(vcount);
+                        push_vertex(
                             vertex{.pos = to_ndc({p.x + cx * (half + fringe_width), p.y + cy * (half + fringe_width)}),
                                    .col = transparent});
 
-                        cur_core_idx = static_cast<cstd::uint32_t>(vertices.size());
-                        vertices.push_back(vertex{.pos = to_ndc({p.x + cx * half, p.y + cy * half}), .col = col});
+                        cur_core_idx = static_cast<cstd::uint32_t>(vcount);
+                        push_vertex(vertex{.pos = to_ndc({p.x + cx * half, p.y + cy * half}), .col = col});
                     }
 
-                    indices.push_back(prev_core_idx);
-                    indices.push_back(cur_core_idx);
-                    indices.push_back(center_idx);
-                    indices.push_back(center_idx);
-                    indices.push_back(cur_core_idx);
-                    indices.push_back(prev_core_idx);
+                    push_index(prev_core_idx);
+                    push_index(cur_core_idx);
+                    push_index(center_idx);
+                    push_index(center_idx);
+                    push_index(cur_core_idx);
+                    push_index(prev_core_idx);
 
-                    indices.push_back(prev_outer_idx);
-                    indices.push_back(cur_outer_idx);
-                    indices.push_back(cur_core_idx);
-                    indices.push_back(cur_core_idx);
-                    indices.push_back(cur_outer_idx);
-                    indices.push_back(prev_outer_idx);
+                    push_index(prev_outer_idx);
+                    push_index(cur_outer_idx);
+                    push_index(cur_core_idx);
+                    push_index(cur_core_idx);
+                    push_index(cur_outer_idx);
+                    push_index(prev_outer_idx);
 
-                    indices.push_back(prev_outer_idx);
-                    indices.push_back(cur_core_idx);
-                    indices.push_back(prev_core_idx);
-                    indices.push_back(prev_core_idx);
-                    indices.push_back(cur_core_idx);
-                    indices.push_back(prev_outer_idx);
+                    push_index(prev_outer_idx);
+                    push_index(cur_core_idx);
+                    push_index(prev_core_idx);
+                    push_index(prev_core_idx);
+                    push_index(cur_core_idx);
+                    push_index(prev_outer_idx);
 
                     prev_outer_idx = cur_outer_idx;
                     prev_core_idx = cur_core_idx;
@@ -1337,54 +1390,54 @@ void rv::renderer::draw_lined_path(const color col, const float thickness, const
 
             const position cap_p0 = {p0.x - dir_start.x * fringe_width, p0.y - dir_start.y * fringe_width};
 
-            const cstd::uint32_t v_start = static_cast<cstd::uint32_t>(vertices.size());
-            vertices.push_back(vertex{.pos = to_ndc({cap_p0.x + outer_s.x, cap_p0.y + outer_s.y}), .col = transparent});
-            vertices.push_back(vertex{.pos = to_ndc({cap_p0.x + core_s.x, cap_p0.y + core_s.y}), .col = transparent});
-            vertices.push_back(vertex{.pos = to_ndc({cap_p0.x - core_s.x, cap_p0.y - core_s.y}), .col = transparent});
-            vertices.push_back(vertex{.pos = to_ndc({cap_p0.x - outer_s.x, cap_p0.y - outer_s.y}), .col = transparent});
+            const cstd::uint32_t v_start = static_cast<cstd::uint32_t>(vcount);
+            push_vertex(vertex{.pos = to_ndc({cap_p0.x + outer_s.x, cap_p0.y + outer_s.y}), .col = transparent});
+            push_vertex(vertex{.pos = to_ndc({cap_p0.x + core_s.x, cap_p0.y + core_s.y}), .col = transparent});
+            push_vertex(vertex{.pos = to_ndc({cap_p0.x - core_s.x, cap_p0.y - core_s.y}), .col = transparent});
+            push_vertex(vertex{.pos = to_ndc({cap_p0.x - outer_s.x, cap_p0.y - outer_s.y}), .col = transparent});
 
             const cstd::uint32_t idx = v_start;
             const cstd::uint32_t nxt = 0;
 
             // push both windings to ensure it renders regardless of the culling mode
-            indices.push_back(idx);
-            indices.push_back(nxt);
-            indices.push_back(nxt + 1);
-            indices.push_back(idx);
-            indices.push_back(nxt + 1);
-            indices.push_back(nxt);
-            indices.push_back(idx);
-            indices.push_back(nxt + 1);
-            indices.push_back(idx + 1);
-            indices.push_back(idx);
-            indices.push_back(idx + 1);
-            indices.push_back(nxt + 1);
+            push_index(idx);
+            push_index(nxt);
+            push_index(nxt + 1);
+            push_index(idx);
+            push_index(nxt + 1);
+            push_index(nxt);
+            push_index(idx);
+            push_index(nxt + 1);
+            push_index(idx + 1);
+            push_index(idx);
+            push_index(idx + 1);
+            push_index(nxt + 1);
 
-            indices.push_back(idx + 1);
-            indices.push_back(nxt + 1);
-            indices.push_back(nxt + 2);
-            indices.push_back(idx + 1);
-            indices.push_back(nxt + 2);
-            indices.push_back(nxt + 1);
-            indices.push_back(idx + 1);
-            indices.push_back(nxt + 2);
-            indices.push_back(idx + 2);
-            indices.push_back(idx + 1);
-            indices.push_back(idx + 2);
-            indices.push_back(nxt + 2);
+            push_index(idx + 1);
+            push_index(nxt + 1);
+            push_index(nxt + 2);
+            push_index(idx + 1);
+            push_index(nxt + 2);
+            push_index(nxt + 1);
+            push_index(idx + 1);
+            push_index(nxt + 2);
+            push_index(idx + 2);
+            push_index(idx + 1);
+            push_index(idx + 2);
+            push_index(nxt + 2);
 
-            indices.push_back(idx + 2);
-            indices.push_back(nxt + 2);
-            indices.push_back(nxt + 3);
-            indices.push_back(idx + 2);
-            indices.push_back(nxt + 3);
-            indices.push_back(nxt + 2);
-            indices.push_back(idx + 2);
-            indices.push_back(nxt + 3);
-            indices.push_back(idx + 3);
-            indices.push_back(idx + 2);
-            indices.push_back(idx + 3);
-            indices.push_back(nxt + 3);
+            push_index(idx + 2);
+            push_index(nxt + 2);
+            push_index(nxt + 3);
+            push_index(idx + 2);
+            push_index(nxt + 3);
+            push_index(nxt + 2);
+            push_index(idx + 2);
+            push_index(nxt + 3);
+            push_index(idx + 3);
+            push_index(idx + 2);
+            push_index(idx + 3);
+            push_index(nxt + 3);
 
             // end cap
             const position pe = path_points_[n - 1];
@@ -1397,57 +1450,57 @@ void rv::renderer::draw_lined_path(const color col, const float thickness, const
 
             const position cap_pe = {pe.x + dir_end.x * fringe_width, pe.y + dir_end.y * fringe_width};
 
-            const cstd::uint32_t v_end = static_cast<cstd::uint32_t>(vertices.size());
-            vertices.push_back(vertex{.pos = to_ndc({cap_pe.x + outer_e.x, cap_pe.y + outer_e.y}), .col = transparent});
-            vertices.push_back(vertex{.pos = to_ndc({cap_pe.x + core_e.x, cap_pe.y + core_e.y}), .col = transparent});
-            vertices.push_back(vertex{.pos = to_ndc({cap_pe.x - core_e.x, cap_pe.y - core_e.y}), .col = transparent});
-            vertices.push_back(vertex{.pos = to_ndc({cap_pe.x - outer_e.x, cap_pe.y - outer_e.y}), .col = transparent});
+            const cstd::uint32_t v_end = static_cast<cstd::uint32_t>(vcount);
+            push_vertex(vertex{.pos = to_ndc({cap_pe.x + outer_e.x, cap_pe.y + outer_e.y}), .col = transparent});
+            push_vertex(vertex{.pos = to_ndc({cap_pe.x + core_e.x, cap_pe.y + core_e.y}), .col = transparent});
+            push_vertex(vertex{.pos = to_ndc({cap_pe.x - core_e.x, cap_pe.y - core_e.y}), .col = transparent});
+            push_vertex(vertex{.pos = to_ndc({cap_pe.x - outer_e.x, cap_pe.y - outer_e.y}), .col = transparent});
 
             const cstd::uint32_t idx_end = static_cast<cstd::uint32_t>((n - 1) * 4);
             const cstd::uint32_t nxt_end = v_end;
 
-            indices.push_back(idx_end);
-            indices.push_back(nxt_end);
-            indices.push_back(nxt_end + 1);
-            indices.push_back(idx_end);
-            indices.push_back(nxt_end + 1);
-            indices.push_back(nxt_end);
-            indices.push_back(idx_end);
-            indices.push_back(nxt_end + 1);
-            indices.push_back(idx_end + 1);
-            indices.push_back(idx_end);
-            indices.push_back(idx_end + 1);
-            indices.push_back(nxt_end + 1);
+            push_index(idx_end);
+            push_index(nxt_end);
+            push_index(nxt_end + 1);
+            push_index(idx_end);
+            push_index(nxt_end + 1);
+            push_index(nxt_end);
+            push_index(idx_end);
+            push_index(nxt_end + 1);
+            push_index(idx_end + 1);
+            push_index(idx_end);
+            push_index(idx_end + 1);
+            push_index(nxt_end + 1);
 
-            indices.push_back(idx_end + 1);
-            indices.push_back(nxt_end + 1);
-            indices.push_back(nxt_end + 2);
-            indices.push_back(idx_end + 1);
-            indices.push_back(nxt_end + 2);
-            indices.push_back(nxt_end + 1);
-            indices.push_back(idx_end + 1);
-            indices.push_back(nxt_end + 2);
-            indices.push_back(idx_end + 2);
-            indices.push_back(idx_end + 1);
-            indices.push_back(idx_end + 2);
-            indices.push_back(nxt_end + 2);
+            push_index(idx_end + 1);
+            push_index(nxt_end + 1);
+            push_index(nxt_end + 2);
+            push_index(idx_end + 1);
+            push_index(nxt_end + 2);
+            push_index(nxt_end + 1);
+            push_index(idx_end + 1);
+            push_index(nxt_end + 2);
+            push_index(idx_end + 2);
+            push_index(idx_end + 1);
+            push_index(idx_end + 2);
+            push_index(nxt_end + 2);
 
-            indices.push_back(idx_end + 2);
-            indices.push_back(nxt_end + 2);
-            indices.push_back(nxt_end + 3);
-            indices.push_back(idx_end + 2);
-            indices.push_back(nxt_end + 3);
-            indices.push_back(nxt_end + 2);
-            indices.push_back(idx_end + 2);
-            indices.push_back(nxt_end + 3);
-            indices.push_back(idx_end + 3);
-            indices.push_back(idx_end + 2);
-            indices.push_back(idx_end + 3);
-            indices.push_back(nxt_end + 3);
+            push_index(idx_end + 2);
+            push_index(nxt_end + 2);
+            push_index(nxt_end + 3);
+            push_index(idx_end + 2);
+            push_index(nxt_end + 3);
+            push_index(nxt_end + 2);
+            push_index(idx_end + 2);
+            push_index(nxt_end + 3);
+            push_index(idx_end + 3);
+            push_index(idx_end + 2);
+            push_index(idx_end + 3);
+            push_index(nxt_end + 3);
         }
     }
 
-    draw_indexed_vertices(vertices, indices);
+    shrink_reserved(vcount, icount);
 
     path_points_.clear();
 }
@@ -1465,15 +1518,18 @@ void rv::renderer::draw_filled_path(const color col, const float fringe_width)
 
     if (!indices.empty())
     {
-        vector_t<vertex> vertices;
-        vertices.reserve(path_points_.size());
+        const vertex_writer w = reserve_indexed(path_points_.size(), indices.size(), shader_type::default_shader);
 
+        cstd::size_t v = 0;
         for (const position &p : path_points_)
         {
-            vertices.push_back(vertex{.pos = to_ndc(p), .col = col});
+            w.vertices[v++] = vertex{.pos = to_ndc(p), .col = col};
         }
 
-        draw_indexed_vertices(vertices, indices);
+        for (cstd::size_t k = 0; k < indices.size(); ++k)
+        {
+            w.indices[k] = w.base_index + indices[k];
+        }
     }
 
     draw_lined_path(col, 0.f, true, fringe_width);
@@ -1492,18 +1548,16 @@ void rv::renderer::draw_filled_path_monotone(const color col, const float baseli
         return;
     }
 
-    vector_t<vertex> vertices;
-    vertices.reserve(n * 2);
+    const vertex_writer w = reserve_indexed(n * 2, (n - 1) * 6, shader_type::default_shader);
 
+    cstd::size_t v = 0;
     for (const position &p : path_points_)
     {
-        vertices.push_back(vertex{.pos = to_ndc(p), .col = col});
-        vertices.push_back(vertex{.pos = to_ndc(position{p.x, baseline_y}), .col = col});
+        w.vertices[v++] = vertex{.pos = to_ndc(p), .col = col};
+        w.vertices[v++] = vertex{.pos = to_ndc(position{p.x, baseline_y}), .col = col};
     }
 
-    vector_t<cstd::uint32_t> indices;
-    indices.reserve((n - 1) * 6);
-
+    cstd::size_t k = 0;
     for (cstd::uint32_t i = 0; i + 1 < n; ++i)
     {
         const cstd::uint32_t t0 = i * 2;
@@ -1511,16 +1565,14 @@ void rv::renderer::draw_filled_path_monotone(const color col, const float baseli
         const cstd::uint32_t t1 = (i + 1) * 2;
         const cstd::uint32_t b1 = (i + 1) * 2 + 1;
 
-        indices.push_back(t0);
-        indices.push_back(t1);
-        indices.push_back(b1);
+        w.indices[k++] = w.base_index + t0;
+        w.indices[k++] = w.base_index + t1;
+        w.indices[k++] = w.base_index + b1;
 
-        indices.push_back(t0);
-        indices.push_back(b1);
-        indices.push_back(b0);
+        w.indices[k++] = w.base_index + t0;
+        w.indices[k++] = w.base_index + b1;
+        w.indices[k++] = w.base_index + b0;
     }
-
-    draw_indexed_vertices(vertices, indices);
 
     path_points_.clear();
 }
@@ -1542,13 +1594,18 @@ void rv::renderer::draw_shadow_filled_path(const color col, const float shadow_b
     const vector_t<cstd::uint32_t> core_indices = triangulate::execute(path_points_);
     if (!core_indices.empty())
     {
-        vector_t<vertex> core_vertices;
-        core_vertices.reserve(n);
+        const vertex_writer cw = reserve_indexed(n, core_indices.size(), shader_type::default_shader);
+
+        cstd::size_t v = 0;
         for (const position &p : path_points_)
         {
-            core_vertices.push_back(vertex{.pos = to_ndc(p), .col = col});
+            cw.vertices[v++] = vertex{.pos = to_ndc(p), .col = col};
         }
-        draw_indexed_vertices(core_vertices, core_indices);
+
+        for (cstd::size_t k = 0; k < core_indices.size(); ++k)
+        {
+            cw.indices[k] = cw.base_index + core_indices[k];
+        }
     }
 
     if (shadow_blur > 0.f)
@@ -1562,9 +1619,15 @@ void rv::renderer::draw_shadow_filled_path(const color col, const float shadow_b
         }
         const bool is_cw = area < 0.f;
 
-        vector_t<vertex> vertices;
-        vector_t<cstd::uint32_t> indices;
         const color transparent{col.r, col.g, col.b, 0.f};
+
+        const vertex_writer w = reserve_indexed(n * 11, n * 21, shader_type::default_shader);
+
+        cstd::size_t vcount = 0;
+        cstd::size_t icount = 0;
+
+        const auto push_vertex = [&](const vertex &v) noexcept { w.vertices[vcount++] = v; };
+        const auto push_index = [&](const cstd::uint32_t local) noexcept { w.indices[icount++] = w.base_index + local; };
 
         for (cstd::size_t i = 0; i < n; i++)
         {
@@ -1579,31 +1642,31 @@ void rv::renderer::draw_shadow_filled_path(const color col, const float shadow_b
                 norm.y = -norm.y;
             }
 
-            const cstd::uint32_t base = static_cast<cstd::uint32_t>(vertices.size());
-            vertices.push_back(vertex{.pos = to_ndc(p0), .col = col});
-            vertices.push_back(
+            const cstd::uint32_t base = static_cast<cstd::uint32_t>(vcount);
+            push_vertex(vertex{.pos = to_ndc(p0), .col = col});
+            push_vertex(
                 vertex{.pos = to_ndc({p0.x + norm.x * shadow_blur, p0.y + norm.y * shadow_blur}), .col = transparent});
-            vertices.push_back(vertex{.pos = to_ndc(p1), .col = col});
-            vertices.push_back(
+            push_vertex(vertex{.pos = to_ndc(p1), .col = col});
+            push_vertex(
                 vertex{.pos = to_ndc({p1.x + norm.x * shadow_blur, p1.y + norm.y * shadow_blur}), .col = transparent});
 
             if (is_cw)
             {
-                indices.push_back(base + 0);
-                indices.push_back(base + 1);
-                indices.push_back(base + 2);
-                indices.push_back(base + 1);
-                indices.push_back(base + 3);
-                indices.push_back(base + 2);
+                push_index(base + 0);
+                push_index(base + 1);
+                push_index(base + 2);
+                push_index(base + 1);
+                push_index(base + 3);
+                push_index(base + 2);
             }
             else
             {
-                indices.push_back(base + 0);
-                indices.push_back(base + 2);
-                indices.push_back(base + 1);
-                indices.push_back(base + 1);
-                indices.push_back(base + 2);
-                indices.push_back(base + 3);
+                push_index(base + 0);
+                push_index(base + 2);
+                push_index(base + 1);
+                push_index(base + 1);
+                push_index(base + 2);
+                push_index(base + 3);
             }
 
             const position p_prev = path_points_[(i + n - 1) % n];
@@ -1629,12 +1692,12 @@ void rv::renderer::draw_shadow_filled_path(const color col, const float shadow_b
                     a1 -= cstd::numbers::pi_f * 2.f;
 
                 const cstd::uint32_t cap_segments = 5;
-                const cstd::uint32_t center_idx = static_cast<cstd::uint32_t>(vertices.size());
-                vertices.push_back(vertex{.pos = to_ndc(p0), .col = col});
+                const cstd::uint32_t center_idx = static_cast<cstd::uint32_t>(vcount);
+                push_vertex(vertex{.pos = to_ndc(p0), .col = col});
 
-                cstd::uint32_t prev_arc_idx = static_cast<cstd::uint32_t>(vertices.size());
-                vertices.push_back(vertex{.pos = to_ndc({p0.x + norm_prev.x * shadow_blur, p0.y + norm_prev.y * shadow_blur}),
-                                          .col = transparent});
+                cstd::uint32_t prev_arc_idx = static_cast<cstd::uint32_t>(vcount);
+                push_vertex(vertex{.pos = to_ndc({p0.x + norm_prev.x * shadow_blur, p0.y + norm_prev.y * shadow_blur}),
+                                   .col = transparent});
 
                 for (cstd::uint32_t j = 1; j <= cap_segments; j++)
                 {
@@ -1642,28 +1705,29 @@ void rv::renderer::draw_shadow_filled_path(const color col, const float shadow_b
                     const float cx = cstd::cosf(a);
                     const float cy = cstd::sinf(a);
 
-                    const cstd::uint32_t cur_arc_idx = static_cast<cstd::uint32_t>(vertices.size());
-                    vertices.push_back(
+                    const cstd::uint32_t cur_arc_idx = static_cast<cstd::uint32_t>(vcount);
+                    push_vertex(
                         vertex{.pos = to_ndc({p0.x + cx * shadow_blur, p0.y + cy * shadow_blur}), .col = transparent});
 
                     if (is_cw)
                     {
-                        indices.push_back(center_idx);
-                        indices.push_back(prev_arc_idx);
-                        indices.push_back(cur_arc_idx);
+                        push_index(center_idx);
+                        push_index(prev_arc_idx);
+                        push_index(cur_arc_idx);
                     }
                     else
                     {
-                        indices.push_back(center_idx);
-                        indices.push_back(cur_arc_idx);
-                        indices.push_back(prev_arc_idx);
+                        push_index(center_idx);
+                        push_index(cur_arc_idx);
+                        push_index(prev_arc_idx);
                     }
 
                     prev_arc_idx = cur_arc_idx;
                 }
             }
         }
-        draw_indexed_vertices(vertices, indices);
+
+        shrink_reserved(vcount, icount);
     }
     path_points_.clear();
 }

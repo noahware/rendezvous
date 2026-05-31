@@ -185,6 +185,8 @@ namespace rv
 					style_.inset_left = styled_size::px(current_left + dx);
 					style_.inset_top = styled_size::px(current_top + dy);
 
+					mark_layout_dirty();
+
 					drag_anchor_ = mouse;
 				}
 			}
@@ -381,6 +383,8 @@ namespace rv
 			style_.size = element_size{ styled_size::px(new_w), styled_size::px(new_h) };
 			style_.inset_left = styled_size::px(new_x);
 			style_.inset_top = styled_size::px(new_y);
+
+			mark_layout_dirty();
 		}
 
 		shared_ptr_t<input> input_;

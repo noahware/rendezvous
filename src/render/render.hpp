@@ -66,7 +66,7 @@ namespace rv
 		}
 	};
 
-	struct vertex_batch 
+	struct vertex_batch
 	{
 		cstd::uint32_t vertex_offset;
 		cstd::uint32_t vertex_count;
@@ -75,6 +75,13 @@ namespace rv
 		shared_ptr_t<texture> texture;
 		shader_type shader;
 		optional_t<clip_rect_data> clip_rect;
+	};
+
+	struct vertex_writer
+	{
+		span_t<vertex> vertices;
+		span_t<cstd::uint32_t> indices;
+		cstd::uint32_t base_index;
 	};
 
 	struct state
@@ -99,6 +106,10 @@ namespace rv
 
 		void draw_vertices(span_t<const vertex> vertices, shader_type shader = shader_type::default_shader) noexcept;
 		void draw_indexed_vertices(span_t<const vertex> vertices, span_t<const cstd::uint32_t> indices, shader_type shader = shader_type::default_shader) noexcept;
+
+		[[nodiscard]] vertex_writer reserve_indexed(cstd::size_t vertex_count, cstd::size_t index_count, shader_type shader = shader_type::default_shader) noexcept;
+
+		void shrink_reserved(cstd::size_t used_vertices, cstd::size_t used_indices) noexcept;
 
 		void draw_rect(position min, position max, color col, float thickness = 1.f, float rounding = 0.f) noexcept;
 		void draw_rect_filled(position min, position max, color col, float rounding = 0.f, rounding_flags flags = rounding_flags_all) noexcept;
@@ -175,6 +186,9 @@ namespace rv
 
 		cstd::size_t buffer_vertex_count_ = 0;
 		cstd::size_t buffer_index_count_ = 0;
+
+		cstd::size_t last_reserve_vertices_ = 0;
+		cstd::size_t last_reserve_indices_ = 0;
 
 		cstd::size_t peak_vertex_count_ = 0;
 		cstd::size_t peak_index_count_ = 0;
