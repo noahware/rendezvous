@@ -6,6 +6,7 @@
 #include "comp/text.hpp"
 #include "comp/text_box.hpp"
 #include "comp/combo_box.hpp"
+#include "comp/color_picker.hpp"
 #include "comp/slider.hpp"
 #include "comp/panel.hpp"
 #include "comp/plot_lines.hpp"
@@ -30,6 +31,7 @@ namespace rv
 	[[nodiscard]] inline element_size default_area_size() noexcept      { return { styled_size::px(360.f), styled_size::px(120.f) }; }
 	[[nodiscard]] inline element_size default_slider_size() noexcept    { return { styled_size::fill(), styled_size::px(28.f) }; }
 	[[nodiscard]] inline element_size default_combo_size() noexcept     { return { styled_size::fill(), styled_size::px(32.f) }; }
+	[[nodiscard]] inline element_size default_color_picker_size() noexcept { return { styled_size::px(64.f), styled_size::px(28.f) }; }
 	[[nodiscard]] inline element_size default_panel_size() noexcept     { return { styled_size::px(320.f), styled_size::px(220.f) }; }
 	[[nodiscard]] inline element_size default_plot_size() noexcept      { return { styled_size::fill(), styled_size::px(120.f) }; }
 	[[nodiscard]] inline element_size default_inspector_size() noexcept { return { styled_size::fill(), styled_size::auto_v() }; }
@@ -79,6 +81,9 @@ namespace rv
 		inline combo_box& CLS::add_combo_box(vector_t<string_t> options) {                             \
 			auto g = GUI; auto w = g->make_child<combo_box>(PARENT, default_combo_size(), g->font(), g->get_input()); \
 			w->text_size(default_text_size(*g)); if (!options.empty()) w->options(cstd::move(options)); return *w; } \
+		inline color_picker& CLS::add_color_picker(const color initial) {                              \
+			auto g = GUI; auto w = g->make_child<color_picker>(PARENT, default_color_picker_size(), g->font(), g->get_input()); \
+			w->value(initial); return *w; }                                                            \
 		inline panel& CLS::add_panel() {                                                               \
 			auto g = GUI; auto w = g->make_child<panel>(PARENT, default_panel_size(), g->get_input());   \
 			w->draggable(true).resizable(true); w->shadow(default_panel_shadow(), 10.f); return *w; }   \

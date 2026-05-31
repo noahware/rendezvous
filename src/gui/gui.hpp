@@ -70,6 +70,8 @@ namespace rv
 		virtual ~gui_renderer() = default;
 		virtual void draw_rect(position min, position max, color col, float thickness = 1.f, float rounding = 0.f) noexcept = 0;
 		virtual void draw_rect_filled(position min, position max, color col, float rounding = 0.f, rounding_flags flags = rounding_flags_all) noexcept = 0;
+		virtual void draw_rect_filled_multi_color(position min, position max, color col_tl, color col_tr, color col_br, color col_bl, float rounding = 0.f, rounding_flags flags = rounding_flags_all) noexcept = 0;
+		virtual void draw_circle(position pos, float radius, color col, float thickness = 1.f, cstd::size_t segment_count = 32) noexcept = 0;
 		virtual void draw_circle_filled(position pos, float radius, color col) noexcept = 0;
 		virtual void draw_shadow_rect(position min, position max, color col, float rounding = 0.f,
 		                              float shadow_blur = 15.f, float shadow_spread = 0.f,
@@ -103,6 +105,19 @@ namespace rv
 		                      const rounding_flags flags) noexcept override
 		{
 			return renderer_->draw_rect_filled(min, max, col, rounding, flags);
+		}
+
+		void draw_rect_filled_multi_color(const position min, const position max, const color col_tl, const color col_tr,
+		                                  const color col_br, const color col_bl, const float rounding,
+		                                  const rounding_flags flags) noexcept override
+		{
+			return renderer_->draw_rect_filled_multi_color(min, max, col_tl, col_tr, col_br, col_bl, rounding, flags);
+		}
+
+		void draw_circle(const position pos, const float radius, const color col, const float thickness,
+		                 const cstd::size_t segment_count) noexcept override
+		{
+			return renderer_->draw_circle(pos, radius, col, thickness, segment_count);
 		}
 
 		void draw_circle_filled(const position pos, const float radius, const color col) noexcept override
@@ -217,7 +232,18 @@ namespace rv
 				tooltip_timer_ += dt;
 			}
 
-			root->render(*renderer_, default_style_);
+			// topmost elements (popups) are collected during the tree pass and drawn afterwards
+			// so they paint over everything, regardless of their position in the tree.
+			vector_t<deferred_render> overlays;
+			root->render(*renderer_, default_style_, position{ 0.f, 0.f }, &overlays);
+
+			for (const auto& cmd : overlays)
+			{
+				if (cmd.el)
+				{
+					cmd.el->render(*renderer_, default_style_, cmd.offset, nullptr);
+				}
+			}
 
 			// drawn last and unclipped, so the tooltip always paints over the tree.
 			if (tooltip_target_ && tooltip_timer_ >= tooltip_delay && font_ && input_)
@@ -273,6 +299,13 @@ namespace rv
 			const auto& children = el->children();
 			for (auto it = children.rbegin(); it != children.rend(); ++it)
 			{
+				// topmost children (popups) are dispatched first by process_events for input
+				// priority, so skip them here to avoid double-processing.
+				if ((*it)->is_topmost())
+				{
+					continue;
+				}
+
 				process_events_recursive(*it, mouse_pos, mouse_clicked, mouse_down, click_handled, enter_handled, scroll_target, clicked, tooltip_hover);
 			}
 
@@ -321,6 +354,26 @@ namespace rv
 			}
 		}
 
+		// Gathers every visible topmost element (popups) into out, in tree (DFS) order. Dispatched
+		// before the rest of the tree so overlays win clicks/hover over whatever they cover.
+		void collect_topmost(const shared_ptr_t<element>& el, vector_t<shared_ptr_t<element>>& out) const
+		{
+			if (!el->is_visible())
+			{
+				return;
+			}
+
+			for (const auto& child : el->children())
+			{
+				if (child->is_topmost())
+				{
+					out.push_back(child);
+				}
+
+				collect_topmost(child, out);
+			}
+		}
+
 		void process_events()
 		{
 			if (!input_)
@@ -342,6 +395,17 @@ namespace rv
 
 			if (tree_.root())
 			{
+				// topmost popups first (reverse DFS → most-recently-nested on top), then the rest
+				// of the tree (which skips topmost subtrees). They share the handled flags, so a
+				// popup claims the click/hover ahead of anything it visually covers.
+				vector_t<shared_ptr_t<element>> topmost;
+				collect_topmost(tree_.root(), topmost);
+
+				for (auto it = topmost.rbegin(); it != topmost.rend(); ++it)
+				{
+					process_events_recursive(*it, mouse_pos, mouse_clicked, mouse_down, click_handled, enter_handled, scroll_target, clicked, tooltip_hover);
+				}
+
 				process_events_recursive(tree_.root(), mouse_pos, mouse_clicked, mouse_down, click_handled, enter_handled, scroll_target, clicked, tooltip_hover);
 			}
 

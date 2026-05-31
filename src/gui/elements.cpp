@@ -558,7 +558,7 @@ namespace rv
 	}
 
 	void element::render(gui_renderer& renderer, const element_style& defaults,
-	                     const position offset) const
+	                     const position offset, vector_t<deferred_render>* overlays) const
 	{
 		if (!visible_)
 		{
@@ -649,7 +649,16 @@ namespace rv
 
 		for (const auto& child : children_)
 		{
-			child->render(renderer, defaults, child_offset);
+			// topmost children are deferred to the gui's final overlay pass so they draw above
+			// everything; capture the offset they have here so the deferred draw lands correctly.
+			if (overlays && child->is_topmost() && child->is_visible())
+			{
+				overlays->push_back({ child.get(), child_offset });
+
+				continue;
+			}
+
+			child->render(renderer, defaults, child_offset, overlays);
 		}
 
 		if (clip)

@@ -495,18 +495,36 @@ cstd::int32_t main(int argc, char* argv[])
 	demo_panel.add_label("Draggable / resizable panel").text_color({ 0.7f, 0.7f, 0.75f, 1.f });
 	demo_panel.add_checkbox("Checkbox").bind(&p_feature);
 	demo_panel.add_slider(0.f, 1.f, 0.5f).fill_color({ 0.8f, 0.2f, 0.4f, 1.f });
-	demo_panel.add_button("Button").background_color({ 0.2f, 0.6f, 0.3f, 1.f }).rounding(6.f);
+
+	static rv::color panel_tint = { 0.2f, 0.6f, 0.3f, 1.f };
+	auto& tinted_btn = demo_panel.add_button("Button").background_color(panel_tint).rounding(6.f);
+
+	demo_panel.add_label("Pick a color:").text_color({ 0.7f, 0.7f, 0.75f, 1.f });
+	demo_panel.add_color_picker(panel_tint)
+		.bind(&panel_tint)
+		.on_change([btn = &tinted_btn](const rv::color c) { btn->background_color(c); });
 
 	MSG msg = { };
 
 	do
 	{
-		if (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
+		// Drain every pending message, then render once. Processing only one message per
+		// iteration (and skipping the frame) starves rendering while the mouse moves, since
+		// WM_MOUSEMOVE floods the queue — which reads as a large FPS drop on any mouse motion.
+		while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
 			TranslateMessage(&msg);
 			DispatchMessageW(&msg);
 
-			continue;
+			if (msg.message == WM_QUIT)
+			{
+				break;
+			}
+		}
+
+		if (msg.message == WM_QUIT)
+		{
+			break;
 		}
 
 		if (use_opengl)

@@ -15,6 +15,7 @@ namespace rv
 	class text_element;
 	class text_box;
 	class combo_box;
+	class color_picker;
 	class panel;
 	class plot_lines;
 	class value_inspector;
@@ -30,6 +31,7 @@ namespace rv
 		slider<float>& add_slider(float mn = 0.f, float mx = 1.f, float v = 0.f);                 \
 		range_slider<float>& add_range_slider(float mn = 0.f, float mx = 1.f, float lo = 0.f, float hi = 1.f); \
 		combo_box& add_combo_box(vector_t<string_t> options = {});                                \
+		color_picker& add_color_picker(color initial = {});                                       \
 		panel& add_panel();                                                                       \
 		plot_lines& add_plot_lines();                                                             \
 		plot_lines& add_plot_var(string_view_t label, const float* value);                        \
@@ -139,6 +141,14 @@ namespace rv
 		cstd::size_t count = 0;
 		float main_size = 0.f;
 		float cross_size = 0.f;
+	};
+
+	// A topmost element deferred out of the normal render pass, captured with the accumulated
+	// offset it had at that point so it can be redrawn last (on top of everything).
+	struct deferred_render
+	{
+		const class element* el = nullptr;
+		position offset;
 	};
 
 	struct element_style
@@ -905,6 +915,20 @@ namespace rv
 			return *this;
 		}
 
+		// Topmost elements (e.g. popups) are deferred to a final overlay pass so they draw above,
+		// and are hit-tested before, everything else — regardless of their position in the tree.
+		element& topmost(const bool v = true) noexcept
+		{
+			topmost_ = v;
+
+			return *this;
+		}
+
+		[[nodiscard]] bool is_topmost() const noexcept
+		{
+			return topmost_;
+		}
+
 		element& animate(keyframe_sequence seq, animation_options opts)
 		{
 			animations_.emplace_back(cstd::move(seq), cstd::move(opts));
@@ -978,9 +1002,11 @@ namespace rv
 			return merged;
 		}
 
-		// defined in gui.hpp after gui_renderer is complete
+		// defined in gui.hpp after gui_renderer is complete. `overlays`, when non-null, collects
+		// topmost children to be drawn in a final pass instead of inline; null means render inline.
 		void render(gui_renderer& renderer, const element_style& defaults,
-		            const position offset = { 0.f, 0.f }) const;
+		            const position offset = { 0.f, 0.f },
+		            vector_t<deferred_render>* overlays = nullptr) const;
 
 	protected:
 		virtual void render_self(gui_renderer& renderer, position min, position max) const
@@ -1006,6 +1032,7 @@ namespace rv
 		bool pressed_ = false;
 		bool focused_ = false;
 		bool visible_ = true;
+		bool topmost_ = false;
 		string_t tooltip_;
 		vector_t<animation_state> animations_;
 

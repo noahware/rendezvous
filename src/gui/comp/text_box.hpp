@@ -178,7 +178,19 @@ namespace rv
 			const float scale = current_scale();
 			const float line_h = font_->line_height() * scale;
 			const float font_size = style_.font_size.value_or(0.f);
-			const position origin = { min.x - scroll_.x, min.y - scroll_.y };
+
+			// Single-line inputs vertically center their text; multiline starts at the top. Center on
+			// the glyph block (ascent..descent) rather than the full line height so line_gap doesn't
+			// sit the text visually high (same approach as the checkbox label).
+			float origin_y = min.y - scroll_.y;
+
+			if (!multiline_)
+			{
+				const float glyph_h = (font_->ascent() - font_->descent()) * scale;
+				origin_y = min.y + ((max.y - min.y) - glyph_h) * 0.5f;
+			}
+
+			const position origin = { min.x - scroll_.x, origin_y };
 
 			const int len = static_cast<int>(buf_.chars.size());
 			const bool has_selection = stb_.select_start != stb_.select_end;

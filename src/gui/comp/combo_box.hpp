@@ -22,6 +22,8 @@ namespace rv
 			// per-row hit-testing (update) aligned with row rendering (render_self).
 			style_.shadow_color = color{ 0.f, 0.f, 0.f, 0.5f };
 			style_.shadow_blur = 12.f;
+
+			topmost(true);
 		}
 
 		void configure(shared_ptr_t<gui_font> font, shared_ptr_t<input> input,
