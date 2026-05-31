@@ -379,14 +379,21 @@ void main()
     float sigma = max(blur_radius / 2.0, 0.1);
     float two_sigma_sq = 2.0 * sigma * sigma;
 
-    for (int x = -samples; x <= samples; ++x)
+    // Bounded, linearly-filtered Gaussian: cap taps per axis, step proportionally to the blur,
+    // let the linear sampler interpolate skipped texels (near-identical for a soft shadow).
+    int side = int(clamp(ceil(blur_radius / 2.5), 1.0, 6.0));
+    float fstep = blur_radius / float(side);
+
+    for (int sx = -side; sx <= side; ++sx)
     {
-        for (int y = -samples; y <= samples; ++y)
+        for (int sy = -side; sy <= side; ++sy)
         {
-            float dist_sq = float(x*x + y*y);
+            float ox = float(sx) * fstep;
+            float oy = float(sy) * fstep;
+            float dist_sq = ox*ox + oy*oy;
             if (dist_sq <= blur_radius * blur_radius)
             {
-                vec2 sample_uv = v_uv + vec2(float(x) * du_per_pixel, float(y) * dv_per_pixel);
+                vec2 sample_uv = v_uv + vec2(ox * du_per_pixel, oy * dv_per_pixel);
                 float weight = exp(-dist_sq / two_sigma_sq);
 
                 if (sample_uv.x >= uv_min.x && sample_uv.x <= uv_max.x &&
@@ -815,14 +822,21 @@ void main()
     float sigma = max(blur_radius / 2.0, 0.1);
     float two_sigma_sq = 2.0 * sigma * sigma;
 
-    for (int x = -samples; x <= samples; ++x)
+    // Bounded, linearly-filtered Gaussian: cap taps per axis, step proportionally to the blur,
+    // let the linear sampler interpolate skipped texels (near-identical for a soft shadow).
+    int side = int(clamp(ceil(blur_radius / 2.5), 1.0, 6.0));
+    float fstep = blur_radius / float(side);
+
+    for (int sx = -side; sx <= side; ++sx)
     {
-        for (int y = -samples; y <= samples; ++y)
+        for (int sy = -side; sy <= side; ++sy)
         {
-            float dist_sq = float(x*x + y*y);
+            float ox = float(sx) * fstep;
+            float oy = float(sy) * fstep;
+            float dist_sq = ox*ox + oy*oy;
             if (dist_sq <= blur_radius * blur_radius)
             {
-                vec2 sample_uv = v_uv + vec2(float(x) * du_per_pixel, float(y) * dv_per_pixel);
+                vec2 sample_uv = v_uv + vec2(ox * du_per_pixel, oy * dv_per_pixel);
                 float weight = exp(-dist_sq / two_sigma_sq);
 
                 if (sample_uv.x >= uv_min.x && sample_uv.x <= uv_max.x &&

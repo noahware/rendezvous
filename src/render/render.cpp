@@ -220,7 +220,7 @@ void rv::renderer::draw_rect(const position min, const position max, const color
 
     const auto make_vertex = [data](const float x, const float y, const color c, const float u, const float v) -> vertex
     { 
-        return vertex{.pos = {x, y}, .col = c, .uv = {u, v}, .custom_data = data}; 
+        return vertex{.pos = {x, y}, .col = pack_color(c), .uv = {u, v}, .custom_data = data}; 
     };
 
     const vertex_writer w = reserve_indexed(6, 6, shader_type::rect_shader);
@@ -269,7 +269,7 @@ void rv::renderer::draw_rect_filled_multi_color(const position min, const positi
 
     const auto make_vertex = [data](const float x, const float y, const color c, const float u, const float v) -> vertex
     { 
-        return vertex{.pos = {x, y}, .col = c, .uv = {u, v}, .custom_data = data}; 
+        return vertex{.pos = {x, y}, .col = pack_color(c), .uv = {u, v}, .custom_data = data}; 
     };
 
     const vertex_writer w = reserve_indexed(6, 6, shader_type::rect_shader);
@@ -319,7 +319,7 @@ void rv::renderer::draw_shadow_rect(const position min, const position max, cons
 
     const auto make_vertex = [col, data](const float x, const float y, const float u, const float v) -> vertex
     { 
-        return vertex{.pos = {x, y}, .col = col, .uv = {u, v}, .custom_data = data}; 
+        return vertex{.pos = {x, y}, .col = pack_color(col), .uv = {u, v}, .custom_data = data}; 
     };
 
     const vertex_writer w = reserve_indexed(6, 6, shader_type::shadow_shader);
@@ -367,7 +367,7 @@ void rv::renderer::draw_circle(const position pos, const float radius, const col
 
     const auto make_vertex = [col, data](const float x, const float y, const float u, const float v) -> vertex
     { 
-        return vertex{.pos = {x, y}, .col = col, .uv = {u, v}, .custom_data = data}; 
+        return vertex{.pos = {x, y}, .col = pack_color(col), .uv = {u, v}, .custom_data = data}; 
     };
 
     const vertex_writer w = reserve_indexed(6, 6, shader_type::rect_shader);
@@ -398,7 +398,7 @@ void rv::renderer::draw_circle_filled(const position pos, const float radius, co
 
     const auto make_vertex = [col, data](const float x, const float y, const float u, const float v) -> vertex
     { 
-        return vertex{.pos = {x, y}, .col = col, .uv = {u, v}, .custom_data = data}; 
+        return vertex{.pos = {x, y}, .col = pack_color(col), .uv = {u, v}, .custom_data = data}; 
     };
 
     const vertex_writer w = reserve_indexed(6, 6, shader_type::rect_shader);
@@ -430,7 +430,7 @@ void rv::renderer::draw_circle_filled_radial(const position pos, const float rad
 
     const auto make_vertex = [col_out, data](const float x, const float y, const float u, const float v) -> vertex
     { 
-        return vertex{.pos = {x, y}, .col = col_out, .uv = {u, v}, .custom_data = data}; 
+        return vertex{.pos = {x, y}, .col = pack_color(col_out), .uv = {u, v}, .custom_data = data}; 
     };
 
     const vertex_writer w = reserve_indexed(6, 6, shader_type::rect_shader);
@@ -465,7 +465,7 @@ void rv::renderer::draw_shadow_circle(const position pos, const float radius, co
 
     const auto make_vertex = [col, data](const float x, const float y, const float u, const float v) -> vertex
     { 
-        return vertex{.pos = {x, y}, .col = col, .uv = {u, v}, .custom_data = data}; 
+        return vertex{.pos = {x, y}, .col = pack_color(col), .uv = {u, v}, .custom_data = data}; 
     };
 
     const vertex_writer w = reserve_indexed(6, 6, shader_type::shadow_shader);
@@ -531,7 +531,7 @@ void rv::renderer::draw_image_rounded(const shared_ptr_t<texture> tex, const pos
         auto d = data;
         d[2] = px;
         d[3] = py;
-        return vertex{.pos = {x, y}, .col = tint, .uv = {u, v}, .custom_data = d};
+        return vertex{.pos = {x, y}, .col = pack_color(tint), .uv = {u, v}, .custom_data = d};
     };
 
     current_texture_ = tex;
@@ -618,10 +618,10 @@ void rv::renderer::draw_text(const font &font, const position pos, const string_
 
             const cstd::uint32_t base = w.base_index + static_cast<cstd::uint32_t>(vcount);
 
-            w.vertices[vcount + 0] = vertex{.pos = {a.x, a.y}, .col = col, .uv = {g.uv0.x, g.uv0.y}};
-            w.vertices[vcount + 1] = vertex{.pos = {b.x, a.y}, .col = col, .uv = {g.uv1.x, g.uv0.y}};
-            w.vertices[vcount + 2] = vertex{.pos = {b.x, b.y}, .col = col, .uv = {g.uv1.x, g.uv1.y}};
-            w.vertices[vcount + 3] = vertex{.pos = {a.x, b.y}, .col = col, .uv = {g.uv0.x, g.uv1.y}};
+            w.vertices[vcount + 0] = vertex{.pos = {a.x, a.y}, .col = pack_color(col), .uv = {g.uv0.x, g.uv0.y}};
+            w.vertices[vcount + 1] = vertex{.pos = {b.x, a.y}, .col = pack_color(col), .uv = {g.uv1.x, g.uv0.y}};
+            w.vertices[vcount + 2] = vertex{.pos = {b.x, b.y}, .col = pack_color(col), .uv = {g.uv1.x, g.uv1.y}};
+            w.vertices[vcount + 3] = vertex{.pos = {a.x, b.y}, .col = pack_color(col), .uv = {g.uv0.x, g.uv1.y}};
 
             w.indices[icount + 0] = base;
             w.indices[icount + 1] = base + 1;
@@ -722,10 +722,10 @@ void rv::renderer::add_text_shadow(const font &font, const position pos, const s
 
             const cstd::uint32_t base = w.base_index + static_cast<cstd::uint32_t>(vcount);
 
-            w.vertices[vcount + 0] = vertex{.pos = {a.x, a.y}, .col = col, .uv = {u0, v0}, .custom_data = data};
-            w.vertices[vcount + 1] = vertex{.pos = {b.x, a.y}, .col = col, .uv = {u1, v0}, .custom_data = data};
-            w.vertices[vcount + 2] = vertex{.pos = {b.x, b.y}, .col = col, .uv = {u1, v1}, .custom_data = data};
-            w.vertices[vcount + 3] = vertex{.pos = {a.x, b.y}, .col = col, .uv = {u0, v1}, .custom_data = data};
+            w.vertices[vcount + 0] = vertex{.pos = {a.x, a.y}, .col = pack_color(col), .uv = {u0, v0}, .custom_data = data};
+            w.vertices[vcount + 1] = vertex{.pos = {b.x, a.y}, .col = pack_color(col), .uv = {u1, v0}, .custom_data = data};
+            w.vertices[vcount + 2] = vertex{.pos = {b.x, b.y}, .col = pack_color(col), .uv = {u1, v1}, .custom_data = data};
+            w.vertices[vcount + 3] = vertex{.pos = {a.x, b.y}, .col = pack_color(col), .uv = {u0, v1}, .custom_data = data};
 
             w.indices[icount + 0] = base;
             w.indices[icount + 1] = base + 1;
@@ -1153,7 +1153,11 @@ void rv::renderer::modify_alpha(const cstd::size_t start_idx, const cstd::size_t
 
     for (cstd::size_t i = start_idx; i < end_idx && i < pending_vertices_.size(); i++)
     {
-        pending_vertices_[i].col.a *= alpha;
+        // col is packed RGBA8; scale just the alpha byte (bits 24..31).
+        cstd::uint32_t &packed = pending_vertices_[i].col;
+        const cstd::uint32_t a = (packed >> 24) & 0xFFu;
+        const cstd::uint32_t scaled = static_cast<cstd::uint32_t>(static_cast<float>(a) * alpha + 0.5f);
+        packed = (packed & 0x00FFFFFFu) | (scaled << 24);
     }
 }
 
@@ -1161,7 +1165,7 @@ void rv::renderer::modify_color(const cstd::size_t start_idx, const cstd::size_t
 {
     for (cstd::size_t i = start_idx; i < end_idx && i < pending_vertices_.size(); i++)
     {
-        pending_vertices_[i].col = col;
+        pending_vertices_[i].col = pack_color(col);
     }
 }
 
@@ -1262,10 +1266,10 @@ void rv::renderer::draw_lined_path(const color col, const float thickness, const
         const auto core = current_join * half;
         const auto outer = current_join * (half + fringe_width);
 
-        push_vertex(vertex{.pos = to_ndc({current_pos.x + outer.x, current_pos.y + outer.y}), .col = transparent});
-        push_vertex(vertex{.pos = to_ndc({current_pos.x + core.x, current_pos.y + core.y}), .col = col});
-        push_vertex(vertex{.pos = to_ndc({current_pos.x - core.x, current_pos.y - core.y}), .col = col});
-        push_vertex(vertex{.pos = to_ndc({current_pos.x - outer.x, current_pos.y - outer.y}), .col = transparent});
+        push_vertex(vertex{.pos = to_ndc({current_pos.x + outer.x, current_pos.y + outer.y}), .col = pack_color(transparent)});
+        push_vertex(vertex{.pos = to_ndc({current_pos.x + core.x, current_pos.y + core.y}), .col = pack_color(col)});
+        push_vertex(vertex{.pos = to_ndc({current_pos.x - core.x, current_pos.y - core.y}), .col = pack_color(col)});
+        push_vertex(vertex{.pos = to_ndc({current_pos.x - outer.x, current_pos.y - outer.y}), .col = pack_color(transparent)});
     }
 
     for (cstd::size_t i = 0; i < segments; i++)
@@ -1309,7 +1313,7 @@ void rv::renderer::draw_lined_path(const color col, const float thickness, const
                 const float theta_start = phi + cstd::numbers::pi_f / 2.f;
 
                 const cstd::uint32_t center_idx = static_cast<cstd::uint32_t>(vcount);
-                push_vertex(vertex{.pos = to_ndc(p), .col = col});
+                push_vertex(vertex{.pos = to_ndc(p), .col = pack_color(col)});
 
                 cstd::uint32_t prev_outer_idx = v_outer_start;
                 cstd::uint32_t prev_core_idx = v_core_start;
@@ -1333,10 +1337,10 @@ void rv::renderer::draw_lined_path(const color col, const float thickness, const
                         cur_outer_idx = static_cast<cstd::uint32_t>(vcount);
                         push_vertex(
                             vertex{.pos = to_ndc({p.x + cx * (half + fringe_width), p.y + cy * (half + fringe_width)}),
-                                   .col = transparent});
+                                   .col = pack_color(transparent)});
 
                         cur_core_idx = static_cast<cstd::uint32_t>(vcount);
-                        push_vertex(vertex{.pos = to_ndc({p.x + cx * half, p.y + cy * half}), .col = col});
+                        push_vertex(vertex{.pos = to_ndc({p.x + cx * half, p.y + cy * half}), .col = pack_color(col)});
                     }
 
                     push_index(prev_core_idx);
@@ -1391,10 +1395,10 @@ void rv::renderer::draw_lined_path(const color col, const float thickness, const
             const position cap_p0 = {p0.x - dir_start.x * fringe_width, p0.y - dir_start.y * fringe_width};
 
             const cstd::uint32_t v_start = static_cast<cstd::uint32_t>(vcount);
-            push_vertex(vertex{.pos = to_ndc({cap_p0.x + outer_s.x, cap_p0.y + outer_s.y}), .col = transparent});
-            push_vertex(vertex{.pos = to_ndc({cap_p0.x + core_s.x, cap_p0.y + core_s.y}), .col = transparent});
-            push_vertex(vertex{.pos = to_ndc({cap_p0.x - core_s.x, cap_p0.y - core_s.y}), .col = transparent});
-            push_vertex(vertex{.pos = to_ndc({cap_p0.x - outer_s.x, cap_p0.y - outer_s.y}), .col = transparent});
+            push_vertex(vertex{.pos = to_ndc({cap_p0.x + outer_s.x, cap_p0.y + outer_s.y}), .col = pack_color(transparent)});
+            push_vertex(vertex{.pos = to_ndc({cap_p0.x + core_s.x, cap_p0.y + core_s.y}), .col = pack_color(transparent)});
+            push_vertex(vertex{.pos = to_ndc({cap_p0.x - core_s.x, cap_p0.y - core_s.y}), .col = pack_color(transparent)});
+            push_vertex(vertex{.pos = to_ndc({cap_p0.x - outer_s.x, cap_p0.y - outer_s.y}), .col = pack_color(transparent)});
 
             const cstd::uint32_t idx = v_start;
             const cstd::uint32_t nxt = 0;
@@ -1451,10 +1455,10 @@ void rv::renderer::draw_lined_path(const color col, const float thickness, const
             const position cap_pe = {pe.x + dir_end.x * fringe_width, pe.y + dir_end.y * fringe_width};
 
             const cstd::uint32_t v_end = static_cast<cstd::uint32_t>(vcount);
-            push_vertex(vertex{.pos = to_ndc({cap_pe.x + outer_e.x, cap_pe.y + outer_e.y}), .col = transparent});
-            push_vertex(vertex{.pos = to_ndc({cap_pe.x + core_e.x, cap_pe.y + core_e.y}), .col = transparent});
-            push_vertex(vertex{.pos = to_ndc({cap_pe.x - core_e.x, cap_pe.y - core_e.y}), .col = transparent});
-            push_vertex(vertex{.pos = to_ndc({cap_pe.x - outer_e.x, cap_pe.y - outer_e.y}), .col = transparent});
+            push_vertex(vertex{.pos = to_ndc({cap_pe.x + outer_e.x, cap_pe.y + outer_e.y}), .col = pack_color(transparent)});
+            push_vertex(vertex{.pos = to_ndc({cap_pe.x + core_e.x, cap_pe.y + core_e.y}), .col = pack_color(transparent)});
+            push_vertex(vertex{.pos = to_ndc({cap_pe.x - core_e.x, cap_pe.y - core_e.y}), .col = pack_color(transparent)});
+            push_vertex(vertex{.pos = to_ndc({cap_pe.x - outer_e.x, cap_pe.y - outer_e.y}), .col = pack_color(transparent)});
 
             const cstd::uint32_t idx_end = static_cast<cstd::uint32_t>((n - 1) * 4);
             const cstd::uint32_t nxt_end = v_end;
@@ -1523,7 +1527,7 @@ void rv::renderer::draw_filled_path(const color col, const float fringe_width)
         cstd::size_t v = 0;
         for (const position &p : path_points_)
         {
-            w.vertices[v++] = vertex{.pos = to_ndc(p), .col = col};
+            w.vertices[v++] = vertex{.pos = to_ndc(p), .col = pack_color(col)};
         }
 
         for (cstd::size_t k = 0; k < indices.size(); ++k)
@@ -1553,8 +1557,8 @@ void rv::renderer::draw_filled_path_monotone(const color col, const float baseli
     cstd::size_t v = 0;
     for (const position &p : path_points_)
     {
-        w.vertices[v++] = vertex{.pos = to_ndc(p), .col = col};
-        w.vertices[v++] = vertex{.pos = to_ndc(position{p.x, baseline_y}), .col = col};
+        w.vertices[v++] = vertex{.pos = to_ndc(p), .col = pack_color(col)};
+        w.vertices[v++] = vertex{.pos = to_ndc(position{p.x, baseline_y}), .col = pack_color(col)};
     }
 
     cstd::size_t k = 0;
@@ -1599,7 +1603,7 @@ void rv::renderer::draw_shadow_filled_path(const color col, const float shadow_b
         cstd::size_t v = 0;
         for (const position &p : path_points_)
         {
-            cw.vertices[v++] = vertex{.pos = to_ndc(p), .col = col};
+            cw.vertices[v++] = vertex{.pos = to_ndc(p), .col = pack_color(col)};
         }
 
         for (cstd::size_t k = 0; k < core_indices.size(); ++k)
@@ -1643,12 +1647,12 @@ void rv::renderer::draw_shadow_filled_path(const color col, const float shadow_b
             }
 
             const cstd::uint32_t base = static_cast<cstd::uint32_t>(vcount);
-            push_vertex(vertex{.pos = to_ndc(p0), .col = col});
+            push_vertex(vertex{.pos = to_ndc(p0), .col = pack_color(col)});
             push_vertex(
-                vertex{.pos = to_ndc({p0.x + norm.x * shadow_blur, p0.y + norm.y * shadow_blur}), .col = transparent});
-            push_vertex(vertex{.pos = to_ndc(p1), .col = col});
+                vertex{.pos = to_ndc({p0.x + norm.x * shadow_blur, p0.y + norm.y * shadow_blur}), .col = pack_color(transparent)});
+            push_vertex(vertex{.pos = to_ndc(p1), .col = pack_color(col)});
             push_vertex(
-                vertex{.pos = to_ndc({p1.x + norm.x * shadow_blur, p1.y + norm.y * shadow_blur}), .col = transparent});
+                vertex{.pos = to_ndc({p1.x + norm.x * shadow_blur, p1.y + norm.y * shadow_blur}), .col = pack_color(transparent)});
 
             if (is_cw)
             {
@@ -1693,11 +1697,11 @@ void rv::renderer::draw_shadow_filled_path(const color col, const float shadow_b
 
                 const cstd::uint32_t cap_segments = 5;
                 const cstd::uint32_t center_idx = static_cast<cstd::uint32_t>(vcount);
-                push_vertex(vertex{.pos = to_ndc(p0), .col = col});
+                push_vertex(vertex{.pos = to_ndc(p0), .col = pack_color(col)});
 
                 cstd::uint32_t prev_arc_idx = static_cast<cstd::uint32_t>(vcount);
                 push_vertex(vertex{.pos = to_ndc({p0.x + norm_prev.x * shadow_blur, p0.y + norm_prev.y * shadow_blur}),
-                                   .col = transparent});
+                                   .col = pack_color(transparent)});
 
                 for (cstd::uint32_t j = 1; j <= cap_segments; j++)
                 {
@@ -1707,7 +1711,7 @@ void rv::renderer::draw_shadow_filled_path(const color col, const float shadow_b
 
                     const cstd::uint32_t cur_arc_idx = static_cast<cstd::uint32_t>(vcount);
                     push_vertex(
-                        vertex{.pos = to_ndc({p0.x + cx * shadow_blur, p0.y + cy * shadow_blur}), .col = transparent});
+                        vertex{.pos = to_ndc({p0.x + cx * shadow_blur, p0.y + cy * shadow_blur}), .col = pack_color(transparent)});
 
                     if (is_cw)
                     {

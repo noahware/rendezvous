@@ -205,33 +205,39 @@ float4 text_shadow_pixel_shader(ps_input input) : SV_TARGET
     
     float total_alpha = 0.0f;
     float total_weight = 0.0f;
-    
+
     // Standard CSS-style Gaussian falloff
     float sigma = max(blur_radius / 2.0f, 0.1f);
     float two_sigma_sq = 2.0f * sigma * sigma;
-    
-    // True additive blur to prevent beading/caps at stroke ends
+
+    // Bounded, linearly-filtered Gaussian: cap taps per axis and step proportionally to the blur
+    // radius. The linear sampler interpolates skipped texels, so a soft shadow looks ~identical at
+    // a fraction of the fetches (was up to (2*ceil(blur)+1)^2 taps per pixel).
+    int side = (int)clamp(ceil(blur_radius / 2.5f), 1.0f, 6.0f);
+    float fstep = blur_radius / (float)side;
+
     [loop]
-    for (int x = -samples; x <= samples; ++x)
+    for (int sx = -side; sx <= side; ++sx)
     {
         [loop]
-        for (int y = -samples; y <= samples; ++y)
+        for (int sy = -side; sy <= side; ++sy)
         {
-            float dist_sq = x*x + y*y;
+            float ox = (float)sx * fstep;
+            float oy = (float)sy * fstep;
+            float dist_sq = ox*ox + oy*oy;
             if (dist_sq <= blur_radius * blur_radius)
             {
-                float2 offset = float2(x * du_per_pixel, y * dv_per_pixel);
-                float2 sample_uv = input.uv + offset;
-                
+                float2 sample_uv = input.uv + float2(ox * du_per_pixel, oy * dv_per_pixel);
+
                 float weight = exp(-dist_sq / two_sigma_sq);
-                
+
                 if (sample_uv.x >= uv_min.x && sample_uv.x <= uv_max.x &&
                     sample_uv.y >= uv_min.y && sample_uv.y <= uv_max.y)
                 {
                     float a = textr.SampleLevel(samplr, sample_uv, 0).a;
                     total_alpha += a * weight;
                 }
-                
+
                 // Weight must be accumulated regardless of sample boundary to preserve normalized energy
                 total_weight += weight;
             }

@@ -32,10 +32,21 @@ namespace rv
 		bevel
 	};
 
-	struct vertex 
+	[[nodiscard]] inline cstd::uint32_t pack_color(const color& c) noexcept
+	{
+		auto q = [](const float v) -> cstd::uint32_t
+		{
+			const float clamped = v < 0.f ? 0.f : (v > 1.f ? 1.f : v);
+			return static_cast<cstd::uint32_t>(clamped * 255.f + 0.5f);
+		};
+
+		return q(c.r) | (q(c.g) << 8) | (q(c.b) << 16) | (q(c.a) << 24);
+	}
+
+	struct vertex
 	{
 		ndc_position pos;
-		color col;
+		cstd::uint32_t col = 0;   // packed RGBA8 (see pack_color)
 		texture_position uv;
 		array_t<float, 8> custom_data;
 	};

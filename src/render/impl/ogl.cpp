@@ -405,7 +405,7 @@ void rv::ogl_renderer::flush_pending_vertices() noexcept
 	                        reinterpret_cast<const void*>(offsetof(vertex, pos)));
 
 	gl::EnableVertexAttribArray(1);
-	gl::VertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride,
+	gl::VertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, stride,
 	                        reinterpret_cast<const void*>(offsetof(vertex, col)));
 
 	gl::EnableVertexAttribArray(2);
