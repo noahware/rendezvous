@@ -3,18 +3,6 @@
 #if defined(_WIN32)
 #include "../shaders.hpp"
 
-namespace
-{
-	struct alignas(16) clip_cbuffer_data
-	{
-		float clip_min[2];
-		float clip_max[2];
-		float clip_radii[4];
-		float clip_enabled;
-		float padding[3];
-	};
-}
-
 rv::dx11_renderer::dx11_renderer(ID3D11Device* const device, ID3D11DeviceContext* const context) noexcept
 		:	device_(device),
 			context_(context)
@@ -91,7 +79,7 @@ bool rv::dx11_renderer::init_backend() noexcept
 	}
 
 	D3D11_BUFFER_DESC cb_desc = { };
-	cb_desc.ByteWidth = sizeof(clip_cbuffer_data);
+	cb_desc.ByteWidth = sizeof(clip_constants);
 	cb_desc.Usage = D3D11_USAGE_DYNAMIC;
 	cb_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 	cb_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
@@ -304,24 +292,7 @@ void rv::dx11_renderer::flush_pending_vertices() noexcept
 			clip_initialized = true;
 			last_clip = batch.clip_rect;
 
-			clip_cbuffer_data cb_data = { };
-
-			if (batch.clip_rect.has_value())
-			{
-				const auto& clip = batch.clip_rect.value();
-
-				cb_data.clip_min[0] = clip.bounds.min.x;
-				cb_data.clip_min[1] = clip.bounds.min.y;
-				cb_data.clip_max[0] = clip.bounds.max.x;
-				cb_data.clip_max[1] = clip.bounds.max.y;
-				cb_data.clip_enabled = 1.f;
-
-				const float r = clip.rounding;
-				cb_data.clip_radii[0] = (clip.flags & rounding_flags_top_right) ? r : 0.f;
-				cb_data.clip_radii[1] = (clip.flags & rounding_flags_bottom_right) ? r : 0.f;
-				cb_data.clip_radii[2] = (clip.flags & rounding_flags_bottom_left) ? r : 0.f;
-				cb_data.clip_radii[3] = (clip.flags & rounding_flags_top_left) ? r : 0.f;
-			}
+			const clip_constants cb_data = pack_clip_constants(batch.clip_rect);
 
 			D3D11_MAPPED_SUBRESOURCE cb_resource = { };
 			if (SUCCEEDED(context_->Map(clip_cbuffer_.value(), 0, D3D11_MAP_WRITE_DISCARD, 0, &cb_resource)))

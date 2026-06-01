@@ -77,6 +77,17 @@ namespace rv
 		}
 	};
 
+	// GPU constant-buffer layout for clip state, shared by the D3D11 (cbuffer) and
+	// OpenGL (UBO) backends. Layout must match the matching block in both shader sets.
+	struct alignas(16) clip_constants
+	{
+		float clip_min[2] = { 0.f, 0.f };
+		float clip_max[2] = { 0.f, 0.f };
+		float clip_radii[4] = { 0.f, 0.f, 0.f, 0.f };
+		float clip_enabled = 0.f;
+		float padding[3] = { 0.f, 0.f, 0.f };
+	};
+
 	struct vertex_batch
 	{
 		cstd::uint32_t vertex_offset;
@@ -185,6 +196,10 @@ namespace rv
 		void add_circle_path(position pos, float radius, cstd::size_t segment_count) noexcept;
 
 		[[nodiscard]] ndc_position to_ndc(position pos) const noexcept;
+
+		// Packs a clip rect into the shared GPU constant-buffer layout. Backend-agnostic;
+		// the scissor rect itself stays backend-specific (origin/Y-flip differ).
+		[[nodiscard]] static clip_constants pack_clip_constants(const optional_t<clip_rect_data>& clip) noexcept;
 
 		struct state state_;
 		vector_t<position> path_points_ = { };

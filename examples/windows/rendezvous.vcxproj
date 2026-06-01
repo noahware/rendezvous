@@ -148,14 +148,26 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\gui\comp\text_edit.cpp" />
+    <ClCompile Include="..\..\src\gui\comp\checkbox.cpp" />
+    <ClCompile Include="..\..\src\gui\comp\color_picker.cpp" />
+    <ClCompile Include="..\..\src\gui\comp\combo_box.cpp" />
+    <ClCompile Include="..\..\src\gui\comp\key_bind.cpp" />
+    <ClCompile Include="..\..\src\gui\comp\panel.cpp" />
+    <ClCompile Include="..\..\src\gui\comp\plot_lines.cpp" />
+    <ClCompile Include="..\..\src\gui\comp\text.cpp" />
+    <ClCompile Include="..\..\src\gui\comp\text_box.cpp" />
     <ClCompile Include="..\..\src\gui\elements.cpp" />
     <ClCompile Include="..\..\src\gui\layout.cpp" />
+    <ClCompile Include="..\..\src\gui\layout_position.cpp" />
     <ClCompile Include="..\..\src\input\win32.cpp" />
     <ClCompile Include="..\..\src\input\x11.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="..\..\src\render\impl\dx11.cpp" />
     <ClCompile Include="..\..\src\render\impl\ogl.cpp" />
     <ClCompile Include="..\..\src\render\render.cpp" />
+    <ClCompile Include="..\..\src\render\render_shapes.cpp" />
+    <ClCompile Include="..\..\src\render\render_text.cpp" />
+    <ClCompile Include="..\..\src\render\render_path.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />
@@ -172,6 +184,8 @@
     <ClInclude Include="..\..\src\gui\comp\text_edit.hpp" />
     <ClInclude Include="..\..\src\gui\text_metrics.hpp" />
     <ClInclude Include="..\..\src\gui\element.hpp" />
+    <ClInclude Include="..\..\src\gui\element_types.hpp" />
+    <ClInclude Include="..\..\src\gui\element_tree.hpp" />
     <ClInclude Include="..\..\src\gui\gui.hpp" />
     <ClInclude Include="..\..\src\gui\layout.hpp" />
     <ClInclude Include="..\..\src\gui\styled_size.hpp" />

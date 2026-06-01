@@ -4,15 +4,6 @@
 
 namespace
 {
-	struct alignas(16) clip_ubo_data
-	{
-		float clip_min[2];
-		float clip_max[2];
-		float clip_radii[4];
-		float clip_enabled;
-		float padding[3];
-	};
-
 	constexpr cstd::uint32_t clip_binding_point = 0;
 
 	void* load_proc(const char* name)
@@ -319,7 +310,7 @@ bool rv::ogl3_renderer::init_backend() noexcept
 
 	gl::GenBuffers(1, &clip_ubo_);
 	gl::BindBuffer(GL_UNIFORM_BUFFER, clip_ubo_);
-	gl::BufferData(GL_UNIFORM_BUFFER, sizeof(clip_ubo_data), nullptr, GL_DYNAMIC_DRAW);
+	gl::BufferData(GL_UNIFORM_BUFFER, sizeof(clip_constants), nullptr, GL_DYNAMIC_DRAW);
 	gl::BindBufferBase(GL_UNIFORM_BUFFER, clip_binding_point, clip_ubo_);
 
 	gl::GenBuffers(1, &vbo_);
@@ -460,30 +451,13 @@ void rv::ogl_renderer::flush_pending_vertices() noexcept
 			clip_initialized = true;
 			last_clip = batch.clip_rect;
 
-			clip_ubo_data cb_data = { };
-
-			if (batch.clip_rect.has_value())
-			{
-				const auto& clip = batch.clip_rect.value();
-
-				cb_data.clip_min[0] = clip.bounds.min.x;
-				cb_data.clip_min[1] = clip.bounds.min.y;
-				cb_data.clip_max[0] = clip.bounds.max.x;
-				cb_data.clip_max[1] = clip.bounds.max.y;
-				cb_data.clip_enabled = 1.f;
-
-				const float r = clip.rounding;
-				cb_data.clip_radii[0] = (clip.flags & rounding_flags_top_right) ? r : 0.f;
-				cb_data.clip_radii[1] = (clip.flags & rounding_flags_bottom_right) ? r : 0.f;
-				cb_data.clip_radii[2] = (clip.flags & rounding_flags_bottom_left) ? r : 0.f;
-				cb_data.clip_radii[3] = (clip.flags & rounding_flags_top_left) ? r : 0.f;
-			}
+			const clip_constants cb_data = pack_clip_constants(batch.clip_rect);
 
 			if (use_ubo)
 			{
 				// GL3: write to shared UBO
 				gl::BindBuffer(GL_UNIFORM_BUFFER, clip_ubo_);
-				gl::BufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(clip_ubo_data), &cb_data);
+				gl::BufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(clip_constants), &cb_data);
 			}
 			else
 			{
