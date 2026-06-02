@@ -78,6 +78,7 @@ namespace rv
 		                              rounding_flags flags = rounding_flags_all,
 		                              bool cut_background = false) noexcept = 0;
 		virtual void draw_text(const gui_font& font, position pos, string_view_t text, color col, float size = 0.f) noexcept = 0;
+		virtual void add_text_shadow(const gui_font& font, position pos, string_view_t text, color col, float blur, float size = 0.f) noexcept = 0;
 		virtual void draw_line(position a, position b, color col, float thickness = 1.f) noexcept = 0;
 		virtual void add_path_point(position p) noexcept = 0;
 		virtual void draw_lined_path(color col, float thickness = 1.f, bool closed = true, float fringe = 1.f,
@@ -137,6 +138,13 @@ namespace rv
 		{
 			const auto* impl = static_cast<const gui_font_impl*>(&gf);
 			renderer_->draw_text(impl->underlying(), pos, text, col, size);
+		}
+
+		void add_text_shadow(const gui_font& gf, const position pos, const string_view_t text,
+		                     const color col, const float blur, const float size) noexcept override
+		{
+			const auto* impl = static_cast<const gui_font_impl*>(&gf);
+			renderer_->add_text_shadow(impl->underlying(), pos, text, col, blur, size);
 		}
 
 		void draw_line(const position a, const position b, const color col, const float thickness) noexcept override

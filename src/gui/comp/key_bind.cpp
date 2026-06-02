@@ -146,9 +146,11 @@ namespace rv
 
 		const float line_h = font_->line_height() * scale;
 
+		const float text_w = measure_text_width(listening_ ? "..." : key_display_name(key_code_), scale);
 
 
-		return { 0.f, line_h };
+
+		return { text_w, line_h };
 
 	}
 

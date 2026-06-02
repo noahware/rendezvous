@@ -41,6 +41,12 @@ namespace rv
 		const float line_h = font_->line_height() * scale;
 		const float box_w = max.x - min.x;
 
+		if (declared_size().width.mode == size_mode::auto_v)
+		{
+			renderer.draw_text(*font_, { min.x, min.y }, text_, visual_text_color_, style_.font_size.value_or(0.f));
+			return;
+		}
+
 		update_wrap_cache(box_w, scale);
 
 		renderer.push_clip_rect(min, max);
