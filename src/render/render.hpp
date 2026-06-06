@@ -188,6 +188,11 @@ namespace rv
 		virtual shared_ptr_t<texture> create_texture(span_t<const cstd::uint8_t> buffer, cstd::uint32_t width, cstd::uint32_t height) = 0;
 		virtual shared_ptr_t<texture> create_texture_from_srv(void* srv) = 0;
 
+		// Decode an encoded image (PNG/JPG/BMP/…) into an RGBA8 texture via the active backend.
+		// Returns an empty handle on read/decode failure. Defined in image_load.cpp.
+		shared_ptr_t<texture> load_texture(const string_t& path);
+		shared_ptr_t<texture> load_texture_from_memory(span_t<const cstd::uint8_t> encoded);
+
 	protected:
 		virtual bool init_backend() noexcept = 0;
 		virtual void begin_frame_backend(vector_2d<float> display_size) noexcept = 0;

@@ -12,6 +12,8 @@ namespace rv
 
 	enum class key : cstd::int32_t;
 	class gui;
+	class gui_font;
+	class gui_texture;
 	class button;
 	class checkbox;
 	class text_element;
@@ -22,6 +24,8 @@ namespace rv
 	class plot_lines;
 	class value_inspector;
 	class key_bind;
+	class tabs;
+	class image;
 	template <class T> class slider;
 	template <class T> class range_slider;
 
@@ -29,6 +33,7 @@ namespace rv
 		button& add_button(string_view_t text = {});                                              \
 		checkbox& add_checkbox(string_view_t label = {});                                         \
 		text_element& add_label(string_view_t text = {});                                         \
+		text_element& add_label(string_view_t text, shared_ptr_t<gui_font> font);                  \
 		text_box& add_text_input(string_view_t text = {});                                        \
 		text_box& add_text_area(string_view_t text = {});                                         \
 		slider<float>& add_slider(float mn = 0.f, float mx = 1.f, float v = 0.f);                 \
@@ -42,7 +47,9 @@ namespace rv
 		element& add_row();                                                                       \
 		element& add_column();                                                                    \
 		element& add_container(string_view_t title = {});                                    \
-		key_bind& add_key_bind(key initial_key = {});
+		key_bind& add_key_bind(key initial_key = {});                                             \
+		tabs& add_tabs();                                                                         \
+		image& add_image(shared_ptr_t<gui_texture> tex = {});
 
 	template <class T, class ...Args>
 	[[nodiscard]] shared_ptr_t<T> make_element(Args&&... args)
@@ -508,6 +515,18 @@ namespace rv
 			return *this;
 		}
 
+		// CSS-like background image, painted over background_color and behind this element's content.
+		// Defaults to object-fit: cover. The texture is shared-owned, so it outlives the element.
+		element& background_image(shared_ptr_t<gui_texture> tex, const image_fit fit = image_fit::cover,
+		                          const color tint = { 1.f, 1.f, 1.f, 1.f }) noexcept
+		{
+			style_.background_image = cstd::move(tex);
+			style_.background_image_fit = fit;
+			style_.background_image_tint = tint;
+
+			return *this;
+		}
+
 		element& text_color(const color c) noexcept
 		{
 			style_.text_color = c;
@@ -600,6 +619,20 @@ namespace rv
 		{
 			visible_ = visible;
 			mark_layout_dirty();
+
+			return *this;
+		}
+
+		// Show only the child at `index`; every other child gets display:none (visible(false) —
+		// removed from layout and not drawn). This is the web idiom for switching views: toggle
+		// `display` on sibling <div>s. It's the native "one child at a time" — pair it with
+		// buttons whose on_click calls show_only(i), like onclick handlers / React setState.
+		element& show_only(const int index) noexcept
+		{
+			for (int i = 0; i < static_cast<int>(children_.size()); ++i)
+			{
+				children_[i]->visible(i == index);
+			}
 
 			return *this;
 		}

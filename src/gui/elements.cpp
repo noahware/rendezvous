@@ -1,4 +1,5 @@
 #include "gui.hpp"
+#include "image_fit.hpp"
 
 namespace rv
 {
@@ -55,6 +56,26 @@ namespace rv
 			}
 
 			renderer.draw_rect_filled(min, max, effective_bg, effective_rounding);
+		}
+
+		// background image sits over the fill and under the element's own content (render_self),
+		// independent of background_color so an image-only element still paints.
+		if (style_.background_image && *style_.background_image)
+		{
+			color img_tint = style_.background_image_tint.value_or(color{ 1.f, 1.f, 1.f, 1.f });
+
+			if (anim && anim->opacity)
+			{
+				img_tint.a *= *anim->opacity;
+			}
+
+			const auto& bg_tex = *style_.background_image;
+			const image_fit_result fit = compute_image_fit(min, max,
+				static_cast<float>(bg_tex->width()), static_cast<float>(bg_tex->height()),
+				style_.background_image_fit.value_or(image_fit::cover));
+
+			renderer.draw_image_rounded(bg_tex, fit.draw_min, fit.draw_max, effective_rounding,
+			                            rounding_flags_all, fit.uv_min, fit.uv_max, img_tint);
 		}
 
 		const auto insets = compute_insets(style_, defaults);

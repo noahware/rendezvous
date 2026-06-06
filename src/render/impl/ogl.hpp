@@ -148,15 +148,15 @@ namespace rv
 	class ogl_texture : public texture
 	{
 	public:
-		explicit ogl_texture(renderer* const renderer, GLuint id) noexcept
-				:	texture(renderer),
+		explicit ogl_texture(renderer* const renderer, GLuint id, const cstd::uint32_t width = 0, const cstd::uint32_t height = 0) noexcept
+				:	texture(renderer, width, height),
 					id_(id) { }
 
 		ogl_texture(const ogl_texture&) = delete;
 		ogl_texture& operator=(const ogl_texture&) = delete;
 
 		ogl_texture(ogl_texture&& other) noexcept
-				:	texture(other.renderer_),
+				:	texture(other.renderer_, other.width_, other.height_),
 					id_(other.id_)
 		{
 			other.id_ = 0;

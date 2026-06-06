@@ -8,16 +8,29 @@ namespace rv
 	class texture
 	{
 	public:
-		explicit texture(renderer* const renderer) noexcept
-				:	renderer_(renderer) { }
+		explicit texture(renderer* const renderer, const cstd::uint32_t width = 0, const cstd::uint32_t height = 0) noexcept
+				:	renderer_(renderer), width_(width), height_(height) { }
 
 		[[nodiscard]] bool owned_by(const renderer* const renderer) const noexcept
 		{
 			return renderer_ == renderer;
 		}
 
+		// native pixel dimensions; 0 when unknown (e.g. textures adopted from an external SRV).
+		[[nodiscard]] cstd::uint32_t width() const noexcept
+		{
+			return width_;
+		}
+
+		[[nodiscard]] cstd::uint32_t height() const noexcept
+		{
+			return height_;
+		}
+
 	protected:
 		renderer* renderer_ = nullptr;
+		cstd::uint32_t width_ = 0;
+		cstd::uint32_t height_ = 0;
 	};
 
 	struct glyph
@@ -48,12 +61,14 @@ namespace rv
 					line_gap_(line_gap),
 					kerning_table_(cstd::move(kerning_table)) { }
 
+		// a font owns exactly one atlas; a codepoint outside its baked range substitutes '?' (or the
+		// first glyph). Mixing scripts/icons means drawing separate strings, each with its own font.
 		[[nodiscard]] const glyph& glyph(const cstd::uint32_t c) const
 		{
 			if (c < min_char_ || max_char_ < c || glyphs_.empty())
 			{
-				const cstd::uint32_t fallback = '?' >= min_char_ && '?' <= max_char_ ? '?' : min_char_;
-				return glyphs_[static_cast<cstd::size_t>(fallback - min_char_)];
+				const cstd::uint32_t substitute = '?' >= min_char_ && '?' <= max_char_ ? '?' : min_char_;
+				return glyphs_[static_cast<cstd::size_t>(substitute - min_char_)];
 			}
 
 			return glyphs_[static_cast<cstd::size_t>(c - min_char_)];

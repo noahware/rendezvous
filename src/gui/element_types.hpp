@@ -2,11 +2,14 @@
 #include "../render/position.hpp"
 #include "../util/types.hpp"
 #include "styled_size.hpp"
+#include "image_fit.hpp"
 
 // Layout enums, style description, and the small layout helper functions shared by
 // element and the layout engine. Extracted from element.hpp for cohesion.
 namespace rv
 {
+	class gui_texture;
+
 	enum class layout_direction : cstd::uint8_t
 	{
 		vertical,
@@ -153,6 +156,9 @@ namespace rv
 		optional_t<color> shadow_color;
 		optional_t<float> shadow_blur;
 		optional_t<float> shadow_spread;
+		optional_t<shared_ptr_t<gui_texture>> background_image;
+		optional_t<color> background_image_tint;
+		optional_t<image_fit> background_image_fit;
 	};
 
 	// helper to resolve gap for the correct axis

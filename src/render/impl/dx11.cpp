@@ -372,7 +372,7 @@ shared_ptr_t<rv::texture> rv::dx11_renderer::create_texture(const span_t<const c
 		return nullptr;
 	}
 
-	return cstd::make_shared<dx11_texture>(this, cstd::move(texture_2d), cstd::move(shader_resource));
+	return cstd::make_shared<dx11_texture>(this, cstd::move(texture_2d), cstd::move(shader_resource), width, height);
 }
 
 shared_ptr_t<rv::texture> rv::dx11_renderer::create_texture_from_srv(void* raw_srv)

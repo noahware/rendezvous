@@ -156,6 +156,7 @@
     <ClCompile Include="..\..\src\gui\comp\plot_lines.cpp" />
     <ClCompile Include="..\..\src\gui\comp\text.cpp" />
     <ClCompile Include="..\..\src\gui\comp\text_box.cpp" />
+    <ClCompile Include="..\..\src\gui\comp\tabs.cpp" />
     <ClCompile Include="..\..\src\gui\elements.cpp" />
     <ClCompile Include="..\..\src\gui\layout.cpp" />
     <ClCompile Include="..\..\src\gui\layout_position.cpp" />
@@ -168,6 +169,7 @@
     <ClCompile Include="..\..\src\render\render_shapes.cpp" />
     <ClCompile Include="..\..\src\render\render_text.cpp" />
     <ClCompile Include="..\..\src\render\render_path.cpp" />
+    <ClCompile Include="..\..\src\render\image_load.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />
@@ -182,11 +184,14 @@
     <ClInclude Include="..\..\src\gui\comp\text.hpp" />
     <ClInclude Include="..\..\src\gui\comp\text_box.hpp" />
     <ClInclude Include="..\..\src\gui\comp\text_edit.hpp" />
+    <ClInclude Include="..\..\src\gui\comp\tabs.hpp" />
+    <ClInclude Include="..\..\src\gui\comp\image.hpp" />
     <ClInclude Include="..\..\src\gui\text_metrics.hpp" />
     <ClInclude Include="..\..\src\gui\element.hpp" />
     <ClInclude Include="..\..\src\gui\element_types.hpp" />
     <ClInclude Include="..\..\src\gui\element_tree.hpp" />
     <ClInclude Include="..\..\src\gui\gui.hpp" />
+    <ClInclude Include="..\..\src\gui\image_fit.hpp" />
     <ClInclude Include="..\..\src\gui\layout.hpp" />
     <ClInclude Include="..\..\src\gui\styled_size.hpp" />
     <ClInclude Include="..\..\src\input\input.hpp" />

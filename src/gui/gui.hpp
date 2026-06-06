@@ -64,6 +64,42 @@ namespace rv
 		const font& font_;
 	};
 
+	// GUI-facing handle to a renderer texture. Widgets hold one of these instead of the concrete
+	// `texture`, so GUI code never depends on the render backend (mirrors gui_font / gui_renderer).
+	class gui_texture
+	{
+	public:
+		virtual ~gui_texture() = default;
+		// native pixel dimensions; 0 when unknown (e.g. a texture adopted from an external SRV).
+		[[nodiscard]] virtual cstd::uint32_t width() const noexcept = 0;
+		[[nodiscard]] virtual cstd::uint32_t height() const noexcept = 0;
+	};
+
+	class gui_texture_impl : public gui_texture
+	{
+	public:
+		explicit gui_texture_impl(shared_ptr_t<texture> tex) noexcept
+			: texture_(cstd::move(tex)) { }
+
+		[[nodiscard]] cstd::uint32_t width() const noexcept override
+		{
+			return texture_ ? texture_->width() : 0;
+		}
+
+		[[nodiscard]] cstd::uint32_t height() const noexcept override
+		{
+			return texture_ ? texture_->height() : 0;
+		}
+
+		[[nodiscard]] const shared_ptr_t<texture>& underlying() const noexcept
+		{
+			return texture_;
+		}
+
+	protected:
+		shared_ptr_t<texture> texture_;
+	};
+
 	class gui_renderer
 	{
 	public:
@@ -77,6 +113,10 @@ namespace rv
 		                              float shadow_blur = 15.f, float shadow_spread = 0.f,
 		                              rounding_flags flags = rounding_flags_all,
 		                              bool cut_background = false) noexcept = 0;
+		virtual void draw_image(shared_ptr_t<gui_texture> tex, position min, position max, position uv_min = { 0.f, 0.f }, position uv_max = { 1.f, 1.f }, color tint = { 1.f, 1.f, 1.f, 1.f }) noexcept = 0;
+		virtual void draw_image_rounded(shared_ptr_t<gui_texture> tex, position min, position max, float rounding, rounding_flags flags = rounding_flags_all, position uv_min = { 0.f, 0.f }, position uv_max = { 1.f, 1.f }, color tint = { 1.f, 1.f, 1.f, 1.f }) noexcept = 0;
+		[[nodiscard]] virtual shared_ptr_t<gui_texture> load_texture(const string_t& path) = 0;
+		[[nodiscard]] virtual shared_ptr_t<gui_texture> load_texture_from_memory(span_t<const cstd::uint8_t> encoded) = 0;
 		virtual void draw_text(const gui_font& font, position pos, string_view_t text, color col, float size = 0.f) noexcept = 0;
 		virtual void add_text_shadow(const gui_font& font, position pos, string_view_t text, color col, float blur, float size = 0.f) noexcept = 0;
 		virtual void draw_line(position a, position b, color col, float thickness = 1.f) noexcept = 0;
@@ -131,6 +171,35 @@ namespace rv
 		                      const rounding_flags flags, const bool cut_background) noexcept override
 		{
 			return renderer_->draw_shadow_rect(min, max, col, rounding, shadow_blur, shadow_spread, flags, cut_background);
+		}
+
+		void draw_image(shared_ptr_t<gui_texture> tex, const position min, const position max, const position uv_min,
+		                const position uv_max, const color tint) noexcept override
+		{
+			if (!tex) { return; }
+			renderer_->draw_image(static_cast<gui_texture_impl*>(tex.get())->underlying(), min, max, uv_min, uv_max, tint);
+		}
+
+		void draw_image_rounded(shared_ptr_t<gui_texture> tex, const position min, const position max, const float rounding,
+		                        const rounding_flags flags, const position uv_min, const position uv_max,
+		                        const color tint) noexcept override
+		{
+			if (!tex) { return; }
+			renderer_->draw_image_rounded(static_cast<gui_texture_impl*>(tex.get())->underlying(), min, max, rounding, flags, uv_min, uv_max, tint);
+		}
+
+		// wrap the decoded texture in a gui_texture; null underlying (load failed) stays null so the
+		// image widget / background draw keep skipping it via their `if (!tex)` guards.
+		[[nodiscard]] shared_ptr_t<gui_texture> load_texture(const string_t& path) override
+		{
+			auto tex = renderer_->load_texture(path);
+			return tex ? cstd::make_shared<gui_texture_impl>(cstd::move(tex)) : nullptr;
+		}
+
+		[[nodiscard]] shared_ptr_t<gui_texture> load_texture_from_memory(const span_t<const cstd::uint8_t> encoded) override
+		{
+			auto tex = renderer_->load_texture_from_memory(encoded);
+			return tex ? cstd::make_shared<gui_texture_impl>(cstd::move(tex)) : nullptr;
 		}
 
 		void draw_text(const gui_font& gf, const position pos, const string_view_t text,
@@ -288,6 +357,18 @@ namespace rv
 		[[nodiscard]] const shared_ptr_t<gui_font>& font() const noexcept
 		{
 			return font_;
+		}
+
+		// decode an image into a gui_texture via the underlying renderer, so GUI-only code can build
+		// textures (for add_image / background_image) without holding the raw renderer.
+		[[nodiscard]] shared_ptr_t<gui_texture> load_texture(const string_t& path)
+		{
+			return renderer_->load_texture(path);
+		}
+
+		[[nodiscard]] shared_ptr_t<gui_texture> load_texture_from_memory(const span_t<const cstd::uint8_t> encoded)
+		{
+			return renderer_->load_texture_from_memory(encoded);
 		}
 
 		template <class T, class ...Args>

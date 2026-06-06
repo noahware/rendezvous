@@ -27,7 +27,7 @@ namespace rv
 		}
 
 		const position m = input_ ? input_->mouse_pos() : position{ };
-		const regions r = layout(computed_pos_, { computed_pos_.x + computed_size_.x, computed_pos_.y + computed_size_.y });
+		const regions r = layout(visual_pos_, { visual_pos_.x + computed_size_.x, visual_pos_.y + computed_size_.y });
 
 		if (contains_point(r.sv, m))
 		{
@@ -65,7 +65,7 @@ namespace rv
 			}
 			else
 			{
-				const regions r = layout(computed_pos_, { computed_pos_.x + computed_size_.x, computed_pos_.y + computed_size_.y });
+				const regions r = layout(visual_pos_, { visual_pos_.x + computed_size_.x, visual_pos_.y + computed_size_.y });
 				update_from_mouse(r, input_->mouse_pos());
 			}
 		}
@@ -275,7 +275,13 @@ namespace rv
 		{
 			const position m = input_->mouse_pos();
 
-			if (!contains(m) && !popup_contains(m))
+			// hit-test against the drawn (visual) rect, not computed_pos_, so the swatch still
+			// registers when the picker lives inside a scrolled/offset container (e.g. a tab).
+			const position vp = visual_pos();
+			const bool over_swatch = m.x >= vp.x && m.x <= vp.x + computed_size_.x
+			                      && m.y >= vp.y && m.y <= vp.y + computed_size_.y;
+
+			if (!over_swatch && !popup_contains(m))
 			{
 				open_ = false;
 			}

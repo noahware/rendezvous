@@ -195,8 +195,9 @@ namespace rv
 	{
 		const auto pad = style_.padding.value_or(border_vector{});
 		const auto brd = style_.border_width.value_or(border_vector{});
-		const float origin_x = computed_pos_.x + pad.left + brd.left;
-		const float origin_y = computed_pos_.y + pad.top + brd.top;
+		const position vp = visual_pos();
+		const float origin_x = vp.x + pad.left + brd.left;
+		const float origin_y = vp.y + pad.top + brd.top;
 
 		return { mouse.x - origin_x + scroll_.x, mouse.y - origin_y + scroll_.y };
 	}

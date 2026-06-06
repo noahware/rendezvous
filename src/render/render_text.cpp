@@ -63,7 +63,6 @@ void rv::renderer::draw_text(const font &font, const position pos, const string_
             continue;
         }
 
-        // apply kerning
         if (prev_codepoint != 0)
         {
             pen += font.kerning(prev_codepoint, codepoint) * scale;

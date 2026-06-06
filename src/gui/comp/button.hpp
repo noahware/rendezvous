@@ -29,6 +29,30 @@ namespace rv
 			return *this;
 		}
 
+		button& text_alignment(const text_align align) noexcept
+		{
+			text_align_ = align;
+
+			return *this;
+		}
+
+		// optional accent stripe on the left edge (e.g. the active item in a sidebar nav)
+		button& accent(const color col, const float thickness = 3.f) noexcept
+		{
+			accent_color_ = col;
+			accent_thickness_ = thickness;
+
+			return *this;
+		}
+
+		// left inset for a left-aligned label, so it clears the accent / reads as a nav indent
+		button& label_indent(const float px) noexcept
+		{
+			label_indent_ = px;
+
+			return *this;
+		}
+
 		button& hover_color(const color col) noexcept
 		{
 			hover_color_ = col;
@@ -95,6 +119,13 @@ namespace rv
 	protected:
 		void render_self(gui_renderer& renderer, const position min, const position max) const override
 		{
+			// accent stripe sits at the (content-box) left edge; nav buttons carry no padding,
+			// so that is also the button's outer edge.
+			if (accent_thickness_ > 0.f && accent_color_.a > 0.001f)
+			{
+				renderer.draw_rect_filled(min, { min.x + accent_thickness_, max.y }, accent_color_, 0.f);
+			}
+
 			if (!font_ || text_.empty())
 			{
 				return;
@@ -107,7 +138,21 @@ namespace rv
 			const float box_w = max.x - min.x;
 			const float box_h = max.y - min.y;
 
-			const float x = min.x + (box_w - text_w) * 0.5f;
+			float x;
+
+			switch (text_align_)
+			{
+			case text_align::left:
+				x = min.x + label_indent_;
+				break;
+			case text_align::right:
+				x = max.x - text_w - label_indent_;
+				break;
+			default:
+				x = min.x + (box_w - text_w) * 0.5f;
+				break;
+			}
+
 			const float y = min.y + (box_h - line_h) * 0.5f;
 
 			renderer.draw_text(*font_, { x, y }, text_, visual_text_color_, style_.font_size.value_or(0.f));
@@ -153,5 +198,10 @@ namespace rv
 		color pressed_color_ = { 0.12f, 0.12f, 0.15f, 1.f };
 
 		function_t<void()> on_click_;
+
+		text_align text_align_ = text_align::center;
+		color accent_color_ = { 0.f, 0.f, 0.f, 0.f };
+		float accent_thickness_ = 0.f;
+		float label_indent_ = 0.f;
 	};
 }

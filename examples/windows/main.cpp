@@ -71,6 +71,32 @@ static constexpr rv::easing easing_table[] =
 	rv::easing::ease_in_out_quad,
 };
 
+// Builds a 128x128 RGBA checkerboard with an x/y gradient so object-fit crop/letterbox differences
+// are visually obvious. No external asset required.
+static shared_ptr_t<rv::texture> make_demo_texture(rv::renderer& r)
+{
+	constexpr cstd::uint32_t w = 128;
+	constexpr cstd::uint32_t h = 128;
+
+	vector_t<cstd::uint8_t> px(static_cast<cstd::size_t>(w) * h * 4);
+
+	for (cstd::uint32_t y = 0; y < h; ++y)
+	{
+		for (cstd::uint32_t x = 0; x < w; ++x)
+		{
+			const cstd::size_t i = (static_cast<cstd::size_t>(y) * w + x) * 4;
+			const bool checker = ((x / 16) + (y / 16)) % 2 == 0;
+
+			px[i + 0] = checker ? static_cast<cstd::uint8_t>(x * 255 / (w - 1)) : static_cast<cstd::uint8_t>(25);
+			px[i + 1] = checker ? static_cast<cstd::uint8_t>(y * 255 / (h - 1)) : static_cast<cstd::uint8_t>(25);
+			px[i + 2] = checker ? static_cast<cstd::uint8_t>(210) : static_cast<cstd::uint8_t>(45);
+			px[i + 3] = 255;
+		}
+	}
+
+	return r.create_texture(px, w, h);
+}
+
 static void draw_canvas(rv::renderer& r, const rv::font& font, const rv::position canvas_min, const rv::position canvas_max)
 {
 	const float cw = canvas_max.x - canvas_min.x;
@@ -462,7 +488,12 @@ cstd::int32_t main(int argc, char* argv[])
 
 	input = cstd::make_shared<rv::win32_input>();
 
-	const auto font = renderer->add_font("C:\\Windows\\Fonts\\arial.ttf", 32.f);
+	auto font = renderer->add_font("C:\\Windows\\Fonts\\arial.ttf", 32.f);
+
+	// icon font: Segoe MDL2 Assets ships with Windows. Bake a tight Private-Use range into its own
+	// atlas. An icon is just a font with special glyphs, so it is drawn as its own piece of text
+	// (see the icon label in the "Images & Icons" container below).
+	auto icon_font = renderer->add_font("C:\\Windows\\Fonts\\segmdl2.ttf", 28.f, 0xE700, 0xE7FF);
 
 	auto gui_renderer = cstd::make_unique<rv::gui_renderer_impl>(renderer);
 	auto gui = rv::make_gui(cstd::move(gui_renderer), input);
@@ -472,6 +503,10 @@ cstd::int32_t main(int argc, char* argv[])
 
 	auto gui_font = cstd::make_shared<rv::gui_font_impl>(*font);
 	gui->set_font(gui_font);
+
+	// procedural texture (no asset needed), wrapped as a gui_texture for the image-widget /
+	// background_image demos below. The wrapper owns the renderer texture (shared_ptr).
+	auto demo_texture = cstd::make_shared<rv::gui_texture_impl>(make_demo_texture(*renderer));
 
 	auto root = gui->root();
 	root->direction(rv::layout_direction::vertical).gap(0.f);
@@ -600,6 +635,89 @@ cstd::int32_t main(int argc, char* argv[])
 				rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(28.f) }, gui_font);
 			btn->text(std::format("Item {}", i + 1)).text_size(14.f);
 		}
+	}
+
+	{
+		// View switching, the web way — no special widget. Just content elements toggled via
+		// `display` + click handlers. Here visible(false) == display:none (the child is removed
+		// from layout and not drawn), and content.show_only(i) is the equivalent of a showTab(i)
+		// helper (HTML/JS) or {active === i && <Page/>} (React). The buttons are the onclick handlers.
+		auto& section = left_col->add_container("Views (web-style)");
+
+		auto& nav = section.add_row();
+		auto& content = section.add_column();
+
+		// content "pages" — like sibling <div>s
+		auto& page_shapes = content.add_column();
+		page_shapes.add_checkbox("Show shadows").bind(&demo_show_shadows);
+		page_shapes.add_checkbox("Show grid").bind(&demo_show_grid);
+
+		auto& page_colors = content.add_column();
+		page_colors.add_label("Fill");
+		page_colors.add_color_picker(demo_fill_color).bind(&demo_fill_color);
+
+		auto& page_about = content.add_column();
+		page_about.add_label("Switching a view just toggles display on the active page.")
+			.set_declared_size({ rv::styled_size::fill(), rv::styled_size::auto_v() });
+
+		// nav buttons (the onclick handlers): switch the view + mark the active one, like
+		// toggling an `.active` class on the web.
+		auto& b_shapes = nav.add_button("Shapes");
+		auto& b_colors = nav.add_button("Colors");
+		auto& b_about = nav.add_button("About");
+
+		auto select = [c = &content, s = &b_shapes, o = &b_colors, a = &b_about](const int i)
+		{
+			c->show_only(i);
+
+			const rv::color on = { 0.85f, 0.2f, 0.2f, 1.f };
+			const rv::color off = { 0.16f, 0.16f, 0.2f, 1.f };
+			s->background_color(i == 0 ? on : off);
+			o->background_color(i == 1 ? on : off);
+			a->background_color(i == 2 ? on : off);
+		};
+
+		b_shapes.on_click([select] { select(0); });
+		b_colors.on_click([select] { select(1); });
+		b_about.on_click([select] { select(2); });
+
+		select(0); // initial view
+	}
+
+	{
+		auto& media = left_col->add_container("Images & Icons");
+
+		// an icon is just a font with special glyphs: draw the Segoe MDL2 gear (U+E713) as its own
+		// label using the icon font, composed next to a normal label. No fallback, no icon widget.
+		if (icon_font)
+		{
+			string_t gear;
+			rv::encode_utf8(static_cast<char32_t>(0xE713), gear);
+
+			auto icon_gui_font = cstd::make_shared<rv::gui_font_impl>(*icon_font);
+			auto& icon_row = media.add_row();
+			icon_row.add_label(gear, icon_gui_font).text_size(24.f);
+			icon_row.add_label("Icon drawn as its own label").text_size(16.f);
+		}
+
+		media.add_label("Image widget (native size):").text_size(13.f).text_color({ 0.6f, 0.6f, 0.65f, 1.f });
+		media.add_image(demo_texture).rounding(6.f);
+
+		media.add_label("object-fit: cover (160x70):").text_size(13.f).text_color({ 0.6f, 0.6f, 0.65f, 1.f });
+		auto& cover_img = media.add_image(demo_texture);
+		cover_img.fit(rv::image_fit::cover).rounding(8.f);
+		cover_img.set_declared_size({ rv::styled_size::px(160.f), rv::styled_size::px(70.f) });
+
+		media.add_label("object-fit: contain (160x70):").text_size(13.f).text_color({ 0.6f, 0.6f, 0.65f, 1.f });
+		auto& contain_img = media.add_image(demo_texture);
+		contain_img.fit(rv::image_fit::contain);
+		contain_img.set_declared_size({ rv::styled_size::px(160.f), rv::styled_size::px(70.f) });
+
+		media.add_label("background_image (cover):").text_size(13.f).text_color({ 0.6f, 0.6f, 0.65f, 1.f });
+		auto& banner = media.add_column();
+		banner.set_declared_size({ rv::styled_size::fill(), rv::styled_size::px(80.f) });
+		banner.background_image(demo_texture, rv::image_fit::cover).rounding(8.f).padding(10.f);
+		banner.add_label("Text over a background image").text_color({ 1.f, 1.f, 1.f, 1.f });
 	}
 
 	auto right_col = gui->make_child<rv::element>(body, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });

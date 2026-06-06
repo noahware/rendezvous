@@ -85,8 +85,9 @@ namespace rv
 	{
 	public:
 		explicit dx11_texture(renderer* const renderer, dx11_object<ID3D11Texture2D> texture_2d,
-		                      dx11_object<ID3D11ShaderResourceView> shader_resource)
-				:	texture(renderer),
+		                      dx11_object<ID3D11ShaderResourceView> shader_resource,
+		                      const cstd::uint32_t width = 0, const cstd::uint32_t height = 0)
+				:	texture(renderer, width, height),
 					texture_2d_(cstd::move(texture_2d)),
 					shader_resource_(cstd::move(shader_resource)) { }
 

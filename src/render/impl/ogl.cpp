@@ -540,7 +540,7 @@ shared_ptr_t<rv::texture> rv::ogl_renderer::create_texture(const span_t<const cs
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	return cstd::make_shared<ogl_texture>(this, tex);
+	return cstd::make_shared<ogl_texture>(this, tex, width, height);
 }
 
 shared_ptr_t<rv::texture> rv::ogl_renderer::create_texture_from_srv(void* raw_srv)

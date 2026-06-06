@@ -31,7 +31,7 @@ namespace rv
 
 		if (hovered_ && input_ && row_height_ > 0.f && count > 0)
 		{
-			const float local_y = input_->mouse_pos().y - computed_pos_.y;
+			const float local_y = input_->mouse_pos().y - visual_pos().y;
 			int row = static_cast<int>(local_y / row_height_);
 
 			if (row < 0)
