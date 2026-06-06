@@ -107,6 +107,8 @@ namespace rv
 		virtual void draw_rect(position min, position max, color col, float thickness = 1.f, float rounding = 0.f) noexcept = 0;
 		virtual void draw_rect_filled(position min, position max, color col, float rounding = 0.f, rounding_flags flags = rounding_flags_all) noexcept = 0;
 		virtual void draw_rect_filled_multi_color(position min, position max, color col_tl, color col_tr, color col_br, color col_bl, float rounding = 0.f, rounding_flags flags = rounding_flags_all) noexcept = 0;
+		virtual void draw_rect(position min, position max, color col, float thickness, corner_radii radii) noexcept = 0;
+		virtual void draw_rect_filled(position min, position max, color col, corner_radii radii) noexcept = 0;
 		virtual void draw_circle(position pos, float radius, color col, float thickness = 1.f, cstd::size_t segment_count = 32) noexcept = 0;
 		virtual void draw_circle_filled(position pos, float radius, color col) noexcept = 0;
 		virtual void draw_shadow_rect(position min, position max, color col, float rounding = 0.f,
@@ -117,7 +119,7 @@ namespace rv
 		virtual void draw_image_rounded(shared_ptr_t<gui_texture> tex, position min, position max, float rounding, rounding_flags flags = rounding_flags_all, position uv_min = { 0.f, 0.f }, position uv_max = { 1.f, 1.f }, color tint = { 1.f, 1.f, 1.f, 1.f }) noexcept = 0;
 		[[nodiscard]] virtual shared_ptr_t<gui_texture> load_texture(const string_t& path) = 0;
 		[[nodiscard]] virtual shared_ptr_t<gui_texture> load_texture_from_memory(span_t<const cstd::uint8_t> encoded) = 0;
-		virtual void draw_text(const gui_font& font, position pos, string_view_t text, color col, float size = 0.f) noexcept = 0;
+		virtual void draw_text(const gui_font& font, position pos, string_view_t text, color col, float size = 0.f, float letter_spacing = 0.f) noexcept = 0;
 		virtual void add_text_shadow(const gui_font& font, position pos, string_view_t text, color col, float blur, float size = 0.f) noexcept = 0;
 		virtual void draw_line(position a, position b, color col, float thickness = 1.f) noexcept = 0;
 		virtual void add_path_point(position p) noexcept = 0;
@@ -128,6 +130,11 @@ namespace rv
 		virtual void push_clip_rect(position min, position max, float rounding = 0.f, rounding_flags flags = rounding_flags_all) noexcept = 0;
 		virtual void pop_clip_rect() noexcept = 0;
 		virtual float delta_time() const noexcept = 0;
+
+		// vertex-range editing used by element::render() for subtree opacity and scale transforms.
+		[[nodiscard]] virtual cstd::size_t vertex_count() const noexcept = 0;
+		virtual void modify_alpha(cstd::size_t start, cstd::size_t end, float alpha) noexcept = 0;
+		virtual void modify_scale(cstd::size_t start, cstd::size_t end, position center, float scale) noexcept = 0;
 	};
 
 	class gui_renderer_impl : public gui_renderer
@@ -153,6 +160,32 @@ namespace rv
 		                                  const rounding_flags flags) noexcept override
 		{
 			return renderer_->draw_rect_filled_multi_color(min, max, col_tl, col_tr, col_br, col_bl, rounding, flags);
+		}
+
+		void draw_rect(const position min, const position max, const color col, const float thickness,
+		               const corner_radii radii) noexcept override
+		{
+			return renderer_->draw_rect(min, max, col, thickness, radii);
+		}
+
+		void draw_rect_filled(const position min, const position max, const color col, const corner_radii radii) noexcept override
+		{
+			return renderer_->draw_rect_filled(min, max, col, radii);
+		}
+
+		[[nodiscard]] cstd::size_t vertex_count() const noexcept override
+		{
+			return renderer_->vertex_count();
+		}
+
+		void modify_alpha(const cstd::size_t start, const cstd::size_t end, const float alpha) noexcept override
+		{
+			renderer_->modify_alpha(start, end, alpha);
+		}
+
+		void modify_scale(const cstd::size_t start, const cstd::size_t end, const position center, const float scale) noexcept override
+		{
+			renderer_->modify_scale(start, end, center, scale);
 		}
 
 		void draw_circle(const position pos, const float radius, const color col, const float thickness,
@@ -203,10 +236,10 @@ namespace rv
 		}
 
 		void draw_text(const gui_font& gf, const position pos, const string_view_t text,
-		               const color col, const float size) noexcept override
+		               const color col, const float size, const float letter_spacing) noexcept override
 		{
 			const auto* impl = static_cast<const gui_font_impl*>(&gf);
-			renderer_->draw_text(impl->underlying(), pos, text, col, size);
+			renderer_->draw_text(impl->underlying(), pos, text, col, size, letter_spacing);
 		}
 
 		void add_text_shadow(const gui_font& gf, const position pos, const string_view_t text,
@@ -292,6 +325,13 @@ namespace rv
 				last_display_size_ = display_size;
 			}
 
+			// apply the cursor resolved by the previous frame's process_events as this frame's baseline,
+			// before update_all lets widgets request a dynamic cursor (panel resize edges, text caret).
+			if (input_)
+			{
+				input_->set_cursor(frame_cursor_);
+			}
+
 			update_all(*root, renderer_->delta_time());
 			process_events();
 
@@ -313,6 +353,23 @@ namespace rv
 			// so they paint over everything, regardless of their position in the tree.
 			vector_t<deferred_render> overlays;
 			root->render(*renderer_, default_style_, position{ 0.f, 0.f }, &overlays);
+
+			// stable-sort overlays by z_index ascending so higher z draws last (on top); equal z keeps
+			// tree order. popups are few, so a simple insertion sort is fine and avoids pulling in <algorithm>.
+			for (cstd::size_t i = 1; i < overlays.size(); ++i)
+			{
+				const deferred_render key = overlays[i];
+				const int key_z = key.el ? key.el->z_index() : 0;
+				cstd::size_t j = i;
+
+				while (j > 0 && (overlays[j - 1].el ? overlays[j - 1].el->z_index() : 0) > key_z)
+				{
+					overlays[j] = overlays[j - 1];
+					--j;
+				}
+
+				overlays[j] = key;
+			}
 
 			for (const auto& cmd : overlays)
 			{
@@ -378,12 +435,15 @@ namespace rv
 		}
 
 	protected:
-		void process_events_recursive(const shared_ptr_t<element>& el, const position& mouse_pos, const bool mouse_clicked, const bool mouse_down, bool& click_handled, bool& enter_handled, shared_ptr_t<element>& scroll_target, element*& clicked, element*& tooltip_hover)
+		void process_events_recursive(const shared_ptr_t<element>& el, const position& mouse_pos, const bool mouse_clicked, const bool mouse_down, bool& click_handled, bool& enter_handled, shared_ptr_t<element>& scroll_target, element*& clicked, element*& tooltip_hover, element*& cursor_hover, const bool ancestor_disabled)
 		{
 			if (!el->is_visible())
 			{
 				return;
 			}
+
+			// disabled cascades down: an element inside a disabled ancestor is inert too.
+			const bool disabled = ancestor_disabled || el->is_disabled();
 
 			const auto& children = el->children();
 			for (auto it = children.rbegin(); it != children.rend(); ++it)
@@ -395,7 +455,23 @@ namespace rv
 					continue;
 				}
 
-				process_events_recursive(*it, mouse_pos, mouse_clicked, mouse_down, click_handled, enter_handled, scroll_target, clicked, tooltip_hover);
+				process_events_recursive(*it, mouse_pos, mouse_clicked, mouse_down, click_handled, enter_handled, scroll_target, clicked, tooltip_hover, cursor_hover, disabled);
+			}
+
+			// a disabled element (or one within a disabled subtree) takes no input: clear any stale
+			// hover/press so it can't get visually stuck, and contribute no click/hover/cursor/scroll.
+			// it still renders, dimmed via resolve_visual().
+			if (disabled)
+			{
+				if (el->is_hovered())
+				{
+					el->set_hovered(false);
+					el->on_mouse_exit();
+				}
+
+				el->set_pressed(false);
+
+				return;
 			}
 
 			const position visual_min = el->visual_pos();
@@ -408,6 +484,12 @@ namespace rv
 			if (hovering && !tooltip_hover && el->has_tooltip())
 			{
 				tooltip_hover = el.get();
+			}
+
+			// likewise the deepest hovered element that requests a cursor wins.
+			if (hovering && !cursor_hover && el->style().cursor)
+			{
+				cursor_hover = el.get();
 			}
 
 			if (!click_handled && mouse_clicked && hovering)
@@ -481,6 +563,7 @@ namespace rv
 			shared_ptr_t<element> scroll_target;
 			element* clicked = nullptr;
 			element* tooltip_hover = nullptr;
+			element* cursor_hover = nullptr;
 
 			if (tree_.root())
 			{
@@ -492,11 +575,16 @@ namespace rv
 
 				for (auto it = topmost.rbegin(); it != topmost.rend(); ++it)
 				{
-					process_events_recursive(*it, mouse_pos, mouse_clicked, mouse_down, click_handled, enter_handled, scroll_target, clicked, tooltip_hover);
+					process_events_recursive(*it, mouse_pos, mouse_clicked, mouse_down, click_handled, enter_handled, scroll_target, clicked, tooltip_hover, cursor_hover, false);
 				}
 
-				process_events_recursive(tree_.root(), mouse_pos, mouse_clicked, mouse_down, click_handled, enter_handled, scroll_target, clicked, tooltip_hover);
+				process_events_recursive(tree_.root(), mouse_pos, mouse_clicked, mouse_down, click_handled, enter_handled, scroll_target, clicked, tooltip_hover, cursor_hover, false);
 			}
+
+			// remember the cursor the deepest hovered element requested (arrow otherwise). it's applied
+			// at the top of the next render() as a baseline, so widgets that set a dynamic cursor in
+			// update_all (panel resize edges, text caret) override it rather than being clobbered.
+			frame_cursor_ = (cursor_hover && cursor_hover->style().cursor) ? *cursor_hover->style().cursor : cursor_type::arrow;
 
 			tooltip_hover_ = tooltip_hover;
 
@@ -625,6 +713,7 @@ namespace rv
 		element* tooltip_target_ = nullptr;
 		element* tooltip_hover_ = nullptr;
 		float tooltip_timer_ = 0.f;
+		cursor_type frame_cursor_ = cursor_type::arrow;
 
 		bool layout_dirty_ = true;
 		vector_2d<float> last_display_size_ = { };

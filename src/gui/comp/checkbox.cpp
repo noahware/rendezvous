@@ -12,7 +12,7 @@ namespace rv
 		const float scale = resolved_scale();
 		const float line_h = font_->line_height() * scale;
 
-		return { line_h + gap_ + measure_label_width(scale), line_h };
+		return { line_h + gap_ + measure_text_width(*font_, label_, scale), line_h };
 	}
 
 	void checkbox::update(const float dt)
@@ -28,18 +28,7 @@ namespace rv
 		element::update(dt);
 
 		const color target_fill = pressed_ ? pressed_color_ : (hovered_ ? hover_color_ : box_color_);
-
-		if (!box_initialized_)
-		{
-			visual_box_color_ = target_fill;
-			box_initialized_ = true;
-		}
-		else
-		{
-			const float speed = style_.transition_speed.value_or(12.f);
-			const float factor = cstd::fminf(speed * dt, 1.f);
-			visual_box_color_ = lerp_color(visual_box_color_, target_fill, factor);
-		}
+		box_fill_.step(target_fill, style_.transition_speed.value_or(12.f), dt);
 
 		const float target_t = checked_ ? 1.f : 0.f;
 		const float diff = target_t - visual_t_;
@@ -68,7 +57,7 @@ namespace rv
 
 		const float rounding = style_.rounding.value_or(0.f);
 
-		renderer.draw_rect_filled(box_min, box_max, visual_box_color_, rounding);
+		renderer.draw_rect_filled(box_min, box_max, box_fill_.current, rounding);
 
 		if (border_color_.a > 0.001f && border_width_ > 0.f)
 		{
@@ -105,27 +94,4 @@ namespace rv
 		}
 	}
 
-	float checkbox::measure_label_width(const float scale) const noexcept
-	{
-		float width = 0.f;
-		cstd::uint32_t prev_cp = 0;
-
-		const char* s = label_.data();
-		const char* end = s + label_.size();
-
-		while (s < end)
-		{
-			const cstd::uint32_t cp = decode_utf8(s, end);
-
-			if (prev_cp != 0)
-			{
-				width += font_->kerning(prev_cp, cp) * scale;
-			}
-
-			width += font_->glyph_advance(cp) * scale;
-			prev_cp = cp;
-		}
-
-		return width;
-	}
 }

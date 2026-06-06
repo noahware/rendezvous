@@ -21,11 +21,32 @@ namespace rv
 			total_offset.y += anim->offset->y;
 		}
 
+		// css transform: translate is just an extra offset applied to this element and its subtree.
+		if (style_.translate)
+		{
+			total_offset.x += style_.translate->x;
+			total_offset.y += style_.translate->y;
+		}
+
 		const position min = { computed_pos_.x + total_offset.x, computed_pos_.y + total_offset.y };
 		const position max = { min.x + computed_size_.x, min.y + computed_size_.y };
 
+		// opacity/scale edit this element's whole emitted vertex range after the fact; only pay for
+		// capturing the range start (and the edits at the end of this function) when one is actually
+		// active. the common path — fully opaque, unscaled — stays free of that work.
+		float effective_opacity = visual_opacity_;
+
+		if (anim && anim->opacity)
+		{
+			effective_opacity *= *anim->opacity;
+		}
+
+		const bool needs_scale = style_.scale.has_value() && *style_.scale != 1.f;
+		const bool needs_range = effective_opacity < 0.999f || needs_scale;
+		const cstd::size_t vertex_start = needs_range ? renderer.vertex_count() : 0;
+
 		color effective_bg = visual_bg_;
-		float effective_rounding = visual_rounding_;
+		corner_radii effective_radii = visual_radii_;
 
 		if (anim)
 		{
@@ -34,14 +55,9 @@ namespace rv
 				effective_bg = *anim->col;
 			}
 
-			if (anim->opacity)
-			{
-				effective_bg.a *= *anim->opacity;
-			}
-
 			if (anim->rounding)
 			{
-				effective_rounding = *anim->rounding;
+				effective_radii = corner_radii::uniform(*anim->rounding);
 			}
 		}
 
@@ -52,29 +68,24 @@ namespace rv
 			{
 				const float shadow_blur = style_.shadow_blur.value_or(15.f);
 				const float shadow_spread = style_.shadow_spread.value_or(0.f);
-				renderer.draw_shadow_rect(min, max, shadow_col, effective_rounding, shadow_blur, shadow_spread);
+				renderer.draw_shadow_rect(min, max, shadow_col, effective_radii.max(), shadow_blur, shadow_spread);
 			}
 
-			renderer.draw_rect_filled(min, max, effective_bg, effective_rounding);
+			renderer.draw_rect_filled(min, max, effective_bg, effective_radii);
 		}
 
 		// background image sits over the fill and under the element's own content (render_self),
 		// independent of background_color so an image-only element still paints.
 		if (style_.background_image && *style_.background_image)
 		{
-			color img_tint = style_.background_image_tint.value_or(color{ 1.f, 1.f, 1.f, 1.f });
-
-			if (anim && anim->opacity)
-			{
-				img_tint.a *= *anim->opacity;
-			}
+			const color img_tint = style_.background_image_tint.value_or(color{ 1.f, 1.f, 1.f, 1.f });
 
 			const auto& bg_tex = *style_.background_image;
 			const image_fit_result fit = compute_image_fit(min, max,
 				static_cast<float>(bg_tex->width()), static_cast<float>(bg_tex->height()),
 				style_.background_image_fit.value_or(image_fit::cover));
 
-			renderer.draw_image_rounded(bg_tex, fit.draw_min, fit.draw_max, effective_rounding,
+			renderer.draw_image_rounded(bg_tex, fit.draw_min, fit.draw_max, effective_radii.max(),
 			                            rounding_flags_all, fit.uv_min, fit.uv_max, img_tint);
 		}
 
@@ -94,7 +105,7 @@ namespace rv
 
 			if (thickness > 0.f)
 			{
-				renderer.draw_rect(min, max, visual_border_color_, thickness, effective_rounding);
+				renderer.draw_rect(min, max, visual_border_color_, thickness, effective_radii);
 			}
 		}
 
@@ -103,7 +114,7 @@ namespace rv
 
 		if (clip)
 		{
-			renderer.push_clip_rect(min, max, effective_rounding);
+			renderer.push_clip_rect(min, max, effective_radii.max());
 		}
 
 		position child_offset = total_offset;
@@ -178,6 +189,24 @@ namespace rv
 				}
 			}
 		}
+
+		// apply the opacity/scale edits to [vertex_start, vertex_end) captured above. opacity
+		// multiplies through so nested opacities compose; scale is about the element centre.
+		if (needs_range)
+		{
+			const cstd::size_t vertex_end = renderer.vertex_count();
+
+			if (effective_opacity < 0.999f)
+			{
+				renderer.modify_alpha(vertex_start, vertex_end, effective_opacity);
+			}
+
+			if (needs_scale)
+			{
+				const position centre = { (min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f };
+				renderer.modify_scale(vertex_start, vertex_end, centre, *style_.scale);
+			}
+		}
 	}
 
 	void element::update(float dt)
@@ -195,62 +224,57 @@ namespace rv
 			animations_.end()
 		);
 
-		if (style_.background_color || style_.text_color || style_.rounding || style_.border_color)
+		// fast path: elements with no colour/visual styling or per-state overrides (plain layout
+		// containers, rows, columns) keep their default visual_* values — skip the resolve + lerps.
+		const bool has_visual = style_.background_color || style_.text_color || style_.border_color
+			|| style_.rounding || style_.radii || style_.opacity
+			|| style_.hover || style_.active || style_.focus || style_.disabled_style || disabled_;
+
+		if (!has_visual)
 		{
-			const color target_bg = style_.background_color.value_or(color{ 0.f, 0.f, 0.f, 0.f });
-			const color target_tc = style_.text_color.value_or(color{ 1.f, 1.f, 1.f, 1.f });
-			const float target_rd = style_.rounding.value_or(0.f);
-			const color target_bc = style_.border_color.value_or(color{ 0.f, 0.f, 0.f, 0.f });
-
-			const float tspeed = style_.transition_speed.value_or(0.f);
-
-			if (!transitions_initialized_ || tspeed <= 0.f)
-			{
-				visual_bg_ = target_bg;
-				visual_text_color_ = target_tc;
-				visual_rounding_ = target_rd;
-				visual_border_color_ = target_bc;
-				transitions_initialized_ = true;
-			}
-			else
-			{
-				const float factor = cstd::fminf(tspeed * dt, 1.f);
-				visual_bg_ = lerp_color(visual_bg_, target_bg, factor);
-				visual_text_color_ = lerp_color(visual_text_color_, target_tc, factor);
-				visual_rounding_ = lerp(visual_rounding_, target_rd, factor);
-				visual_border_color_ = lerp_color(visual_border_color_, target_bc, factor);
-
-				auto close = [](const float a, const float b) noexcept
-				{
-					return cstd::fabsf(a - b) < 0.001f;
-				};
-
-				auto color_close = [&](const color& a, const color& b) noexcept
-				{
-					return close(a.r, b.r) && close(a.g, b.g) && close(a.b, b.b) && close(a.a, b.a);
-				};
-
-				if (color_close(visual_bg_, target_bg))
-				{
-					visual_bg_ = target_bg;
-				}
-
-				if (color_close(visual_text_color_, target_tc))
-				{
-					visual_text_color_ = target_tc;
-				}
-
-				if (close(visual_rounding_, target_rd))
-				{
-					visual_rounding_ = target_rd;
-				}
-
-				if (color_close(visual_border_color_, target_bc))
-				{
-					visual_border_color_ = target_bc;
-				}
-			}
+			return;
 		}
+
+		// resolve the per-state target (base style + active hover/press/focus/disabled overrides),
+		// then ease the visual_* values toward it. this single path replaces every widget's bespoke
+		// hover/press color swap.
+		const float tspeed = style_.transition_speed.value_or(0.f);
+		const resolved_visual target = resolve_visual();
+
+		const float uniform = style_.rounding.value_or(0.f);
+		const corner_radii target_radii = style_.radii.value_or(
+			corner_radii{ uniform, uniform, uniform, uniform });
+
+		if (!transitions_initialized_ || tspeed <= 0.f)
+		{
+			visual_bg_ = target.bg;
+			visual_text_color_ = target.text;
+			visual_border_color_ = target.border;
+			visual_radii_ = target_radii;
+			visual_opacity_ = target.opacity;
+			transitions_initialized_ = true;
+
+			return;
+		}
+
+		const float factor = cstd::fminf(tspeed * dt, 1.f);
+
+		visual_bg_ = lerp_color(visual_bg_, target.bg, factor);
+		visual_text_color_ = lerp_color(visual_text_color_, target.text, factor);
+		visual_border_color_ = lerp_color(visual_border_color_, target.border, factor);
+		visual_radii_ = transition_lerp(visual_radii_, target_radii, factor);
+		visual_opacity_ = lerp(visual_opacity_, target.opacity, factor);
+
+		const auto color_close = [](const color& a, const color& b) noexcept
+		{
+			return transition_close(a, b);
+		};
+
+		if (color_close(visual_bg_, target.bg)) { visual_bg_ = target.bg; }
+		if (color_close(visual_text_color_, target.text)) { visual_text_color_ = target.text; }
+		if (color_close(visual_border_color_, target.border)) { visual_border_color_ = target.border; }
+		if (transition_close(visual_radii_, target_radii)) { visual_radii_ = target_radii; }
+		if (transition_close(visual_opacity_, target.opacity)) { visual_opacity_ = target.opacity; }
 	}
 
 	float element::compute_main_content_size(const element_style& defaults, const bool vertical) const noexcept

@@ -10,6 +10,11 @@ namespace rv
 {
 	class gui_texture;
 
+	// forward-declared; the real cursor_type lives in input.hpp (the gui -> input dependency is
+	// allowed). an opaque scoped-enum decl with an explicit underlying type is a complete type,
+	// which is all optional_t<cursor_type> needs for storage.
+	enum class cursor_type : cstd::uint8_t;
+
 	enum class layout_direction : cstd::uint8_t
 	{
 		vertical,
@@ -91,6 +96,43 @@ namespace rv
 		rtl
 	};
 
+	// interaction state used to select per-state style overrides. `normal` is the base style.
+	enum class element_state : cstd::uint8_t
+	{
+		normal,
+		hovered,
+		pressed,
+		focused,
+		disabled
+	};
+
+	enum class text_decoration : cstd::uint8_t
+	{
+		none,
+		underline,
+		line_through
+	};
+
+	// the subset of element_style that can vary by interaction state. only the fields that are set
+	// override the base style while that state is active (CSS-cascade semantics).
+	struct state_style
+	{
+		optional_t<color> background_color;
+		optional_t<color> text_color;
+		optional_t<color> border_color;
+		optional_t<float> opacity;
+	};
+
+	// the concrete colors + opacity an element resolves to for its current interaction state, after
+	// overlaying the active state_style blocks on top of the base style (see element::resolve_visual).
+	struct resolved_visual
+	{
+		color bg = { 0.f, 0.f, 0.f, 0.f };
+		color text = { 1.f, 1.f, 1.f, 1.f };
+		color border = { 0.f, 0.f, 0.f, 0.f };
+		float opacity = 1.f;
+	};
+
 	struct border_vector
 	{
 		float top = 0.f;
@@ -159,6 +201,33 @@ namespace rv
 		optional_t<shared_ptr_t<gui_texture>> background_image;
 		optional_t<color> background_image_tint;
 		optional_t<image_fit> background_image_fit;
+
+		// per-interaction-state overrides, resolved by element::resolve_visual().
+		optional_t<state_style> hover;
+		optional_t<state_style> active;
+		optional_t<state_style> focus;
+		optional_t<state_style> disabled_style;
+
+		// element-level opacity, multiplied through the whole subtree at render time.
+		optional_t<float> opacity;
+
+		// per-corner radii; when unset, the uniform `rounding` value applies to all corners.
+		optional_t<corner_radii> radii;
+
+		// CPU-side transforms applied to this element's emitted vertex range at render time.
+		// note: `rv::position` must be qualified here because the `position` member above (the CSS
+		// position-type field) shadows the rv::position type name inside this struct's scope.
+		optional_t<float> scale;
+		optional_t<rv::position> translate;
+
+		// requested mouse cursor while this element is hovered.
+		optional_t<cursor_type> cursor;
+
+		// text styling.
+		optional_t<float> line_height;     // line-advance multiplier (1.0 == font default)
+		optional_t<float> letter_spacing;  // extra px inserted between glyphs
+		optional_t<text_decoration> decoration;
+		optional_t<bool> text_ellipsis;    // truncate overflowing single-line text with an ellipsis
 	};
 
 	// helper to resolve gap for the correct axis

@@ -48,4 +48,27 @@ namespace rv
 			return !(*this == other);
 		}
 	};
+
+	// per-corner radii for a rounded rect: top-left, top-right, bottom-right, bottom-left. lives in
+	// the render layer so both the renderer draw calls and the gui style can share one type.
+	struct corner_radii
+	{
+		float tl = 0.f;
+		float tr = 0.f;
+		float br = 0.f;
+		float bl = 0.f;
+
+		[[nodiscard]] constexpr float max() const noexcept
+		{
+			const float a = tl > tr ? tl : tr;
+			const float b = br > bl ? br : bl;
+
+			return a > b ? a : b;
+		}
+
+		[[nodiscard]] static constexpr corner_radii uniform(const float r) noexcept
+		{
+			return { r, r, r, r };
+		}
+	};
 }

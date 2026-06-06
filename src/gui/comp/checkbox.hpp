@@ -1,6 +1,7 @@
 #pragma once
 #include "../element.hpp"
 #include "../gui.hpp"
+#include "../text_metrics.hpp"
 #include "../../util/string.hpp"
 
 namespace rv
@@ -150,8 +151,6 @@ namespace rv
 				: 1.f;
 		}
 
-		[[nodiscard]] float measure_label_width(const float scale) const noexcept;
-
 		shared_ptr_t<gui_font> font_;
 		string_t label_;
 
@@ -166,8 +165,8 @@ namespace rv
 		color border_color_ = { 0.4f, 0.4f, 0.45f, 1.f };
 		float border_width_ = 1.5f;
 
-		color visual_box_color_ = { 0.15f, 0.15f, 0.18f, 1.f };
-		bool box_initialized_ = false;
+		// box fill eases toward its per-state target (box/hover/pressed) via the shared helper.
+		transition<color> box_fill_;
 
 		function_t<void(bool)> on_change_;
 		bool* bound_ = nullptr;

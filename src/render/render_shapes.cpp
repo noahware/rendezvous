@@ -100,6 +100,79 @@ void rv::renderer::draw_rect_filled_multi_color(const position min, const positi
     fill_sequential_indices(w, 6);
 }
 
+void rv::renderer::draw_rect_filled(const position min, const position max, const color col, const corner_radii radii) noexcept
+{
+    const float width = max.x - min.x;
+    const float height = max.y - min.y;
+
+    const float cx = min.x + width * 0.5f;
+    const float cy = min.y + height * 0.5f;
+
+    const float qw = (width * 0.5f) + 1.f;
+    const float qh = (height * 0.5f) + 1.f;
+
+    const position p0 = {cx - qw, cy - qh};
+    const position p1 = {cx + qw, cy + qh};
+
+    const ndc_position n0 = to_ndc(p0);
+    const ndc_position n1 = to_ndc(p1);
+
+    const array_t<float, 8> data = {width, height, 0.f, 0.f, radii.tr, radii.br, radii.bl, radii.tl};
+
+    const auto make_vertex = [data, col](const float x, const float y, const float u, const float v) -> vertex
+    {
+        return vertex{.pos = {x, y}, .col = pack_color(col), .uv = {u, v}, .custom_data = data};
+    };
+
+    const vertex_writer w = reserve_indexed(6, 6, shader_type::rect_shader);
+
+    w.vertices[0] = make_vertex(n0.x, n0.y, -qw, -qh);
+    w.vertices[1] = make_vertex(n1.x, n0.y, qw, -qh);
+    w.vertices[2] = make_vertex(n0.x, n1.y, -qw, qh);
+    w.vertices[3] = make_vertex(n1.x, n0.y, qw, -qh);
+    w.vertices[4] = make_vertex(n1.x, n1.y, qw, qh);
+    w.vertices[5] = make_vertex(n0.x, n1.y, -qw, qh);
+
+    fill_sequential_indices(w, 6);
+}
+
+void rv::renderer::draw_rect(const position min, const position max, const color col, const float thickness,
+                             const corner_radii radii) noexcept
+{
+    const float width = max.x - min.x;
+    const float height = max.y - min.y;
+
+    const float cx = min.x + width * 0.5f;
+    const float cy = min.y + height * 0.5f;
+
+    const float qw = (width * 0.5f) + 1.f;
+    const float qh = (height * 0.5f) + 1.f;
+
+    const position p0 = {cx - qw, cy - qh};
+    const position p1 = {cx + qw, cy + qh};
+
+    const ndc_position n0 = to_ndc(p0);
+    const ndc_position n1 = to_ndc(p1);
+
+    const array_t<float, 8> data = {width, height, thickness, 0.f, radii.tr, radii.br, radii.bl, radii.tl};
+
+    const auto make_vertex = [data](const float x, const float y, const color c, const float u, const float v) -> vertex
+    {
+        return vertex{.pos = {x, y}, .col = pack_color(c), .uv = {u, v}, .custom_data = data};
+    };
+
+    const vertex_writer w = reserve_indexed(6, 6, shader_type::rect_shader);
+
+    w.vertices[0] = make_vertex(n0.x, n0.y, col, -qw, -qh);
+    w.vertices[1] = make_vertex(n1.x, n0.y, col, qw, -qh);
+    w.vertices[2] = make_vertex(n0.x, n1.y, col, -qw, qh);
+    w.vertices[3] = make_vertex(n1.x, n0.y, col, qw, -qh);
+    w.vertices[4] = make_vertex(n1.x, n1.y, col, qw, qh);
+    w.vertices[5] = make_vertex(n0.x, n1.y, col, -qw, qh);
+
+    fill_sequential_indices(w, 6);
+}
+
 void rv::renderer::draw_shadow_rect(const position min, const position max, const color col, const float rounding,
                                     const float shadow_blur, const float shadow_spread, const rounding_flags flags,
                                     const bool cut_background) noexcept

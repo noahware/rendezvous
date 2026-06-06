@@ -1,6 +1,7 @@
 #pragma once
 #include "../element.hpp"
 #include "../gui.hpp"
+#include "../text_metrics.hpp"
 #include "../../util/string.hpp"
 
 namespace rv
@@ -53,16 +54,17 @@ namespace rv
 			return *this;
 		}
 
+		// kept for API compatibility; both now route into the generic per-state styling system.
 		button& hover_color(const color col) noexcept
 		{
-			hover_color_ = col;
+			background_color(col, element_state::hovered);
 
 			return *this;
 		}
 
 		button& pressed_color(const color col) noexcept
 		{
-			pressed_color_ = col;
+			background_color(col, element_state::pressed);
 
 			return *this;
 		}
@@ -84,24 +86,6 @@ namespace rv
 			return true;
 		}
 
-		void update(const float dt) override
-		{
-			const auto resting = style_.background_color;
-
-			if (pressed_)
-			{
-				style_.background_color = pressed_color_;
-			}
-			else if (hovered_)
-			{
-				style_.background_color = hover_color_;
-			}
-
-			element::update(dt);
-
-			style_.background_color = resting;
-		}
-
 		[[nodiscard]] vector_2d<float> content_size(const vector_2d<float> available) const noexcept override
 		{
 			if (!font_ || text_.empty())
@@ -111,7 +95,7 @@ namespace rv
 
 			const float scale = style_.font_size.value_or(0.f) > 0.f ? style_.font_size.value_or(0.f) / font_->baked_size() : 1.f;
 			const float line_h = font_->line_height() * scale;
-			const float text_w = measure_text_width(scale);
+			const float text_w = measure_text_width(*font_, text_, scale);
 
 			return { text_w + line_h * 0.8f, line_h + line_h * 0.4f };
 		}
@@ -133,7 +117,7 @@ namespace rv
 
 			const float scale = style_.font_size.value_or(0.f) > 0.f ? style_.font_size.value_or(0.f) / font_->baked_size() : 1.f;
 			const float line_h = font_->line_height() * scale;
-			const float text_w = measure_text_width(scale);
+			const float text_w = measure_text_width(*font_, text_, scale);
 
 			const float box_w = max.x - min.x;
 			const float box_h = max.y - min.y;
@@ -162,40 +146,15 @@ namespace rv
 		void init_defaults() noexcept
 		{
 			style_.background_color = color{ 0.18f, 0.18f, 0.22f, 1.f };
+			style_.hover  = state_style{ .background_color = color{ 0.28f, 0.28f, 0.34f, 1.f } };
+			style_.active = state_style{ .background_color = color{ 0.12f, 0.12f, 0.15f, 1.f } };
 			style_.rounding = 6.f;
 			style_.text_color = color{ 1.f, 1.f, 1.f, 1.f };
 			style_.transition_speed = 12.f;
 		}
 
-		[[nodiscard]] float measure_text_width(const float scale) const noexcept
-		{
-			float width = 0.f;
-			cstd::uint32_t prev_cp = 0;
-
-			const char* s = text_.data();
-			const char* end = s + text_.size();
-
-			while (s < end)
-			{
-				const cstd::uint32_t cp = decode_utf8(s, end);
-
-				if (prev_cp != 0)
-				{
-					width += font_->kerning(prev_cp, cp) * scale;
-				}
-
-				width += font_->glyph_advance(cp) * scale;
-				prev_cp = cp;
-			}
-
-			return width;
-		}
-
 		shared_ptr_t<gui_font> font_;
 		string_t text_;
-
-		color hover_color_ = { 0.28f, 0.28f, 0.34f, 1.f };
-		color pressed_color_ = { 0.12f, 0.12f, 0.15f, 1.f };
 
 		function_t<void()> on_click_;
 

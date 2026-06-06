@@ -16,7 +16,7 @@
 using rv::decode_utf8;
 
 void rv::renderer::draw_text(const font &font, const position pos, const string_view_t text, const color col,
-                             const float size) noexcept
+                             const float size, const float letter_spacing) noexcept
 {
     const shared_ptr_t<texture> font_texture = font.texture();
 
@@ -98,7 +98,7 @@ void rv::renderer::draw_text(const font &font, const position pos, const string_
             icount += 6;
         }
 
-        pen += g.advance * scale;
+        pen += g.advance * scale + letter_spacing;
         prev_codepoint = codepoint;
     }
 

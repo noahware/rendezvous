@@ -5,6 +5,7 @@
 #include "styled_size.hpp"
 #include "animation.hpp"
 #include "element_types.hpp"
+#include "transition.hpp"
 
 namespace rv
 {
@@ -508,9 +509,18 @@ namespace rv
 			return *this;
 		}
 
-		element& background_color(const color c) noexcept
+		// state == normal writes the base style; any other state writes that state's override block,
+		// resolved later by resolve_visual(). existing single-arg callers keep working via the default.
+		element& background_color(const color c, const element_state state = element_state::normal) noexcept
 		{
-			style_.background_color = c;
+			if (state == element_state::normal)
+			{
+				style_.background_color = c;
+			}
+			else
+			{
+				ensure_state(state).background_color = c;
+			}
 
 			return *this;
 		}
@@ -527,9 +537,16 @@ namespace rv
 			return *this;
 		}
 
-		element& text_color(const color c) noexcept
+		element& text_color(const color c, const element_state state = element_state::normal) noexcept
 		{
-			style_.text_color = c;
+			if (state == element_state::normal)
+			{
+				style_.text_color = c;
+			}
+			else
+			{
+				ensure_state(state).text_color = c;
+			}
 
 			return *this;
 		}
@@ -537,13 +554,21 @@ namespace rv
 		element& rounding(const float r) noexcept
 		{
 			style_.rounding = r;
+			style_.radii.reset(); // uniform shorthand wins; drop any per-corner override
 
 			return *this;
 		}
 
-		element& border_color(const color c) noexcept
+		element& border_color(const color c, const element_state state = element_state::normal) noexcept
 		{
-			style_.border_color = c;
+			if (state == element_state::normal)
+			{
+				style_.border_color = c;
+			}
+			else
+			{
+				ensure_state(state).border_color = c;
+			}
 
 			return *this;
 		}
@@ -575,6 +600,108 @@ namespace rv
 		element& text_alignment(const text_align align) noexcept
 		{
 			style_.text_alignment = align;
+
+			return *this;
+		}
+
+		// element-level opacity in [0,1]; multiplied through the whole subtree at render time.
+		element& opacity(const float o, const element_state state = element_state::normal) noexcept
+		{
+			if (state == element_state::normal)
+			{
+				style_.opacity = o;
+			}
+			else
+			{
+				ensure_state(state).opacity = o;
+			}
+
+			return *this;
+		}
+
+		// per-corner radii overload; the float rounding() above is the uniform shorthand.
+		element& rounding(const corner_radii radii) noexcept
+		{
+			style_.radii = radii;
+			style_.rounding.reset(); // per-corner wins; drop any uniform override
+
+			return *this;
+		}
+
+		// non-interactive + visually dimmed; a disabled subtree receives no hover/press/focus/click.
+		element& disabled(const bool v = true) noexcept
+		{
+			disabled_ = v;
+
+			return *this;
+		}
+
+		[[nodiscard]] bool is_disabled() const noexcept
+		{
+			return disabled_;
+		}
+
+		// deferred-overlay draw order: higher z draws later (on top). implies topmost().
+		element& z_index(const int z) noexcept
+		{
+			z_index_ = z;
+			topmost_ = true;
+
+			return *this;
+		}
+
+		[[nodiscard]] int z_index() const noexcept
+		{
+			return z_index_;
+		}
+
+		element& scale(const float s) noexcept
+		{
+			style_.scale = s;
+
+			return *this;
+		}
+
+		element& translate(const position t) noexcept
+		{
+			style_.translate = t;
+
+			return *this;
+		}
+
+		element& cursor(const cursor_type c) noexcept
+		{
+			style_.cursor = c;
+
+			return *this;
+		}
+
+		element& line_height(const float mult) noexcept
+		{
+			style_.line_height = mult;
+			mark_layout_dirty();
+
+			return *this;
+		}
+
+		element& letter_spacing(const float px) noexcept
+		{
+			style_.letter_spacing = px;
+			mark_layout_dirty();
+
+			return *this;
+		}
+
+		element& decoration(const text_decoration d) noexcept
+		{
+			style_.decoration = d;
+
+			return *this;
+		}
+
+		element& text_ellipsis(const bool on = true) noexcept
+		{
+			style_.text_ellipsis = on;
 
 			return *this;
 		}
@@ -667,6 +794,49 @@ namespace rv
 
 		[[nodiscard]] optional_t<keyframe_props> animated_props() const noexcept;
 
+		// resolve the effective background/text/border colors + opacity for the current interaction
+		// state: start from the base style, then overlay the focus, hover, active (pressed) and
+		// disabled override blocks in increasing priority. a disabled element with no explicit
+		// disabled opacity is dimmed by default. this is the single source of per-state styling that
+		// replaces the per-widget hover/press color swaps.
+		[[nodiscard]] resolved_visual resolve_visual() const noexcept
+		{
+			resolved_visual r;
+			r.bg      = style_.background_color.value_or(r.bg);
+			r.text    = style_.text_color.value_or(r.text);
+			r.border  = style_.border_color.value_or(r.border);
+			r.opacity = style_.opacity.value_or(r.opacity);
+
+			const auto apply = [&r](const optional_t<state_style>& s) noexcept
+			{
+				if (!s)
+				{
+					return;
+				}
+
+				if (s->background_color) { r.bg = *s->background_color; }
+				if (s->text_color)       { r.text = *s->text_color; }
+				if (s->border_color)     { r.border = *s->border_color; }
+				if (s->opacity)          { r.opacity = *s->opacity; }
+			};
+
+			if (focused_) { apply(style_.focus); }
+			if (hovered_) { apply(style_.hover); }
+			if (pressed_) { apply(style_.active); }
+
+			if (disabled_)
+			{
+				apply(style_.disabled_style);
+
+				if (!style_.disabled_style || !style_.disabled_style->opacity)
+				{
+					r.opacity *= 0.45f;
+				}
+			}
+
+			return r;
+		}
+
 		// defined in gui.hpp after gui_renderer is complete. `overlays`, when non-null, collects
 		// topmost children to be drawn in a final pass instead of inline; null means render inline.
 		void render(gui_renderer& renderer, const element_style& defaults,
@@ -689,6 +859,27 @@ namespace rv
 			}
 		}
 
+		// lazily materialize the per-state override block for `state` (never called with normal).
+		state_style& ensure_state(const element_state state) noexcept
+		{
+			optional_t<state_style>* slot = &style_.hover;
+
+			switch (state)
+			{
+			case element_state::pressed:  slot = &style_.active; break;
+			case element_state::focused:  slot = &style_.focus; break;
+			case element_state::disabled: slot = &style_.disabled_style; break;
+			default: break; // hovered uses the default slot; normal never reaches here
+			}
+
+			if (!*slot)
+			{
+				*slot = state_style{};
+			}
+
+			return **slot;
+		}
+
 		vector_2d<float> computed_size_ = { };
 		position computed_pos_ = { };
 		position visual_pos_ = { };
@@ -698,13 +889,16 @@ namespace rv
 		bool focused_ = false;
 		bool visible_ = true;
 		bool topmost_ = false;
+		bool disabled_ = false;
+		int z_index_ = 0;
 		string_t tooltip_;
 		vector_t<animation_state> animations_;
 
 		color visual_bg_ = { 0.f, 0.f, 0.f, 0.f };
 		color visual_text_color_ = { 1.f, 1.f, 1.f, 1.f };
-		float visual_rounding_ = 0.f;
+		corner_radii visual_radii_ = { };
 		color visual_border_color_ = { 0.f, 0.f, 0.f, 0.f };
+		float visual_opacity_ = 1.f;
 		bool transitions_initialized_ = false;
 
 		vector_t<flex_line> flex_lines_;

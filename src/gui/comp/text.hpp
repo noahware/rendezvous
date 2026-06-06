@@ -32,6 +32,9 @@ namespace rv
 
 		[[nodiscard]] float measure_line(const string_view_t line, const float scale) const noexcept;
 
+		// first line truncated to fit max_width with a trailing "..." appended when it overflows.
+		[[nodiscard]] string_t ellipsize(const float max_width, const float scale, const float letter_spacing) const noexcept;
+
 		[[nodiscard]] vector_t<string_view_t> wrap_text(const float max_width, const float scale) const noexcept;
 
 		[[nodiscard]] float resolved_scale() const noexcept

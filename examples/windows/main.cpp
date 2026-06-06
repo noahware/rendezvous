@@ -720,6 +720,51 @@ cstd::int32_t main(int argc, char* argv[])
 		banner.add_label("Text over a background image").text_color({ 1.f, 1.f, 1.f, 1.f });
 	}
 
+	// CSS styling showcase: per-state colors, disabled, opacity, per-corner radius, cursor,
+	// and text decoration + ellipsis, all driven through the generic element styling API.
+	{
+		auto& styling = left_col->add_container("CSS Styling");
+
+		// a button already gets hover/press via the generic per-state system (no bespoke code).
+		auto& states = styling.add_row();
+		states.add_button("Hover / press me");
+
+		// per-state styling applied directly to a plain element (a styled "chip" label).
+		auto& chip = states.add_label("Per-state chip");
+		chip.text_size(14.f).padding(rv::border_vector{ 6.f, 12.f, 6.f, 12.f }).rounding(6.f)
+			.transition_speed(12.f).cursor(rv::cursor_type::hand)
+			.background_color({ 0.18f, 0.18f, 0.22f, 1.f })
+			.background_color({ 0.30f, 0.45f, 0.85f, 1.f }, rv::element_state::hovered)
+			.text_color({ 0.70f, 0.75f, 0.85f, 1.f })
+			.text_color({ 1.f, 1.f, 1.f, 1.f }, rv::element_state::hovered);
+
+		// disabled: dimmed and non-interactive (the whole subtree stops taking input).
+		styling.add_button("Disabled button").disabled();
+
+		// element-level opacity fades the whole subtree.
+		auto& faded = styling.add_column();
+		faded.opacity(0.45f).gap(4.f);
+		faded.add_label("Faded subtree (opacity 0.45)").text_size(14.f);
+		faded.add_button("Also faded");
+
+		// per-corner radius card (top-left/br large, top-right/bl small).
+		auto& card = styling.add_column();
+		card.set_declared_size({ rv::styled_size::fill(), rv::styled_size::px(52.f) });
+		card.background_color({ 0.20f, 0.22f, 0.28f, 1.f }).padding(10.f)
+			.rounding(rv::corner_radii{ 18.f, 4.f, 18.f, 4.f });
+		card.add_label("Per-corner radius 18/4/18/4").text_size(13.f);
+
+		// text decoration + ellipsis + letter spacing.
+		styling.add_label("Underlined heading").text_size(16.f)
+			.decoration(rv::text_decoration::underline);
+		styling.add_label("Struck-through note").text_size(14.f)
+			.decoration(rv::text_decoration::line_through).text_color({ 0.6f, 0.6f, 0.65f, 1.f });
+
+		auto& ellip = styling.add_label("This single line is far too long to fit in its box and should be truncated with an ellipsis.");
+		ellip.set_declared_size({ rv::styled_size::px(220.f), rv::styled_size::auto_v() });
+		ellip.text_size(14.f).text_ellipsis().letter_spacing(0.5f);
+	}
+
 	auto right_col = gui->make_child<rv::element>(body, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
 	right_col->direction(rv::layout_direction::vertical).gap(0.f);
 

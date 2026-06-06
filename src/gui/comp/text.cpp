@@ -10,13 +10,19 @@ namespace rv
 		}
 
 		const float scale = resolved_scale();
-		const float line_h = font_->line_height() * scale;
+		const float line_h = font_->line_height() * scale * style_.line_height.value_or(1.f);
 		const bool has_width_constraint = (declared_size().width.mode != size_mode::auto_v);
 
 		if (!has_width_constraint)
 		{
 			const float w = single_line_width(scale);
 			return { w, line_h };
+		}
+
+		// ellipsized text stays on one line; it fills the width constraint and is one line tall.
+		if (style_.text_ellipsis.value_or(false))
+		{
+			return { available.x, line_h };
 		}
 
 		update_wrap_cache(available.x, scale);
@@ -38,15 +44,64 @@ namespace rv
 		}
 
 		const float scale = resolved_scale();
-		const float line_h = font_->line_height() * scale;
+		const float ls = style_.letter_spacing.value_or(0.f);
+		const float font_px = style_.font_size.value_or(0.f);
+		const float line_h = font_->line_height() * scale * style_.line_height.value_or(1.f);
 		const float box_w = max.x - min.x;
 
+		// underline / strikethrough drawn as a thin filled rect from the text metrics.
+		const auto draw_decoration = [&](const float x, const float y, const float line_w)
+		{
+			const text_decoration deco = style_.decoration.value_or(text_decoration::none);
+
+			if (deco == text_decoration::none || line_w <= 0.f)
+			{
+				return;
+			}
+
+			const float thickness = cstd::fmaxf(1.f, scale);
+
+			// underline sits just below the baseline; strikethrough crosses the x-height.
+			const float dy = (deco == text_decoration::underline)
+				? y + font_->ascent() * scale + thickness
+				: y + font_->ascent() * scale * 0.65f;
+
+			renderer.draw_rect_filled({ x, dy }, { x + line_w, dy + thickness }, visual_text_color_);
+		};
+
+		const auto aligned_x = [&](const float line_w)
+		{
+			const text_align al = style_.text_alignment.value_or(text_align::left);
+
+			if (al == text_align::center) { return min.x + (box_w - line_w) * 0.5f; }
+			if (al == text_align::right)  { return min.x + box_w - line_w; }
+
+			return min.x;
+		};
+
+		// auto width: a single unconstrained line.
 		if (declared_size().width.mode == size_mode::auto_v)
 		{
-			renderer.draw_text(*font_, { min.x, min.y }, text_, visual_text_color_, style_.font_size.value_or(0.f));
+			renderer.draw_text(*font_, { min.x, min.y }, text_, visual_text_color_, font_px, ls);
+			draw_decoration(min.x, min.y, single_line_width(scale));
 			return;
 		}
 
+		// constrained width with ellipsis: one line truncated to fit, suffixed with "...".
+		if (style_.text_ellipsis.value_or(false))
+		{
+			const string_t clipped = ellipsize(box_w, scale, ls);
+			const float lw = measure_line(clipped, scale);
+			const float x = aligned_x(lw);
+
+			renderer.push_clip_rect(min, max);
+			renderer.draw_text(*font_, { x, min.y }, clipped, visual_text_color_, font_px, ls);
+			draw_decoration(x, min.y, lw);
+			renderer.pop_clip_rect();
+			return;
+		}
+
+		// constrained width: wrap into lines.
 		update_wrap_cache(box_w, scale);
 
 		renderer.push_clip_rect(min, max);
@@ -55,20 +110,11 @@ namespace rv
 
 		for (const auto& line : cached_wrapped_)
 		{
-			float x = min.x;
+			const float lw = measure_line(line, scale);
+			const float x = aligned_x(lw);
 
-			if (style_.text_alignment.value_or(text_align::left) == text_align::center)
-			{
-				const float lw = measure_line(line, scale);
-				x += (box_w - lw) * 0.5f;
-			}
-			else if (style_.text_alignment.value_or(text_align::left) == text_align::right)
-			{
-				const float lw = measure_line(line, scale);
-				x += box_w - lw;
-			}
-
-			renderer.draw_text(*font_, { x, y }, line, visual_text_color_, style_.font_size.value_or(0.f));
+			renderer.draw_text(*font_, { x, y }, line, visual_text_color_, font_px, ls);
+			draw_decoration(x, y, lw);
 			y += line_h;
 		}
 
@@ -93,7 +139,7 @@ namespace rv
 				continue;
 			}
 
-			width += glyph_step(*font_, prev_cp, cp, scale);
+			width += glyph_step(*font_, prev_cp, cp, scale, style_.letter_spacing.value_or(0.f));
 			prev_cp = cp;
 		}
 
@@ -112,7 +158,7 @@ namespace rv
 		{
 			const cstd::uint32_t cp = decode_utf8(s, end);
 
-			width += glyph_step(*font_, prev_cp, cp, scale);
+			width += glyph_step(*font_, prev_cp, cp, scale, style_.letter_spacing.value_or(0.f));
 			prev_cp = cp;
 		}
 
@@ -169,7 +215,7 @@ namespace rv
 			}
 
 			// accumulate width
-			current_width += glyph_step(*font_, prev_cp, cp, scale);
+			current_width += glyph_step(*font_, prev_cp, cp, scale, style_.letter_spacing.value_or(0.f));
 			prev_cp = cp;
 
 			// check overflow
@@ -201,7 +247,7 @@ namespace rv
 					// no break point - force break at current char
 					lines.emplace_back(line_start, static_cast<cstd::size_t>(char_start - line_start));
 					line_start = char_start;
-					current_width = glyph_step(*font_, 0, cp, scale);
+					current_width = glyph_step(*font_, 0, cp, scale, style_.letter_spacing.value_or(0.f));
 					prev_cp = cp;
 					last_break = nullptr;
 					width_at_break = 0.f;
@@ -229,5 +275,79 @@ namespace rv
 		cached_wrap_width_ = width;
 		cached_wrap_scale_ = scale;
 		wrap_cache_valid_ = true;
+	}
+
+	string_t text_element::ellipsize(const float max_width, const float scale, const float letter_spacing) const noexcept
+	{
+		const char* const s = text_.data();
+		const char* const text_end = s + text_.size();
+
+		// only the first line participates in single-line ellipsis.
+		const char* line_end = s;
+		while (line_end < text_end && *line_end != '\n' && *line_end != '\r')
+		{
+			++line_end;
+		}
+
+		const bool whole_text_one_line = (line_end == text_end);
+
+		// width of the first line as-is.
+		float line_w = 0.f;
+		{
+			cstd::uint32_t prev = 0;
+			const char* p = s;
+
+			while (p < line_end)
+			{
+				const cstd::uint32_t cp = decode_utf8(p, line_end);
+				line_w += glyph_step(*font_, prev, cp, scale, letter_spacing);
+				prev = cp;
+			}
+		}
+
+		// it fits and there is nothing after it: no truncation needed.
+		if (line_w <= max_width && whole_text_one_line)
+		{
+			return string_t(s, static_cast<cstd::size_t>(line_end - s));
+		}
+
+		// width of the "..." suffix (ASCII dots stay inside the typical baked glyph range).
+		float ell_w = 0.f;
+		{
+			cstd::uint32_t prev = 0;
+
+			for (const char* p = "..."; *p != '\0'; ++p)
+			{
+				const cstd::uint32_t cp = static_cast<cstd::uint32_t>(static_cast<unsigned char>(*p));
+				ell_w += glyph_step(*font_, prev, cp, scale, letter_spacing);
+				prev = cp;
+			}
+		}
+
+		// accumulate glyphs until prefix + ellipsis would overflow the box.
+		float width = 0.f;
+		cstd::uint32_t prev_cp = 0;
+		const char* fit_end = s;
+		const char* cursor = s;
+
+		while (cursor < line_end)
+		{
+			const cstd::uint32_t cp = decode_utf8(cursor, line_end);
+			const float step = glyph_step(*font_, prev_cp, cp, scale, letter_spacing);
+
+			if (width + step + ell_w > max_width)
+			{
+				break;
+			}
+
+			width += step;
+			prev_cp = cp;
+			fit_end = cursor;
+		}
+
+		string_t out(s, static_cast<cstd::size_t>(fit_end - s));
+		out += "...";
+
+		return out;
 	}
 }
