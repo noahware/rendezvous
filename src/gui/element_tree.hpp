@@ -57,7 +57,7 @@ namespace rv
 		template <class T, class ...Args>
 		shared_ptr_t<T> make_child(const shared_ptr_t<element>& parent, Args&&... args)
 		{
-			auto child = make_element<T>(args...);
+			auto child = make_element<T>(cstd::forward<Args>(args)...);
 
 			parent->add_child(child);
 			add(child);

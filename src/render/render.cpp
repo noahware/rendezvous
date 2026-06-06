@@ -29,6 +29,11 @@ void rv::renderer::begin_frame(const vector_2d<float> display_size) noexcept
     state_.last_time = current_time;
     state_.display_size = display_size;
 
+    inv_display_x_ = display_size.x > 0.f ? 2.f / display_size.x : 0.f;
+    inv_display_y_ = display_size.y > 0.f ? 2.f / display_size.y : 0.f;
+
+    stats_ = {};
+
     pending_vertices_.reserve(peak_vertex_count_);
     pending_indices_.reserve(peak_index_count_);
     pending_batches_.reserve(peak_batch_count_);
@@ -92,6 +97,7 @@ rv::vertex_writer rv::renderer::reserve_indexed(const cstd::size_t vertex_count,
         pending_batches_.push_back(vertex_batch{static_cast<cstd::uint32_t>(pending_vertices_.size()), 0,
                                                 static_cast<cstd::uint32_t>(pending_indices_.size()), 0, current_texture_, shader,
                                                 current_clip});
+        ++stats_.draw_calls;
     }
 
     auto &current_batch = pending_batches_.back();
@@ -105,6 +111,9 @@ rv::vertex_writer rv::renderer::reserve_indexed(const cstd::size_t vertex_count,
 
     pending_vertices_.resize(vtx_start + vertex_count);
     pending_indices_.resize(idx_start + index_count);
+
+    stats_.vertices += static_cast<cstd::int32_t>(vertex_count);
+    stats_.indices += static_cast<cstd::int32_t>(index_count);
 
     last_reserve_vertices_ = vertex_count;
     last_reserve_indices_ = index_count;
@@ -122,6 +131,9 @@ void rv::renderer::shrink_reserved(const cstd::size_t used_vertices, const cstd:
 
     const cstd::uint32_t trimmed_vertices = static_cast<cstd::uint32_t>(last_reserve_vertices_ - used_vertices);
     const cstd::uint32_t trimmed_indices = static_cast<cstd::uint32_t>(last_reserve_indices_ - used_indices);
+
+    stats_.vertices -= static_cast<cstd::int32_t>(trimmed_vertices);
+    stats_.indices -= static_cast<cstd::int32_t>(trimmed_indices);
 
     pending_vertices_.resize(pending_vertices_.size() - trimmed_vertices);
     pending_indices_.resize(pending_indices_.size() - trimmed_indices);
@@ -178,6 +190,11 @@ rv::state &rv::renderer::state() noexcept
 const rv::state &rv::renderer::state() const noexcept
 {
     return state_;
+}
+
+const rv::render_stats &rv::renderer::stats() const noexcept
+{
+    return stats_;
 }
 
 cstd::size_t rv::renderer::vertex_count() const noexcept
@@ -239,7 +256,7 @@ void rv::renderer::modify_scale(const cstd::size_t start_idx, const cstd::size_t
 
 rv::ndc_position rv::renderer::to_ndc(const position pos) const noexcept
 {
-    return {2.f * pos.x / state_.display_size.x - 1.f, 1.f - 2.f * pos.y / state_.display_size.y};
+    return {pos.x * inv_display_x_ - 1.f, 1.f - pos.y * inv_display_y_};
 }
 
 rv::clip_constants rv::renderer::pack_clip_constants(const optional_t<clip_rect_data>& clip) noexcept

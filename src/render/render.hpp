@@ -94,7 +94,7 @@ namespace rv
 		cstd::uint32_t vertex_count;
 		cstd::uint32_t index_offset;
 		cstd::uint32_t index_count;
-		shared_ptr_t<texture> texture;
+		shared_ptr_t<class texture> texture;
 		shader_type shader;
 		optional_t<clip_rect_data> clip_rect;
 	};
@@ -113,6 +113,15 @@ namespace rv
 		float delta_time = 0.f;
 		float frame_rate = 0.f;
 		time_point_t last_time = { };
+	};
+
+	// Per-frame renderer counters, reset in begin_frame and accumulated as geometry is reserved.
+	// draw_calls == number of batches submitted, the key metric for the batching/clip work.
+	struct render_stats
+	{
+		cstd::int32_t draw_calls = 0;
+		cstd::int32_t vertices = 0;
+		cstd::int32_t indices = 0;
 	};
 
 	class renderer 
@@ -180,8 +189,10 @@ namespace rv
 
 		void add_arc_path(position pos, float radius, float a_min, float a_max, cstd::size_t segment_count = 8) noexcept;
 
-		[[nodiscard]] state& state() noexcept;
+		[[nodiscard]] struct state& state() noexcept;
 		[[nodiscard]] const struct state& state() const noexcept;
+
+		[[nodiscard]] const render_stats& stats() const noexcept;
 
 		[[nodiscard]] cstd::size_t vertex_count() const noexcept;
 		[[nodiscard]] span_t<vertex> get_vertices() noexcept;
@@ -212,6 +223,7 @@ namespace rv
 		[[nodiscard]] static clip_constants pack_clip_constants(const optional_t<clip_rect_data>& clip) noexcept;
 
 		struct state state_;
+		render_stats stats_ = { };
 		vector_t<position> path_points_ = { };
 		vector_t<vertex> pending_vertices_ = { };
 		vector_t<cstd::uint32_t> pending_indices_ = { };
@@ -229,5 +241,9 @@ namespace rv
 		cstd::size_t peak_vertex_count_ = 0;
 		cstd::size_t peak_index_count_ = 0;
 		cstd::size_t peak_batch_count_ = 0;
+
+		// 2 / display_size, precomputed each frame so to_ndc multiplies instead of dividing per vertex.
+		float inv_display_x_ = 0.f;
+		float inv_display_y_ = 0.f;
 	};
 }

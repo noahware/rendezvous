@@ -13,7 +13,7 @@ namespace rv
 		}
 
 		position total_offset = offset;
-		const auto anim = animated_props();
+		const auto& anim = animated_props_cached();
 
 		if (anim && anim->offset)
 		{
@@ -224,6 +224,10 @@ namespace rv
 			animations_.end()
 		);
 
+		// snapshot the merged animation props once per frame, after advancing/pruning animations, so
+		// render() and update_all() reuse it instead of each recomputing the keyframe interpolation.
+		cached_anim_props_ = animated_props();
+
 		// fast path: elements with no colour/visual styling or per-state overrides (plain layout
 		// containers, rows, columns) keep their default visual_* values; skip the resolve + lerps.
 		const bool has_visual = style_.background_color || style_.text_color || style_.border_color
@@ -231,6 +235,15 @@ namespace rv
 			|| style_.hover || style_.active || style_.focus || style_.disabled_style || disabled_;
 
 		if (!has_visual)
+		{
+			settled_ = true;
+			return;
+		}
+
+		// once eased onto the target with nothing animating and no resolve_visual input changed
+		// (state setters, style setters and animate() all clear settled_), the resolve + lerp below
+		// would be an exact no-op. skipping it is what keeps a large static UI cheap per frame.
+		if (settled_ && animations_.empty())
 		{
 			return;
 		}
@@ -253,6 +266,7 @@ namespace rv
 			visual_radii_ = target_radii;
 			visual_opacity_ = target.opacity;
 			transitions_initialized_ = true;
+			settled_ = animations_.empty();
 
 			return;
 		}
@@ -270,11 +284,17 @@ namespace rv
 			return transition_close(a, b);
 		};
 
-		if (color_close(visual_bg_, target.bg)) { visual_bg_ = target.bg; }
-		if (color_close(visual_text_color_, target.text)) { visual_text_color_ = target.text; }
-		if (color_close(visual_border_color_, target.border)) { visual_border_color_ = target.border; }
-		if (transition_close(visual_radii_, target_radii)) { visual_radii_ = target_radii; }
-		if (transition_close(visual_opacity_, target.opacity)) { visual_opacity_ = target.opacity; }
+		// snap each channel that has effectively reached its target; we are settled once every
+		// channel has snapped and nothing is animating (an animating element keeps re-resolving).
+		bool all_settled = animations_.empty();
+
+		if (color_close(visual_bg_, target.bg)) { visual_bg_ = target.bg; } else { all_settled = false; }
+		if (color_close(visual_text_color_, target.text)) { visual_text_color_ = target.text; } else { all_settled = false; }
+		if (color_close(visual_border_color_, target.border)) { visual_border_color_ = target.border; } else { all_settled = false; }
+		if (transition_close(visual_radii_, target_radii)) { visual_radii_ = target_radii; } else { all_settled = false; }
+		if (transition_close(visual_opacity_, target.opacity)) { visual_opacity_ = target.opacity; } else { all_settled = false; }
+
+		settled_ = all_settled;
 	}
 
 	float element::compute_main_content_size(const element_style& defaults, const bool vertical) const noexcept

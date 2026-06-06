@@ -116,6 +116,9 @@ namespace rv
 
 
 
+		// key_bind drives its colour target by swapping style_ around element::update, so it must
+		// never be frozen by the settled fast-path; force a re-resolve every frame.
+		mark_unsettled();
 		element::update(dt);
 
 

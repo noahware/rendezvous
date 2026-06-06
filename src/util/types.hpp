@@ -15,6 +15,8 @@
 #include <unordered_map>
 #include <functional>
 #include <type_traits>
+#include <cstring>
+#include <bit>
 
 namespace cstd
 {
@@ -179,6 +181,18 @@ namespace cstd
 	constexpr std::remove_reference_t<T>&& move(T&& object) noexcept
 	{
 		return static_cast<std::remove_reference_t<T>&&>(object);
+	}
+
+	template <typename T>
+	constexpr T&& forward(std::remove_reference_t<T>& object) noexcept
+	{
+		return static_cast<T&&>(object);
+	}
+
+	template <typename T>
+	constexpr T&& forward(std::remove_reference_t<T>&& object) noexcept
+	{
+		return static_cast<T&&>(object);
 	}
 
 	namespace ios

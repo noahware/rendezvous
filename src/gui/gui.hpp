@@ -294,6 +294,17 @@ namespace rv
 		shared_ptr_t<renderer> renderer_;
 	};
 
+	// Per-frame GUI stage timings in milliseconds, smoothed with an EMA so the readout is stable.
+	// Populated by gui::render(); surface them via a value_inspector or overlay.
+	struct gui_profile
+	{
+		float layout_ms = 0.f;
+		float update_ms = 0.f;
+		float events_ms = 0.f;
+		float render_ms = 0.f;
+		float total_ms = 0.f;
+	};
+
 	class gui
 	{
 	public:
@@ -325,6 +336,7 @@ namespace rv
 		void render(const vector_2d<float> display_size)
 		{
 			const auto root = tree_.root();
+			const auto t_start = cstd::get_time();
 
 			const bool size_changed = display_size.x != last_display_size_.x
 				|| display_size.y != last_display_size_.y;
@@ -337,6 +349,8 @@ namespace rv
 				last_display_size_ = display_size;
 			}
 
+			const auto t_layout = cstd::get_time();
+
 			// apply the cursor resolved by the previous frame's process_events as this frame's baseline,
 			// before update_all lets widgets request a dynamic cursor (panel resize edges, text caret).
 			if (input_)
@@ -345,7 +359,10 @@ namespace rv
 			}
 
 			update_all(*root, renderer_->delta_time());
+			const auto t_update = cstd::get_time();
+
 			process_events();
+			const auto t_events = cstd::get_time();
 
 			// advance the hover-to-show timer; reset whenever the hovered target changes.
 			// tooltip_hover_ holds this frame's live element, so deref stays safe.
@@ -405,6 +422,15 @@ namespace rv
 			{
 				draw_tooltip(tooltip_target_->tooltip(), input_->mouse_pos(), display_size);
 			}
+
+			// stage timings, smoothed so the readout doesn't jitter frame to frame.
+			const auto t_end = cstd::get_time();
+			constexpr float ema = 0.15f;
+			profile_.layout_ms += ema * (cstd::get_time_diff(t_layout, t_start) * 1000.f - profile_.layout_ms);
+			profile_.update_ms += ema * (cstd::get_time_diff(t_update, t_layout) * 1000.f - profile_.update_ms);
+			profile_.events_ms += ema * (cstd::get_time_diff(t_events, t_update) * 1000.f - profile_.events_ms);
+			profile_.render_ms += ema * (cstd::get_time_diff(t_end, t_events) * 1000.f - profile_.render_ms);
+			profile_.total_ms  += ema * (cstd::get_time_diff(t_end, t_start) * 1000.f - profile_.total_ms);
 		}
 
 		void set_font(shared_ptr_t<gui_font> font) noexcept
@@ -425,6 +451,16 @@ namespace rv
 		[[nodiscard]] const element_style& default_style() const noexcept
 		{
 			return default_style_;
+		}
+
+		[[nodiscard]] gui_profile& profile() noexcept
+		{
+			return profile_;
+		}
+
+		[[nodiscard]] const gui_profile& profile() const noexcept
+		{
+			return profile_;
 		}
 
 		[[nodiscard]] const shared_ptr_t<input>& get_input() const noexcept
@@ -452,7 +488,7 @@ namespace rv
 		template <class T, class ...Args>
 		shared_ptr_t<T> make_child(const shared_ptr_t<element>& parent, Args&&... args)
 		{
-			return tree_.make_child<T>(parent, args...);
+			return tree_.make_child<T>(parent, cstd::forward<Args>(args)...);
 		}
 
 	protected:
@@ -631,11 +667,24 @@ namespace rv
 			// (clicking a button or empty space defocuses).
 			if (mouse_clicked)
 			{
+				// focus is singular, so clear only the previously-focused element instead of
+				// scanning the whole registry every click. weak_ptr covers the case where that
+				// element was removed from the tree since it took focus.
 				const bool keep = clicked && clicked->focusable();
 
-				for (auto& [id, el] : tree_)
+				if (const auto prev = focused_el_.lock(); prev && (!keep || prev.get() != clicked))
 				{
-					el->set_focused(keep && el.get() == clicked);
+					prev->set_focused(false);
+				}
+
+				if (keep)
+				{
+					clicked->set_focused(true);
+					focused_el_ = clicked->shared_from_this();
+				}
+				else
+				{
+					focused_el_.reset();
 				}
 			}
 
@@ -750,12 +799,14 @@ namespace rv
 		shared_ptr_t<gui_font> font_;
 		element* tooltip_target_ = nullptr;
 		element* tooltip_hover_ = nullptr;
+		weak_ptr_t<element> focused_el_;
 		float tooltip_timer_ = 0.f;
 		cursor_type frame_cursor_ = cursor_type::arrow;
 		cstd::int32_t next_panel_z_ = z_index_panel;
 
 		bool layout_dirty_ = true;
 		vector_2d<float> last_display_size_ = { };
+		gui_profile profile_ = { };
 	};
 
 	// the gui directly, so the add_* factories can reach the gui through their weak back-pointer.

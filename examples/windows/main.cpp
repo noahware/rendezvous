@@ -333,12 +333,19 @@ cstd::int32_t main(int argc, char* argv[])
 	LOG_INFO("rendezvous demo");
 
 	enum class backend_type { dx11, ogl2, ogl3 } backend = backend_type::dx11;
+	cstd::int32_t stress_count = 0;
 	for (cstd::int32_t i = 1; i < argc; ++i)
 	{
 		if (string_view_t(argv[i]) == "--opengl3")
 			backend = backend_type::ogl3;
 		else if (string_view_t(argv[i]) == "--opengl")
 			backend = backend_type::ogl2;
+		else if (string_view_t(argv[i]) == "--stress" && i + 1 < argc)
+		{
+			stress_count = 0;
+			for (const char* p = argv[++i]; *p >= '0' && *p <= '9'; ++p)
+				stress_count = stress_count * 10 + (*p - '0');
+		}
 	}
 	const bool use_opengl = (backend == backend_type::ogl2 || backend == backend_type::ogl3);
 
@@ -765,6 +772,22 @@ cstd::int32_t main(int argc, char* argv[])
 		ellip.text_size(14.f).text_ellipsis().letter_spacing(0.5f);
 	}
 
+	// Optional stress scene (--stress N): N auto-sized buttons in a wrap row inside the scrollable
+	// left column. Every relayout sizes/positions all N (each measuring its text), update_all walks
+	// all N each frame, and render covers the visible window. That is exactly the GUI hot path the
+	// optimization work targets, so it makes the before/after numbers in the inspector move.
+	if (stress_count > 0)
+	{
+		auto& stress = left_col->add_container(std::format("Stress ({} items)", stress_count));
+		auto& wrap_row = stress.add_row();
+		wrap_row.wrap(rv::wrap_mode::wrap).gap(4.f);
+
+		for (cstd::int32_t i = 0; i < stress_count; ++i)
+		{
+			wrap_row.add_button(std::format("#{}", i)).text_size(12.f).rounding(4.f);
+		}
+	}
+
 	auto right_col = gui->make_child<rv::element>(body, rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() });
 	right_col->direction(rv::layout_direction::vertical).gap(0.f);
 
@@ -796,8 +819,12 @@ cstd::int32_t main(int argc, char* argv[])
 		.watch("fps", &g_dbg_fps)
 		.watch("frame ms", &g_dbg_ms)
 		.watch("frame #", &g_dbg_frames)
-		.watch("radius", &demo_radius)
-		.watch("rounding", &demo_rounding);
+		.watch("draw calls", &renderer->stats().draw_calls)
+		.watch("vertices", &renderer->stats().vertices)
+		.watch("layout ms", &gui->profile().layout_ms)
+		.watch("update ms", &gui->profile().update_ms)
+		.watch("events ms", &gui->profile().events_ms)
+		.watch("render ms", &gui->profile().render_ms);
 
 	auto& settings_panel = gui->add_panel();
 	settings_panel.set_declared_size({ rv::styled_size::px(300.f), rv::styled_size::px(400.f) });

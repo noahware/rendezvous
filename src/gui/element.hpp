@@ -55,7 +55,7 @@ namespace rv
 	template <class T, class ...Args>
 	[[nodiscard]] shared_ptr_t<T> make_element(Args&&... args)
 	{
-		return cstd::make_shared<T>(args...);
+		return cstd::make_shared<T>(cstd::forward<Args>(args)...);
 	}
 
 	class element : public enable_shared_from_this_t<element>
@@ -135,7 +135,7 @@ namespace rv
 		template <class T, class ...Args>
 		shared_ptr_t<T> make_child(Args&&... args)
 		{
-			auto child = make_element<T>(args...);
+			auto child = make_element<T>(cstd::forward<Args>(args)...);
 
 			children_.push_back(child);
 
@@ -195,6 +195,7 @@ namespace rv
 
 		void set_hovered(const bool hovered) noexcept
 		{
+			if (hovered != hovered_) { settled_ = false; }
 			hovered_ = hovered;
 		}
 
@@ -205,6 +206,7 @@ namespace rv
 
 		void set_pressed(const bool pressed) noexcept
 		{
+			if (pressed != pressed_) { settled_ = false; }
 			pressed_ = pressed;
 		}
 
@@ -215,6 +217,7 @@ namespace rv
 
 		void set_focused(const bool focused) noexcept
 		{
+			if (focused != focused_) { settled_ = false; }
 			focused_ = focused;
 		}
 
@@ -522,6 +525,7 @@ namespace rv
 				ensure_state(state).background_color = c;
 			}
 
+			mark_unsettled();
 			return *this;
 		}
 
@@ -548,6 +552,7 @@ namespace rv
 				ensure_state(state).text_color = c;
 			}
 
+			mark_unsettled();
 			return *this;
 		}
 
@@ -555,6 +560,7 @@ namespace rv
 		{
 			style_.rounding = r;
 			style_.radii.reset(); // uniform shorthand wins; drop any per-corner override
+			mark_unsettled();
 
 			return *this;
 		}
@@ -570,6 +576,7 @@ namespace rv
 				ensure_state(state).border_color = c;
 			}
 
+			mark_unsettled();
 			return *this;
 		}
 
@@ -616,6 +623,7 @@ namespace rv
 				ensure_state(state).opacity = o;
 			}
 
+			mark_unsettled();
 			return *this;
 		}
 
@@ -624,6 +632,7 @@ namespace rv
 		{
 			style_.radii = radii;
 			style_.rounding.reset(); // per-corner wins; drop any uniform override
+			mark_unsettled();
 
 			return *this;
 		}
@@ -632,6 +641,7 @@ namespace rv
 		element& disabled(const bool v = true) noexcept
 		{
 			disabled_ = v;
+			mark_unsettled();
 
 			return *this;
 		}
@@ -783,6 +793,7 @@ namespace rv
 		element& animate(keyframe_sequence seq, animation_options opts)
 		{
 			animations_.emplace_back(cstd::move(seq), cstd::move(opts));
+			mark_unsettled();
 
 			return *this;
 		}
@@ -795,6 +806,13 @@ namespace rv
 		}
 
 		[[nodiscard]] optional_t<keyframe_props> animated_props() const noexcept;
+
+		// the per-frame merged animation props, computed once in update() and reused by render() and
+		// update_all(), so the keyframe interpolation isn't repeated 2-3x per animated element.
+		[[nodiscard]] const optional_t<keyframe_props>& animated_props_cached() const noexcept
+		{
+			return cached_anim_props_;
+		}
 
 		// resolve the effective background/text/border colors + opacity for the current interaction
 		// state: start from the base style, then overlay the focus, hover, active (pressed) and
@@ -861,6 +879,14 @@ namespace rv
 			}
 		}
 
+		// clears the "settled" flag so element::update() re-resolves + re-eases next frame. called by
+		// every setter that changes a resolve_visual input, and by subclasses that mutate style_
+		// directly at runtime (e.g. key_bind) so the idle-frame skip can't freeze a stale color.
+		void mark_unsettled() noexcept
+		{
+			settled_ = false;
+		}
+
 		// lazily materialize the per-state override block for `state` (never called with normal).
 		state_style& ensure_state(const element_state state) noexcept
 		{
@@ -894,6 +920,7 @@ namespace rv
 		cstd::int32_t z_index_ = 0;
 		string_t tooltip_;
 		vector_t<animation_state> animations_;
+		optional_t<keyframe_props> cached_anim_props_;
 
 		color visual_bg_ = { 0.f, 0.f, 0.f, 0.f };
 		color visual_text_color_ = { 1.f, 1.f, 1.f, 1.f };
@@ -901,6 +928,10 @@ namespace rv
 		color visual_border_color_ = { 0.f, 0.f, 0.f, 0.f };
 		float visual_opacity_ = 1.f;
 		bool transitions_initialized_ = false;
+		// true once the visual_* channels have eased onto their resolved target with nothing
+		// animating; while true, element::update() skips the resolve + lerp work. Every setter that
+		// feeds resolve_visual (state + style) and animate() clear it via mark_unsettled().
+		bool settled_ = false;
 
 		vector_t<flex_line> flex_lines_;
 		position scroll_offset_ = { 0.f, 0.f };
