@@ -148,14 +148,14 @@ namespace rv
 
 	void color_picker_popup::draw_hue_strip(gui_renderer& renderer, const rect& r) const
 	{
-		constexpr int segments = 6;
+		constexpr cstd::int32_t segments = 6;
 
 		const float x0 = cstd::floorf(r.min.x);
 		const float x1 = cstd::floorf(r.max.x);
 		const float top_y = cstd::floorf(r.min.y);
 		const float height = cstd::floorf(r.max.y) - top_y;
 
-		for (int i = 0; i < segments; ++i)
+		for (cstd::int32_t i = 0; i < segments; ++i)
 		{
 			const color top = hsv_to_rgb(static_cast<float>(i) / static_cast<float>(segments), 1.f, 1.f);
 			const color bottom = hsv_to_rgb(static_cast<float>(i + 1) / static_cast<float>(segments), 1.f, 1.f);
@@ -229,13 +229,13 @@ namespace rv
 
 		renderer.draw_rect_filled(min, max, dark, 0.f);
 
-		int row = 0;
+		cstd::int32_t row = 0;
 
 		for (float y = min.y; y < max.y; y += tile, ++row)
 		{
 			const float y1 = cstd::floorf(y);
 			const float y2 = cstd::floorf(cstd::fminf(y + tile, max.y));
-			int col = row;
+			cstd::int32_t col = row;
 
 			for (float x = min.x; x < max.x; x += tile, ++col)
 			{
@@ -287,7 +287,7 @@ namespace rv
 			}
 		}
 
-		// Toggle popup visibility only on change, and relayout once when it does — so the popup
+		// Toggle popup visibility only on change, and relayout once when it does, so the popup
 		// gets positioned when shown without forcing a full-tree relayout every frame.
 		if (open_ != popup_shown_)
 		{
@@ -296,7 +296,7 @@ namespace rv
 			mark_layout_dirty();
 		}
 
-		// Mirror the colour into the hex field — but never mid-drag. text_box::set_text marks
+		// Mirror the colour into the hex field, but never mid-drag. text_box::set_text marks
 		// the layout dirty, and a full-tree relayout every frame during a drag halves the frame
 		// rate; the field snaps to the final value when the drag releases.
 		if (open_ && hex_ && !hex_->is_focused() && !popup_->is_dragging())
@@ -323,7 +323,7 @@ namespace rv
 		const color cur = current_color();
 
 		// An opaque colour hides the checkerboard, so skip it (and the clip-rect cost) and just
-		// fill the rounded swatch — this is the common case and runs every frame.
+		// fill the rounded swatch, this is the common case and runs every frame.
 		if (cur.a < 0.999f)
 		{
 			renderer.push_clip_rect(min, max, rounding);
@@ -435,13 +435,13 @@ namespace rv
 
 		renderer.draw_rect_filled(min, max, dark, 0.f);
 
-		int row = 0;
+		cstd::int32_t row = 0;
 
 		for (float y = min.y; y < max.y; y += tile, ++row)
 		{
 			const float y1 = cstd::floorf(y);
 			const float y2 = cstd::floorf(cstd::fminf(y + tile, max.y));
-			int col = row;
+			cstd::int32_t col = row;
 
 			for (float x = min.x; x < max.x; x += tile, ++col)
 			{

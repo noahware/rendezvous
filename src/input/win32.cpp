@@ -78,7 +78,7 @@ bool rv::win32_input::handle_message(const HWND hwnd, const UINT msg, const WPAR
 	case WM_XBUTTONDOWN:
 	case WM_XBUTTONDBLCLK:
 	{
-		const int btn = (GET_XBUTTON_WPARAM(wparam) == XBUTTON1) ? 3 : 4;
+		const cstd::int32_t btn = (GET_XBUTTON_WPARAM(wparam) == XBUTTON1) ? 3 : 4;
 		if (!state_.mouse_down[btn]) state_.mouse_clicked[btn] = true;
 		state_.mouse_down[btn] = true;
 		return true;
@@ -86,7 +86,7 @@ bool rv::win32_input::handle_message(const HWND hwnd, const UINT msg, const WPAR
 
 	case WM_XBUTTONUP:
 	{
-		const int btn = (GET_XBUTTON_WPARAM(wparam) == XBUTTON1) ? 3 : 4;
+		const cstd::int32_t btn = (GET_XBUTTON_WPARAM(wparam) == XBUTTON1) ? 3 : 4;
 		if (state_.mouse_down[btn]) state_.mouse_released[btn] = true;
 		state_.mouse_down[btn] = false;
 		state_.mouse_clicked[btn] = false;
@@ -137,8 +137,8 @@ bool rv::win32_input::handle_message(const HWND hwnd, const UINT msg, const WPAR
 
 void rv::win32_input::set_clipboard_text(const string_t& text)
 {
-	const int wide_len = ::MultiByteToWideChar(CP_UTF8, 0, text.data(),
-		static_cast<int>(text.size()), nullptr, 0);
+	const cstd::int32_t wide_len = ::MultiByteToWideChar(CP_UTF8, 0, text.data(),
+		static_cast<cstd::int32_t>(text.size()), nullptr, 0);
 
 	if (!::OpenClipboard(nullptr))
 	{
@@ -159,7 +159,7 @@ void rv::win32_input::set_clipboard_text(const string_t& text)
 			if (wide_len > 0)
 			{
 				::MultiByteToWideChar(CP_UTF8, 0, text.data(),
-					static_cast<int>(text.size()), dst, wide_len);
+					static_cast<cstd::int32_t>(text.size()), dst, wide_len);
 			}
 
 			dst[wide_len] = L'\0';
@@ -195,7 +195,7 @@ string_t rv::win32_input::get_clipboard_text()
 
 		if (src)
 		{
-			const int utf8_len = ::WideCharToMultiByte(CP_UTF8, 0, src, -1,
+			const cstd::int32_t utf8_len = ::WideCharToMultiByte(CP_UTF8, 0, src, -1,
 				nullptr, 0, nullptr, nullptr);
 
 			if (utf8_len > 1)

@@ -23,12 +23,12 @@ namespace rv
 			style_.shadow_color = color{ 0.f, 0.f, 0.f, 0.5f };
 			style_.shadow_blur = 12.f;
 
-			topmost(true);
+			z_index(z_index_popup); // dropdown sits on the popup layer, above any floating panels
 		}
 
 		void configure(shared_ptr_t<gui_font> font, shared_ptr_t<input> input,
-		               const vector_t<string_t>* options, const int* selected,
-		               function_t<void(int)> on_select) noexcept;
+		               const vector_t<string_t>* options, const cstd::int32_t* selected,
+		               function_t<void(cstd::int32_t)> on_select) noexcept;
 
 		bool on_mouse_click() override;
 
@@ -50,10 +50,10 @@ namespace rv
 		shared_ptr_t<gui_font> font_;
 		shared_ptr_t<input> input_;
 		const vector_t<string_t>* options_ = nullptr;
-		const int* selected_ = nullptr;
-		function_t<void(int)> on_select_;
+		const cstd::int32_t* selected_ = nullptr;
+		function_t<void(cstd::int32_t)> on_select_;
 
-		int hovered_row_ = -1;
+		cstd::int32_t hovered_row_ = -1;
 		float row_height_ = 0.f;
 
 		color row_hover_color_ = { 0.26f, 0.45f, 0.78f, 0.55f };
@@ -70,7 +70,7 @@ namespace rv
 
 		combo_box& options(vector_t<string_t> opts);
 
-		combo_box& selected(const int index) noexcept
+		combo_box& selected(const cstd::int32_t index) noexcept
 		{
 			selected_ = index;
 
@@ -82,7 +82,7 @@ namespace rv
 			return *this;
 		}
 
-		combo_box& bind(int* ptr) noexcept
+		combo_box& bind(cstd::int32_t* ptr) noexcept
 		{
 			bound_ = ptr;
 
@@ -94,7 +94,7 @@ namespace rv
 			return *this;
 		}
 
-		combo_box& on_change(function_t<void(int)> callback)
+		combo_box& on_change(function_t<void(cstd::int32_t)> callback)
 		{
 			on_change_ = cstd::move(callback);
 
@@ -108,7 +108,7 @@ namespace rv
 			return *this;
 		}
 
-		[[nodiscard]] int selected() const noexcept
+		[[nodiscard]] cstd::int32_t selected() const noexcept
 		{
 			return selected_;
 		}
@@ -142,20 +142,20 @@ namespace rv
 			return (font_size > 0.f && font_) ? font_size / font_->baked_size() : 1.f;
 		}
 
-		void commit(int index);
+		void commit(cstd::int32_t index);
 
-		static constexpr int max_visible_rows = 8;
+		static constexpr cstd::int32_t max_visible_rows = 8;
 
 		shared_ptr_t<gui_font> font_;
 		shared_ptr_t<input> input_;
 		shared_ptr_t<combo_popup> popup_;
 
 		vector_t<string_t> options_;
-		int selected_ = -1;
-		int* bound_ = nullptr;
+		cstd::int32_t selected_ = -1;
+		cstd::int32_t* bound_ = nullptr;
 		bool open_ = false;
 		string_t placeholder_ = "Select...";
 
-		function_t<void(int)> on_change_;
+		function_t<void(cstd::int32_t)> on_change_;
 	};
 }

@@ -23,13 +23,13 @@ namespace rv
 #define RV_TE_CMD_BIT 0x40000000u
 
 #define STB_TEXTEDIT_CHARTYPE         char32_t
-#define STB_TEXTEDIT_POSITIONTYPE     int
+#define STB_TEXTEDIT_POSITIONTYPE     cstd::int32_t
 #define STB_TEXTEDIT_KEYTYPE          cstd::uint32_t
 #define STB_TEXTEDIT_STRING           rv::text_edit_buffer
 #define STB_TEXTEDIT_NEWLINE          U'\n'
 #define STB_TEXTEDIT_GETWIDTH_NEWLINE (-1.0f)
 
-#define STB_TEXTEDIT_STRINGLEN(obj)            (static_cast<int>((obj)->chars.size()))
+#define STB_TEXTEDIT_STRINGLEN(obj)            (static_cast<cstd::int32_t>((obj)->chars.size()))
 #define STB_TEXTEDIT_GETCHAR(obj, i)           ((obj)->chars[static_cast<cstd::size_t>(i)])
 #define STB_TEXTEDIT_GETWIDTH(obj, n, i)       rv_te_get_width((obj), (n), (i))
 #define STB_TEXTEDIT_KEYTOTEXT(k)              rv_te_key_to_text((k))
@@ -57,10 +57,10 @@ namespace rv
 // implementation is compiled separately in text_edit.cpp.
 #include <stb_textedit.h>
 
-// Callback helpers — defined here (after the header so StbTexteditRow exists)
+// Callback helpers, defined here (after the header so StbTexteditRow exists)
 // and referenced by the function-like macros above when the implementation TU
 // expands them.
-inline float rv_te_get_width(rv::text_edit_buffer* obj, int n, int i)
+inline float rv_te_get_width(rv::text_edit_buffer* obj, cstd::int32_t n, cstd::int32_t i)
 {
 	const cstd::size_t idx = static_cast<cstd::size_t>(n + i);
 
@@ -90,16 +90,16 @@ inline float rv_te_get_width(rv::text_edit_buffer* obj, int n, int i)
 	return rv::glyph_step(*obj->font, prev, static_cast<cstd::uint32_t>(ch), obj->scale);
 }
 
-inline int rv_te_key_to_text(cstd::uint32_t key)
+inline cstd::int32_t rv_te_key_to_text(cstd::uint32_t key)
 {
-	return (key & RV_TE_CMD_BIT) ? -1 : static_cast<int>(key);
+	return (key & RV_TE_CMD_BIT) ? -1 : static_cast<cstd::int32_t>(key);
 }
 
-inline void rv_te_layout_row(StbTexteditRow* row, rv::text_edit_buffer* obj, int n)
+inline void rv_te_layout_row(StbTexteditRow* row, rv::text_edit_buffer* obj, cstd::int32_t n)
 {
-	const int len = static_cast<int>(obj->chars.size());
+	const cstd::int32_t len = static_cast<cstd::int32_t>(obj->chars.size());
 	float width = 0.f;
-	int i = n;
+	cstd::int32_t i = n;
 	cstd::uint32_t prev = 0;
 
 	while (i < len)
@@ -135,13 +135,13 @@ inline void rv_te_layout_row(StbTexteditRow* row, rv::text_edit_buffer* obj, int
 	row->num_chars = i - n;
 }
 
-inline void rv_te_delete_chars(rv::text_edit_buffer* obj, int i, int n)
+inline void rv_te_delete_chars(rv::text_edit_buffer* obj, cstd::int32_t i, cstd::int32_t n)
 {
 	const auto first = obj->chars.begin() + i;
 	obj->chars.erase(first, first + n);
 }
 
-inline int rv_te_insert_chars(rv::text_edit_buffer* obj, int i, const char32_t* text, int n)
+inline cstd::int32_t rv_te_insert_chars(rv::text_edit_buffer* obj, cstd::int32_t i, const char32_t* text, cstd::int32_t n)
 {
 	obj->chars.insert(obj->chars.begin() + i, text, text + n);
 	return 1;

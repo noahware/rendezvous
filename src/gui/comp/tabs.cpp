@@ -57,9 +57,9 @@ namespace rv
 
 	element& tabs::add_tab(const string_view_t label)
 	{
-		const int index = static_cast<int>(panels_.size());
+		const cstd::int32_t index = static_cast<cstd::int32_t>(panels_.size());
 
-		// header button — add_child (not make_child) so gui_ + layout-dirty ptr propagate
+		// header button (add_child, not make_child) so gui_ + layout-dirty ptr propagate
 		auto btn = make_element<button>(element_size{ }, font_);
 		btn->text(label);
 		btn->text_size(button_text_size_);
@@ -72,7 +72,7 @@ namespace rv
 		tab_bar_->add_child(btn);
 		buttons_.push_back(btn);
 
-		// content panel — returned to the caller to populate; add_child propagates gui_ so the
+		// content panel, returned to the caller to populate; add_child propagates gui_ so the
 		// caller's panel.add_*(...) factory calls resolve the gui and register in the tree.
 		auto panel = make_element<element>(element_size{ styled_size::fill(), styled_size::fill() });
 		panel->direction(layout_direction::vertical).gap(8.f);
@@ -94,7 +94,7 @@ namespace rv
 		return *panels_.back();
 	}
 
-	void tabs::commit(const int index)
+	void tabs::commit(const cstd::int32_t index)
 	{
 		active_ = clamp_index(index);
 
@@ -112,7 +112,7 @@ namespace rv
 		{
 			const bool left = side_ == tab_side::left;
 
-			for (int i = 0; i < static_cast<int>(panels_.size()); ++i)
+			for (cstd::int32_t i = 0; i < static_cast<cstd::int32_t>(panels_.size()); ++i)
 			{
 				const bool on = i == active_;
 
@@ -125,7 +125,7 @@ namespace rv
 				buttons_[i]->background_color(on ? active_tab_color_ : inactive_tab_color_);
 				buttons_[i]->text_color(on ? active_text_color_ : inactive_text_color_);
 
-				// red accent stripe marks the active item — sidebar (left) mode only
+				// red accent stripe marks the active item, sidebar (left) mode only
 				buttons_[i]->accent(left && on ? accent_bar_color_ : color{ 0.f, 0.f, 0.f, 0.f },
 				                    left && on ? accent_bar_thickness : 0.f);
 			}

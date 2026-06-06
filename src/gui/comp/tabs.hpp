@@ -13,7 +13,7 @@ namespace rv
 	};
 
 	// Tab container: a strip of header buttons plus a content host that shows only the active
-	// tab's panel. Switching relies on toggling sibling panels' visibility — the layout engine
+	// tab's panel. Switching relies on toggling sibling panels' visibility: the layout engine
 	// skips invisible children entirely (no reserved space), so the visible panel fills the host.
 	// Built from real `button` widgets so hover/press/click behaviour is reused, not re-drawn.
 	class tabs final : public element
@@ -52,26 +52,26 @@ namespace rv
 			return *this;
 		}
 
-		// Programmatic selection — does NOT fire on_change (mirrors combo_box::selected).
-		tabs& active(const int index) noexcept
+		// Programmatic selection, does NOT fire on_change (mirrors combo_box::selected).
+		tabs& active(const cstd::int32_t index) noexcept
 		{
 			active_ = clamp_index(index);
 
 			return *this;
 		}
 
-		[[nodiscard]] int active() const noexcept
+		[[nodiscard]] cstd::int32_t active() const noexcept
 		{
 			return active_;
 		}
 
-		[[nodiscard]] int count() const noexcept
+		[[nodiscard]] cstd::int32_t count() const noexcept
 		{
-			return static_cast<int>(panels_.size());
+			return static_cast<cstd::int32_t>(panels_.size());
 		}
 
 		// Fired when the user clicks a tab (mirrors combo_box::on_change / commit).
-		tabs& on_change(function_t<void(int)> callback)
+		tabs& on_change(function_t<void(cstd::int32_t)> callback)
 		{
 			on_change_ = cstd::move(callback);
 
@@ -101,9 +101,9 @@ namespace rv
 	private:
 		void apply_orientation() noexcept;               // defined in tabs.cpp
 		void style_tab_button(button& b) const noexcept; // defined in tabs.cpp
-		void commit(int index);                          // defined in tabs.cpp
+		void commit(cstd::int32_t index);                // defined in tabs.cpp
 
-		[[nodiscard]] int clamp_index(const int index) const noexcept
+		[[nodiscard]] cstd::int32_t clamp_index(const cstd::int32_t index) const noexcept
 		{
 			if (panels_.empty())
 			{
@@ -115,7 +115,7 @@ namespace rv
 				return 0;
 			}
 
-			const int last = static_cast<int>(panels_.size()) - 1;
+			const cstd::int32_t last = static_cast<cstd::int32_t>(panels_.size()) - 1;
 
 			return index > last ? last : index;
 		}
@@ -130,12 +130,12 @@ namespace rv
 		vector_t<shared_ptr_t<button>> buttons_;
 		vector_t<shared_ptr_t<element>> panels_;
 
-		int active_ = -1;         // selected tab, -1 when empty
-		int applied_active_ = -2; // last index whose visibility/styling was reconciled (see update)
+		cstd::int32_t active_ = -1;         // selected tab, -1 when empty
+		cstd::int32_t applied_active_ = -2; // last index whose visibility/styling was reconciled (see update)
 		tab_side side_ = tab_side::top;
 		float button_text_size_ = 16.f;
 
-		function_t<void(int)> on_change_;
+		function_t<void(cstd::int32_t)> on_change_;
 
 		color active_tab_color_ = { 0.18f, 0.18f, 0.22f, 1.f };
 		color inactive_tab_color_ = { 0.11f, 0.11f, 0.14f, 1.f };

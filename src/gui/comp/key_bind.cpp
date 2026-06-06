@@ -302,7 +302,7 @@ namespace rv
 
 
 
-			// skip mouse button VK codes — those are handled below via the mouse arrays
+			// skip mouse button VK codes, those are handled below via the mouse arrays
 
 			if (i >= 0x01 && i <= 0x06)
 

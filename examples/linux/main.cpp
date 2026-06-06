@@ -33,8 +33,8 @@ static float demo_rounding = 15.f;
 static float demo_thickness = 2.f;
 static float demo_range_lo = 0.2f;
 static float demo_range_hi = 0.8f;
-static int demo_shape = 0;
-static int demo_easing = 0;
+static cstd::int32_t demo_shape = 0;
+static cstd::int32_t demo_easing = 0;
 static bool demo_show_shadows = true;
 static bool demo_show_grid = false;
 static rv::color demo_fill_color = { 0.2f, 0.6f, 1.f, 1.f };
@@ -46,7 +46,7 @@ static string_t demo_notes = "A GPU-accelerated\n2D vector renderer.";
 
 static float g_dbg_fps = 0.f;
 static float g_dbg_ms = 0.f;
-static int g_dbg_frames = 0;
+static cstd::int32_t g_dbg_frames = 0;
 
 static shared_ptr_t<rv::x11_input> input;
 
@@ -159,10 +159,10 @@ static void draw_canvas(rv::renderer& r, const rv::font& font, const rv::positio
 		{
 			const float outer = rad * 1.2f;
 			const float inner = rad * 0.5f;
-			constexpr int points = 5;
+			constexpr cstd::int32_t points = 5;
 			const float start_angle = -cstd::numbers::pi_f / 2.f;
 
-			for (int i = 0; i < points * 2; ++i)
+			for (cstd::int32_t i = 0; i < points * 2; ++i)
 			{
 				const float angle = start_angle + static_cast<float>(i) * cstd::numbers::pi_f / static_cast<float>(points);
 				const float r_val = (i % 2 == 0) ? outer : inner;
@@ -170,7 +170,7 @@ static void draw_canvas(rv::renderer& r, const rv::font& font, const rv::positio
 			}
 			r.draw_filled_path(demo_fill_color);
 
-			for (int i = 0; i < points * 2; ++i)
+			for (cstd::int32_t i = 0; i < points * 2; ++i)
 			{
 				const float angle = start_angle + static_cast<float>(i) * cstd::numbers::pi_f / static_cast<float>(points);
 				const float r_val = (i % 2 == 0) ? outer : inner;
@@ -203,7 +203,7 @@ static void draw_canvas(rv::renderer& r, const rv::font& font, const rv::positio
 		const float zone_x = canvas_max.x - cw * 0.25f;
 		const float zone_y = canvas_min.y + 30.f;
 
-		for (int i = 0; i < 4; ++i)
+		for (cstd::int32_t i = 0; i < 4; ++i)
 		{
 			const float thick = 1.f + static_cast<float>(i) * 1.5f;
 			const float y = zone_y + static_cast<float>(i) * 20.f;
@@ -213,7 +213,7 @@ static void draw_canvas(rv::renderer& r, const rv::font& font, const rv::positio
 
 		const rv::position pent_center = { zone_x, zone_y + 110.f };
 		const float pent_r = 30.f;
-		for (int i = 0; i < 5; ++i)
+		for (cstd::int32_t i = 0; i < 5; ++i)
 		{
 			const float a = -cstd::numbers::pi_f / 2.f + static_cast<float>(i) * cstd::numbers::pi_f * 2.f / 5.f;
 			r.add_path_point({ pent_center.x + cstd::cosf(a) * pent_r, pent_center.y + cstd::sinf(a) * pent_r });
@@ -221,7 +221,7 @@ static void draw_canvas(rv::renderer& r, const rv::font& font, const rv::positio
 
 		if (demo_show_shadows)
 		{
-			for (int i = 0; i < 5; ++i)
+			for (cstd::int32_t i = 0; i < 5; ++i)
 			{
 				const float a = -cstd::numbers::pi_f / 2.f + static_cast<float>(i) * cstd::numbers::pi_f * 2.f / 5.f;
 				r.add_path_point({ pent_center.x + cstd::cosf(a) * pent_r, pent_center.y + cstd::sinf(a) * pent_r });
@@ -243,7 +243,7 @@ static void draw_canvas(rv::renderer& r, const rv::font& font, const rv::positio
 		const float raw_progress = std::fmod(t * demo_anim_speed, 2.f) / 2.f;
 		const float ping_pong = raw_progress < 0.5f ? raw_progress * 2.f : 2.f - raw_progress * 2.f;
 
-		const int easing_idx = std::clamp(demo_easing, 0, static_cast<int>(sizeof(easing_table) / sizeof(easing_table[0])) - 1);
+		const cstd::int32_t easing_idx = std::clamp(demo_easing, 0, static_cast<cstd::int32_t>(sizeof(easing_table) / sizeof(easing_table[0])) - 1);
 		const float eased = rv::apply_easing(easing_table[easing_idx], ping_pong);
 
 		const float ball_x = ball_x_min + eased * (ball_x_max - ball_x_min);
@@ -297,7 +297,7 @@ int main(int argc, char* argv[])
 	LOG_INFO("rendezvous demo (linux)");
 
 	bool use_gl3 = false;
-	for (int i = 1; i < argc; ++i)
+	for (cstd::int32_t i = 1; i < argc; ++i)
 	{
 		if (string_view_t(argv[i]) == "--opengl3")
 			use_gl3 = true;
@@ -310,10 +310,10 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	const int screen = DefaultScreen(display);
+	const cstd::int32_t screen = DefaultScreen(display);
 	Window root_win = RootWindow(display, screen);
 
-	static int visual_attribs[] =
+	static cstd::int32_t visual_attribs[] =
 	{
 		GLX_RGBA,
 		GLX_DEPTH_SIZE, 24,
@@ -338,7 +338,7 @@ int main(int argc, char* argv[])
 	                 StructureNotifyMask;
 
 	Window win = XCreateWindow(display, root_win, 0, 0,
-		static_cast<unsigned int>(screen_size.x), static_cast<unsigned int>(screen_size.y),
+		static_cast<cstd::uint32_t>(screen_size.x), static_cast<cstd::uint32_t>(screen_size.y),
 		0, vi->depth, InputOutput, vi->visual,
 		CWColormap | CWEventMask, &swa);
 
@@ -393,7 +393,7 @@ int main(int argc, char* argv[])
 		nullptr
 	};
 
-	for (int i = 0; font_paths[i]; ++i)
+	for (cstd::int32_t i = 0; font_paths[i]; ++i)
 	{
 		font = renderer->add_font(font_paths[i], 32.f);
 		if (font)
@@ -514,12 +514,12 @@ int main(int argc, char* argv[])
 			controls.add_label("Shape:");
 			controls.add_combo_box({ "Rectangle", "Circle", "Triangle", "Star", "Arc" })
 				.bind(&demo_shape)
-				.on_change([](const int i) { LOG_INFO("shape: {}", i); });
+				.on_change([](const cstd::int32_t i) { LOG_INFO("shape: {}", i); });
 
 			controls.add_label("Easing:");
 			controls.add_combo_box({ "Linear", "Ease Out Cubic", "Ease Out Back", "Ease Out Elastic", "Ease Out Bounce", "Ease In Out Sine", "Ease In Out Quad" })
 				.bind(&demo_easing)
-				.on_change([](const int i) { LOG_INFO("easing: {}", i); });
+				.on_change([](const cstd::int32_t i) { LOG_INFO("easing: {}", i); });
 		}
 
 		{
@@ -544,7 +544,7 @@ int main(int argc, char* argv[])
 			scroll_box->direction(rv::layout_direction::vertical).gap(4.f)
 				.overflow(rv::overflow_mode::scroll).show_scrollbar(true);
 
-			for (int i = 0; i < 15; ++i)
+			for (cstd::int32_t i = 0; i < 15; ++i)
 			{
 				auto btn = gui->make_child<rv::button>(scroll_box,
 					rv::element_size{ rv::styled_size::fill(), rv::styled_size::px(28.f) }, gui_font);

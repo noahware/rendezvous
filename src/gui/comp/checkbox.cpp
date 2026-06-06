@@ -85,7 +85,7 @@ namespace rv
 
 			// draw_text positions pos.y at the top of the line box, so center
 			// the glyph block (ascent..descent) against the box rather than the
-			// full line height — line_gap would otherwise push the text high.
+			// full line height, line_gap would otherwise push the text high.
 			const float glyph_h = (font_->ascent() - font_->descent()) * scale;
 			const float x = box_max.x + gap_;
 			const float y = min.y + (h - glyph_h) * 0.5f;

@@ -140,7 +140,7 @@ namespace rv
 		void select_all() noexcept
 		{
 			stb_.select_start = 0;
-			stb_.select_end = stb_.cursor = static_cast<int>(buf_.chars.size());
+			stb_.select_end = stb_.cursor = static_cast<cstd::int32_t>(buf_.chars.size());
 		}
 
 		// Encodes the current selection to UTF-8 and copies it to the clipboard.
@@ -161,10 +161,10 @@ namespace rv
 		bool paste_clipboard();
 
 		// Pixel x-offset of character index `target` within the row starting at `row_start`.
-		[[nodiscard]] float x_offset_in_row(const int row_start, const int target) const noexcept;
+		[[nodiscard]] float x_offset_in_row(const cstd::int32_t row_start, const cstd::int32_t target) const noexcept;
 
 		// Walk layout rows to find which row the cursor is on plus its x-offset.
-		void caret_metrics(const int cursor, float& out_x, int& out_row) const noexcept;
+		void caret_metrics(const cstd::int32_t cursor, float& out_x, cstd::int32_t& out_row) const noexcept;
 
 		void update_scroll() noexcept;
 

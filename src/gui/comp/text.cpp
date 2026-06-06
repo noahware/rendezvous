@@ -318,7 +318,7 @@ namespace rv
 
 			for (const char* p = "..."; *p != '\0'; ++p)
 			{
-				const cstd::uint32_t cp = static_cast<cstd::uint32_t>(static_cast<unsigned char>(*p));
+				const cstd::uint32_t cp = static_cast<cstd::uint32_t>(static_cast<cstd::uint8_t>(*p));
 				ell_w += glyph_step(*font_, prev, cp, scale, letter_spacing);
 				prev = cp;
 			}

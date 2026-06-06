@@ -641,16 +641,17 @@ namespace rv
 			return disabled_;
 		}
 
-		// deferred-overlay draw order: higher z draws later (on top). implies topmost().
-		element& z_index(const int z) noexcept
+		// deferred-overlay draw order: any non-zero z lifts this element into the final overlay pass,
+		// where overlays render and hit-test sorted by z (higher on top). z == 0 keeps it inline.
+		// see the z_index_panel / z_index_popup layer constants.
+		element& z_index(const cstd::int32_t z) noexcept
 		{
 			z_index_ = z;
-			topmost_ = true;
 
 			return *this;
 		}
 
-		[[nodiscard]] int z_index() const noexcept
+		[[nodiscard]] cstd::int32_t z_index() const noexcept
 		{
 			return z_index_;
 		}
@@ -750,13 +751,13 @@ namespace rv
 			return *this;
 		}
 
-		// Show only the child at `index`; every other child gets display:none (visible(false) —
+		// Show only the child at `index`; every other child gets display:none (visible(false),
 		// removed from layout and not drawn). This is the web idiom for switching views: toggle
-		// `display` on sibling <div>s. It's the native "one child at a time" — pair it with
+		// `display` on sibling <div>s. It's the native "one child at a time", pair it with
 		// buttons whose on_click calls show_only(i), like onclick handlers / React setState.
-		element& show_only(const int index) noexcept
+		element& show_only(const cstd::int32_t index) noexcept
 		{
-			for (int i = 0; i < static_cast<int>(children_.size()); ++i)
+			for (cstd::int32_t i = 0; i < static_cast<cstd::int32_t>(children_.size()); ++i)
 			{
 				children_[i]->visible(i == index);
 			}
@@ -764,18 +765,19 @@ namespace rv
 			return *this;
 		}
 
-		// Topmost elements (e.g. popups) are deferred to a final overlay pass so they draw above,
-		// and are hit-tested before, everything else — regardless of their position in the tree.
+		// shorthand: lift this element onto the popup overlay layer (above panels), or back inline.
+		// "topmost" now simply means a non-zero z-index; see z_index() and the layer constants.
 		element& topmost(const bool v = true) noexcept
 		{
-			topmost_ = v;
+			z_index_ = v ? z_index_popup : 0;
 
 			return *this;
 		}
 
+		// an element is deferred to the overlay pass whenever it carries a non-zero z-index.
 		[[nodiscard]] bool is_topmost() const noexcept
 		{
-			return topmost_;
+			return z_index_ != 0;
 		}
 
 		element& animate(keyframe_sequence seq, animation_options opts)
@@ -888,9 +890,8 @@ namespace rv
 		bool pressed_ = false;
 		bool focused_ = false;
 		bool visible_ = true;
-		bool topmost_ = false;
 		bool disabled_ = false;
-		int z_index_ = 0;
+		cstd::int32_t z_index_ = 0;
 		string_t tooltip_;
 		vector_t<animation_state> animations_;
 

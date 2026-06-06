@@ -3,8 +3,8 @@
 namespace rv
 {
 	void combo_popup::configure(shared_ptr_t<gui_font> font, shared_ptr_t<input> input,
-	               const vector_t<string_t>* options, const int* selected,
-	               function_t<void(int)> on_select) noexcept
+	               const vector_t<string_t>* options, const cstd::int32_t* selected,
+	               function_t<void(cstd::int32_t)> on_select) noexcept
 	{
 		font_ = cstd::move(font);
 		input_ = cstd::move(input);
@@ -27,12 +27,12 @@ namespace rv
 	{
 		row_height_ = row_height();
 
-		const int count = options_ ? static_cast<int>(options_->size()) : 0;
+		const cstd::int32_t count = options_ ? static_cast<cstd::int32_t>(options_->size()) : 0;
 
 		if (hovered_ && input_ && row_height_ > 0.f && count > 0)
 		{
 			const float local_y = input_->mouse_pos().y - visual_pos().y;
-			int row = static_cast<int>(local_y / row_height_);
+			cstd::int32_t row = static_cast<cstd::int32_t>(local_y / row_height_);
 
 			if (row < 0)
 			{
@@ -106,12 +106,12 @@ namespace rv
 			const auto flags = static_cast<rounding_flags>(flag_bits);
 			const float row_round = flag_bits != 0 ? rounding : 0.f;
 
-			if (selected_ && static_cast<int>(i) == *selected_)
+			if (selected_ && static_cast<cstd::int32_t>(i) == *selected_)
 			{
 				renderer.draw_rect_filled(row_min, row_max, row_selected_color_, row_round, flags);
 			}
 
-			if (static_cast<int>(i) == hovered_row_)
+			if (static_cast<cstd::int32_t>(i) == hovered_row_)
 			{
 				renderer.draw_rect_filled(row_min, row_max, row_hover_color_, row_round, flags);
 			}
@@ -134,7 +134,7 @@ namespace rv
 		popup_->positioning(position_type::absolute);
 		popup_->set_visible(false);
 		popup_->configure(font_, input_, &options_, &selected_,
-			[this](const int i)
+			[this](const cstd::int32_t i)
 			{
 				commit(i);
 				open_ = false;
@@ -145,9 +145,9 @@ namespace rv
 	{
 		options_ = cstd::move(opts);
 
-		if (selected_ >= static_cast<int>(options_.size()))
+		if (selected_ >= static_cast<cstd::int32_t>(options_.size()))
 		{
-			selected_ = options_.empty() ? -1 : static_cast<int>(options_.size()) - 1;
+			selected_ = options_.empty() ? -1 : static_cast<cstd::int32_t>(options_.size()) - 1;
 		}
 
 		return *this;
@@ -175,8 +175,8 @@ namespace rv
 		const float inset_l = pad.left + brd.left;
 		const float inset_t = pad.top + brd.top;
 
-		const int count = static_cast<int>(options_.size());
-		const int rows = count < max_visible_rows ? count : max_visible_rows;
+		const cstd::int32_t count = static_cast<cstd::int32_t>(options_.size());
+		const cstd::int32_t rows = count < max_visible_rows ? count : max_visible_rows;
 		const float rh = popup_->row_height();
 
 		popup_->text_size(style_.font_size.value_or(0.f));
@@ -217,7 +217,7 @@ namespace rv
 		const float font_size = style_.font_size.value_or(0.f);
 		const float text_y = min.y + ((max.y - min.y) - line_h) * 0.5f;
 
-		const bool has_selection = selected_ >= 0 && selected_ < static_cast<int>(options_.size());
+		const bool has_selection = selected_ >= 0 && selected_ < static_cast<cstd::int32_t>(options_.size());
 		const string_t& label = has_selection ? options_[static_cast<cstd::size_t>(selected_)] : placeholder_;
 
 		color text_col = visual_text_color_;
@@ -246,7 +246,7 @@ namespace rv
 		style_.transition_speed = 12.f;
 	}
 
-	void combo_box::commit(int index)
+	void combo_box::commit(cstd::int32_t index)
 	{
 		if (options_.empty())
 		{
@@ -260,9 +260,9 @@ namespace rv
 			index = 0;
 		}
 
-		if (index >= static_cast<int>(options_.size()))
+		if (index >= static_cast<cstd::int32_t>(options_.size()))
 		{
-			index = static_cast<int>(options_.size()) - 1;
+			index = static_cast<cstd::int32_t>(options_.size()) - 1;
 		}
 
 		selected_ = index;

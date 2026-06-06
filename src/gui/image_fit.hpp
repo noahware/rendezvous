@@ -3,12 +3,12 @@
 #include "../util/types.hpp"
 
 // CSS object-fit semantics shared by the image widget (comp/image.hpp) and the element
-// background_image style field. Pure geometry — no texture/renderer dependency.
+// background_image style field. Pure geometry, no texture/renderer dependency.
 namespace rv
 {
 	enum class image_fit : cstd::uint8_t
 	{
-		fill,    // stretch to fill the box exactly (may distort) — CSS object-fit default for <img>
+		fill,    // stretch to fill the box exactly (may distort): CSS object-fit default for <img>
 		contain, // scale to fit fully inside the box, preserving aspect (letterbox)
 		cover    // scale to cover the box, preserving aspect (center-crop)
 	};

@@ -110,12 +110,12 @@ namespace rv
 
 		const position origin = { min.x - scroll_.x, origin_y };
 
-		const int len = static_cast<int>(buf_.chars.size());
+		const cstd::int32_t len = static_cast<cstd::int32_t>(buf_.chars.size());
 		const bool has_selection = stb_.select_start != stb_.select_end;
-		const int sel_lo = (stb_.select_start < stb_.select_end) ? stb_.select_start : stb_.select_end;
-		const int sel_hi = (stb_.select_start < stb_.select_end) ? stb_.select_end : stb_.select_start;
+		const cstd::int32_t sel_lo = (stb_.select_start < stb_.select_end) ? stb_.select_start : stb_.select_end;
+		const cstd::int32_t sel_hi = (stb_.select_start < stb_.select_end) ? stb_.select_end : stb_.select_start;
 
-		int i = 0;
+		cstd::int32_t i = 0;
 		float row_y = origin.y;
 		string_t line_utf8;
 
@@ -129,13 +129,13 @@ namespace rv
 				break;
 			}
 
-			const int row_end = i + row.num_chars;
+			const cstd::int32_t row_end = i + row.num_chars;
 
 			// selection highlight for this row
 			if (has_selection && sel_hi > i && sel_lo < row_end)
 			{
-				const int hl_lo = (sel_lo > i) ? sel_lo : i;
-				const int hl_hi = (sel_hi < row_end) ? sel_hi : row_end;
+				const cstd::int32_t hl_lo = (sel_lo > i) ? sel_lo : i;
+				const cstd::int32_t hl_hi = (sel_hi < row_end) ? sel_hi : row_end;
 				const float x_lo = origin.x + x_offset_in_row(i, hl_lo);
 				const float x_hi = origin.x + x_offset_in_row(i, hl_hi);
 
@@ -145,7 +145,7 @@ namespace rv
 			// build the row's UTF-8 text, skipping a trailing newline
 			line_utf8.clear();
 
-			for (int k = i; k < row_end; ++k)
+			for (cstd::int32_t k = i; k < row_end; ++k)
 			{
 				const char32_t ch = buf_.chars[static_cast<cstd::size_t>(k)];
 
@@ -170,7 +170,7 @@ namespace rv
 		if (is_focused() && caret_visible())
 		{
 			float caret_x = 0.f;
-			int caret_row = 0;
+			cstd::int32_t caret_row = 0;
 			caret_metrics(stb_.cursor, caret_x, caret_row);
 
 			const float cx = origin.x + caret_x;
@@ -216,7 +216,7 @@ namespace rv
 			buf_.chars.push_back(static_cast<char32_t>(decode_utf8(s, end)));
 		}
 
-		const int len = static_cast<int>(buf_.chars.size());
+		const cstd::int32_t len = static_cast<cstd::int32_t>(buf_.chars.size());
 
 		if (stb_.cursor > len)
 		{
@@ -327,12 +327,12 @@ namespace rv
 			return false;
 		}
 
-		const int lo = (stb_.select_start < stb_.select_end) ? stb_.select_start : stb_.select_end;
-		const int hi = (stb_.select_start < stb_.select_end) ? stb_.select_end : stb_.select_start;
+		const cstd::int32_t lo = (stb_.select_start < stb_.select_end) ? stb_.select_start : stb_.select_end;
+		const cstd::int32_t hi = (stb_.select_start < stb_.select_end) ? stb_.select_end : stb_.select_start;
 
 		string_t out;
 
-		for (int i = lo; i < hi; ++i)
+		for (cstd::int32_t i = lo; i < hi; ++i)
 		{
 			encode_utf8(buf_.chars[static_cast<cstd::size_t>(i)], out);
 		}
@@ -371,12 +371,12 @@ namespace rv
 		return inserted;
 	}
 
-	float text_box::x_offset_in_row(const int row_start, const int target) const noexcept
+	float text_box::x_offset_in_row(const cstd::int32_t row_start, const cstd::int32_t target) const noexcept
 	{
 		float x = 0.f;
 		cstd::uint32_t prev = 0;
 
-		for (int k = row_start; k < target; ++k)
+		for (cstd::int32_t k = row_start; k < target; ++k)
 		{
 			const char32_t ch = buf_.chars[static_cast<cstd::size_t>(k)];
 
@@ -396,11 +396,11 @@ namespace rv
 		return x;
 	}
 
-	void text_box::caret_metrics(const int cursor, float& out_x, int& out_row) const noexcept
+	void text_box::caret_metrics(const cstd::int32_t cursor, float& out_x, cstd::int32_t& out_row) const noexcept
 	{
-		const int len = static_cast<int>(buf_.chars.size());
-		int i = 0;
-		int row = 0;
+		const cstd::int32_t len = static_cast<cstd::int32_t>(buf_.chars.size());
+		cstd::int32_t i = 0;
+		cstd::int32_t row = 0;
 
 		while (i < len)
 		{
@@ -412,7 +412,7 @@ namespace rv
 				break;
 			}
 
-			const int row_end = i + r.num_chars;
+			const cstd::int32_t row_end = i + r.num_chars;
 			const bool ends_newline = buf_.chars[static_cast<cstd::size_t>(row_end - 1)] == U'\n';
 
 			// cursor within this row, or sitting at its end. If the row ends in a
@@ -443,7 +443,7 @@ namespace rv
 		const float line_h = font_->line_height() * buf_.scale;
 
 		float caret_x = 0.f;
-		int caret_row = 0;
+		cstd::int32_t caret_row = 0;
 		caret_metrics(stb_.cursor, caret_x, caret_row);
 
 		if (!multiline_)

@@ -9,6 +9,13 @@ namespace rv
 			return false;
 		}
 
+		// reaching here means the cursor is inside the panel (process_events only dispatches a click
+		// to a hovered element), so raise it above sibling panels for focus-to-front behaviour.
+		if (const auto g = gui_.lock())
+		{
+			z_index(g->raise_panel());
+		}
+
 		const position mouse = input_->mouse_pos();
 		const position p_min = visual_pos();
 		const position p_max = { p_min.x + computed_size_.x, p_min.y + computed_size_.y };
@@ -44,7 +51,9 @@ namespace rv
 			}
 		}
 
-		return false;
+		// a panel is an opaque window: consume the click so it doesn't fall through to whatever
+		// sits behind it (the raise above has already taken effect).
+		return true;
 	}
 
 	void panel::update(const float dt)
@@ -125,6 +134,10 @@ namespace rv
 		style_.position = position_type::absolute;
 		style_.overflow = overflow_mode::hidden;
 		style_.padding = border_vector{ 0.f, 0.f, 0.f, 0.f };
+
+		// float panels in the panel overlay layer so they sit above inline content and can be
+		// raised above one another on click (see on_mouse_click).
+		z_index(z_index_panel);
 	}
 
 	resize_edge panel::detect_resize_edge(const position mouse, const position p_min,

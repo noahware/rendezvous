@@ -176,8 +176,8 @@ namespace rv
 	class input
 	{
 	public:
-		using key_type = std::int32_t;
-		using button_type = std::int32_t;
+		using key_type = cstd::int32_t;
+		using button_type = cstd::int32_t;
 
 		virtual ~input() = default;
 

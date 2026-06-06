@@ -15,6 +15,11 @@ namespace rv
 	// which is all optional_t<cursor_type> needs for storage.
 	enum class cursor_type : cstd::uint8_t;
 
+	// conventional z-index layers for the deferred overlay pass (higher draws / hit-tests on top).
+	// any non-zero z-index lifts an element out of the inline tree into the overlay pass.
+	constexpr cstd::int32_t z_index_panel = 100;   // floating / draggable panels
+	constexpr cstd::int32_t z_index_popup = 1000;  // dropdowns, pickers, menus; always above panels
+
 	enum class layout_direction : cstd::uint8_t
 	{
 		vertical,

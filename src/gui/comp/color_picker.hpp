@@ -31,7 +31,7 @@ namespace rv
 			style_.shadow_color = color{ 0.f, 0.f, 0.f, 0.5f };
 			style_.shadow_blur = 14.f;
 
-			topmost(true);
+			z_index(z_index_popup); // picker popup sits on the popup layer, above any floating panels
 		}
 
 		void configure(shared_ptr_t<input> input, hsva* state, function_t<void()> on_edit) noexcept
@@ -224,7 +224,7 @@ namespace rv
 
 		// The popup is a fixed size at a fixed offset below the swatch, so its geometry only needs
 		// setting once. Each of these setters marks the layout dirty, so doing it every frame (as
-		// before) forced a full-tree relayout every frame the picker existed — the cause of the
+		// before) forced a full-tree relayout every frame the picker existed, the cause of the
 		// frame-rate drop. Visibility changes re-trigger layout in update(); a moving anchor (e.g. a
 		// dragged panel) marks the layout dirty itself, so the popup still follows it.
 		void configure_popup_once();

@@ -85,7 +85,7 @@ bool rv::ogl_renderer::load_gl_functions(const bool require_ubo) noexcept
 
 #undef RV_GL
 
-	// GL3-only (optional — null is fine for GL2)
+	// GL3-only (optional, null is fine for GL2)
 #define RV_GL_OPT(name) gl::name = reinterpret_cast<PFN_gl##name>(load_proc("gl" #name))
 
 	RV_GL_OPT(BindBufferBase); RV_GL_OPT(GetUniformBlockIndex); RV_GL_OPT(UniformBlockBinding);

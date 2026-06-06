@@ -265,7 +265,7 @@ rv::position rv::renderer::calc_text_size(const font &font, const string_view_t 
 optional_t<rv::font> rv::renderer::add_font(const span_t<const cstd::uint8_t> bytes, const float pixel_height,
                                             const cstd::uint32_t min_char, const cstd::uint32_t max_char, const bool anti_aliased)
 {
-    // guard against empty/unreadable font data — stbtt/freetype dereference the
+    // guard against empty/unreadable font data, stbtt/freetype dereference the
     // pointer unconditionally, so an empty buffer would crash.
     if (bytes.empty())
     {
@@ -467,8 +467,8 @@ optional_t<rv::font> rv::renderer::add_font(const span_t<const cstd::uint8_t> by
 
         stbtt_pack_context pack_ctx = {};
 
-        if (!stbtt_PackBegin(&pack_ctx, coverage.data(), static_cast<int>(width), static_cast<int>(height), 0,
-                             static_cast<int>(glyph_padding), nullptr))
+        if (!stbtt_PackBegin(&pack_ctx, coverage.data(), static_cast<cstd::int32_t>(width), static_cast<cstd::int32_t>(height), 0,
+                             static_cast<cstd::int32_t>(glyph_padding), nullptr))
         {
             width *= 2;
             height *= 2;
@@ -537,7 +537,7 @@ optional_t<rv::font> rv::renderer::add_font(const span_t<const cstd::uint8_t> by
 
         stbtt_aligned_quad q = {};
         float dummy_x = 0.f, dummy_y = 0.f;
-        stbtt_GetPackedQuad(packed_chars.data(), static_cast<int>(width), static_cast<int>(height), static_cast<int>(i), &dummy_x,
+        stbtt_GetPackedQuad(packed_chars.data(), static_cast<cstd::int32_t>(width), static_cast<cstd::int32_t>(height), static_cast<cstd::int32_t>(i), &dummy_x,
                             &dummy_y, &q, 0);
 
         g.uv0 = {q.s0, q.t0};
@@ -551,17 +551,17 @@ optional_t<rv::font> rv::renderer::add_font(const span_t<const cstd::uint8_t> by
 
     for (cstd::uint32_t left = min_char; left <= max_char; left++)
     {
-        const int left_glyph = stbtt_FindGlyphIndex(&info, static_cast<int>(left));
+        const cstd::int32_t left_glyph = stbtt_FindGlyphIndex(&info, static_cast<cstd::int32_t>(left));
         if (!left_glyph)
             continue;
 
         for (cstd::uint32_t right = min_char; right <= max_char; right++)
         {
-            const int right_glyph = stbtt_FindGlyphIndex(&info, static_cast<int>(right));
+            const cstd::int32_t right_glyph = stbtt_FindGlyphIndex(&info, static_cast<cstd::int32_t>(right));
             if (!right_glyph)
                 continue;
 
-            const int kern = stbtt_GetGlyphKernAdvance(&info, left_glyph, right_glyph);
+            const cstd::int32_t kern = stbtt_GetGlyphKernAdvance(&info, left_glyph, right_glyph);
             if (kern != 0)
             {
                 const cstd::uint64_t key = (static_cast<cstd::uint64_t>(left) << 32) | static_cast<cstd::uint64_t>(right);
@@ -578,7 +578,7 @@ optional_t<rv::font> rv::renderer::add_font(const span_t<const cstd::uint8_t> by
 optional_t<rv::font> rv::renderer::add_font(const string_t &path, const float pixel_height, const cstd::uint32_t min_char,
                                             const cstd::uint32_t max_char, const bool anti_aliased)
 {
-    const vector_t<std::uint8_t> buffer = read_file(path);
+    const vector_t<cstd::uint8_t> buffer = read_file(path);
 
     return add_font(buffer, pixel_height, min_char, max_char, anti_aliased);
 }

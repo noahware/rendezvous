@@ -4,7 +4,7 @@
 
 // Colour-space helpers used by the colour picker. Conversions build the result color by
 // direct field assignment rather than the color(r, g, b, a) constructor, which divides any
-// component > 1.0 by 255 (see position.hpp) — the same reason lerp_color avoids it.
+// component > 1.0 by 255 (see position.hpp), the same reason lerp_color avoids it.
 
 namespace rv
 {
@@ -47,7 +47,7 @@ namespace rv
 
 		hue *= 6.f;
 
-		const int sector = static_cast<int>(cstd::floorf(hue));
+		const cstd::int32_t sector = static_cast<cstd::int32_t>(cstd::floorf(hue));
 		const float f = hue - static_cast<float>(sector);
 
 		const float p = val * (1.f - sat);
@@ -113,7 +113,7 @@ namespace rv
 	}
 
 	// Returns -1 for a non-hex character so callers can reject malformed input.
-	[[nodiscard]] inline int hex_nibble(const char c) noexcept
+	[[nodiscard]] inline cstd::int32_t hex_nibble(const char c) noexcept
 	{
 		if (c >= '0' && c <= '9') return c - '0';
 		if (c >= 'a' && c <= 'f') return c - 'a' + 10;
@@ -138,11 +138,11 @@ namespace rv
 			return {};
 		}
 
-		array_t<int, 8> nibbles = { };
+		array_t<cstd::int32_t, 8> nibbles = { };
 
 		for (cstd::size_t i = 0; i < len; ++i)
 		{
-			const int n = hex_nibble(text[i]);
+			const cstd::int32_t n = hex_nibble(text[i]);
 
 			if (n < 0)
 			{
@@ -177,7 +177,7 @@ namespace rv
 	{
 		const auto to_byte = [](const float v) noexcept
 		{
-			return static_cast<int>(cstd::roundf(clamp01(v) * 255.f));
+			return static_cast<cstd::int32_t>(cstd::roundf(clamp01(v) * 255.f));
 		};
 
 		if (with_alpha)

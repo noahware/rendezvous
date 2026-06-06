@@ -15,12 +15,12 @@ namespace rv
 			return { };
 		}
 
-		int width = 0;
-		int height = 0;
-		int channels = 0;
+		cstd::int32_t width = 0;
+		cstd::int32_t height = 0;
+		cstd::int32_t channels = 0;
 
 		// force 4 channels so the decoded buffer always matches create_texture's RGBA8 contract.
-		stbi_uc* pixels = stbi_load_from_memory(encoded.data(), static_cast<int>(encoded.size()),
+		stbi_uc* pixels = stbi_load_from_memory(encoded.data(), static_cast<cstd::int32_t>(encoded.size()),
 		                                        &width, &height, &channels, 4);
 
 		if (!pixels || width <= 0 || height <= 0)

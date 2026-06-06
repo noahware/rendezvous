@@ -33,7 +33,7 @@ namespace rv
 
 		// opacity/scale edit this element's whole emitted vertex range after the fact; only pay for
 		// capturing the range start (and the edits at the end of this function) when one is actually
-		// active. the common path — fully opaque, unscaled — stays free of that work.
+		// active. the common path (fully opaque, unscaled) stays free of that work.
 		float effective_opacity = visual_opacity_;
 
 		if (anim && anim->opacity)
@@ -225,7 +225,7 @@ namespace rv
 		);
 
 		// fast path: elements with no colour/visual styling or per-state overrides (plain layout
-		// containers, rows, columns) keep their default visual_* values — skip the resolve + lerps.
+		// containers, rows, columns) keep their default visual_* values; skip the resolve + lerps.
 		const bool has_visual = style_.background_color || style_.text_color || style_.border_color
 			|| style_.rounding || style_.radii || style_.opacity
 			|| style_.hover || style_.active || style_.focus || style_.disabled_style || disabled_;

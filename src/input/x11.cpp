@@ -93,7 +93,7 @@ void rv::x11_input::handle_event(const XEvent& event)
 
 		case SelectionRequest:
 		{
-			// Another app is pasting our clipboard — hand it the text.
+			// Another app is pasting our clipboard, hand it the text.
 			handle_selection_request(event.xselectionrequest);
 			break;
 		}
@@ -261,14 +261,14 @@ void rv::x11_input::handle_selection_request(const XSelectionRequestEvent& reque
 		XChangeProperty(request.display, request.requestor, request.property,
 			XA_ATOM, 32, PropModeReplace,
 			reinterpret_cast<const unsigned char*>(targets),
-			static_cast<int>(sizeof(targets) / sizeof(targets[0])));
+			static_cast<cstd::int32_t>(sizeof(targets) / sizeof(targets[0])));
 	}
 	else if (request.target == atom_utf8_ || request.target == XA_STRING)
 	{
 		XChangeProperty(request.display, request.requestor, request.property,
 			request.target, 8, PropModeReplace,
 			reinterpret_cast<const unsigned char*>(clipboard_.data()),
-			static_cast<int>(clipboard_.size()));
+			static_cast<cstd::int32_t>(clipboard_.size()));
 	}
 	else
 	{
@@ -302,7 +302,7 @@ string_t rv::x11_input::get_clipboard_text()
 	XEvent event;
 	bool got_notify = false;
 
-	for (int i = 0; i < 200; ++i)
+	for (cstd::int32_t i = 0; i < 200; ++i)
 	{
 		if (XCheckTypedWindowEvent(display_, window_, SelectionNotify, &event))
 		{
@@ -319,12 +319,12 @@ string_t rv::x11_input::get_clipboard_text()
 	}
 
 	Atom actual_type = 0;
-	int actual_format = 0;
+	cstd::int32_t actual_format = 0;
 	unsigned long item_count = 0;
 	unsigned long bytes_after = 0;
 	unsigned char* data = nullptr;
 
-	const int status = XGetWindowProperty(display_, window_, atom_property_,
+	const cstd::int32_t status = XGetWindowProperty(display_, window_, atom_property_,
 		0, ~0L, True /* delete */, AnyPropertyType,
 		&actual_type, &actual_format, &item_count, &bytes_after, &data);
 

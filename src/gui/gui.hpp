@@ -308,6 +308,18 @@ namespace rv
 			tree_.root()->set_gui(self);
 		}
 
+		// raise a floating panel above its siblings: hand out a monotonically increasing z within the
+		// panel layer (kept just below the popup layer). called by panel on click (focus to front).
+		[[nodiscard]] cstd::int32_t raise_panel() noexcept
+		{
+			if (next_panel_z_ < z_index_popup - 1)
+			{
+				++next_panel_z_;
+			}
+
+			return next_panel_z_;
+		}
+
 		RV_WIDGET_FACTORY_DECLS
 
 		void render(const vector_2d<float> display_size)
@@ -349,34 +361,43 @@ namespace rv
 				tooltip_timer_ += dt;
 			}
 
-			// topmost elements (popups) are collected during the tree pass and drawn afterwards
+			// topmost elements (popups, panels) are collected during the tree pass and drawn afterwards
 			// so they paint over everything, regardless of their position in the tree.
 			vector_t<deferred_render> overlays;
 			root->render(*renderer_, default_style_, position{ 0.f, 0.f }, &overlays);
 
-			// stable-sort overlays by z_index ascending so higher z draws last (on top); equal z keeps
-			// tree order. popups are few, so a simple insertion sort is fine and avoids pulling in <algorithm>.
-			for (cstd::size_t i = 1; i < overlays.size(); ++i)
+			// drain the overlay list level by level: rendering a deferred element can surface further
+			// deferred descendants (e.g. a popup nested inside a now-topmost panel must escape the
+			// panel's clip and draw above it). each level is z-sorted; deeper levels draw later/on top.
+			while (!overlays.empty())
 			{
-				const deferred_render key = overlays[i];
-				const int key_z = key.el ? key.el->z_index() : 0;
-				cstd::size_t j = i;
-
-				while (j > 0 && (overlays[j - 1].el ? overlays[j - 1].el->z_index() : 0) > key_z)
+				// stable insertion sort by z ascending: higher z draws last (on top), ties keep order.
+				for (cstd::size_t i = 1; i < overlays.size(); ++i)
 				{
-					overlays[j] = overlays[j - 1];
-					--j;
+					const deferred_render key = overlays[i];
+					const cstd::int32_t key_z = key.el ? key.el->z_index() : 0;
+					cstd::size_t j = i;
+
+					while (j > 0 && (overlays[j - 1].el ? overlays[j - 1].el->z_index() : 0) > key_z)
+					{
+						overlays[j] = overlays[j - 1];
+						--j;
+					}
+
+					overlays[j] = key;
 				}
 
-				overlays[j] = key;
-			}
+				vector_t<deferred_render> next;
 
-			for (const auto& cmd : overlays)
-			{
-				if (cmd.el)
+				for (const auto& cmd : overlays)
 				{
-					cmd.el->render(*renderer_, default_style_, cmd.offset, nullptr);
+					if (cmd.el)
+					{
+						cmd.el->render(*renderer_, default_style_, cmd.offset, &next);
+					}
 				}
+
+				overlays = cstd::move(next);
 			}
 
 			// drawn last and unclipped, so the tooltip always paints over the tree.
@@ -573,6 +594,23 @@ namespace rv
 				vector_t<shared_ptr_t<element>> topmost;
 				collect_topmost(tree_.root(), topmost);
 
+				// hit-test front-first: stable-sort by z ascending (preserving DFS order for ties),
+				// then walk in reverse so the highest-z overlay (the front-most) claims clicks first.
+				for (cstd::size_t i = 1; i < topmost.size(); ++i)
+				{
+					const shared_ptr_t<element> key = topmost[i];
+					const cstd::int32_t kz = key->z_index();
+					cstd::size_t j = i;
+
+					while (j > 0 && topmost[j - 1]->z_index() > kz)
+					{
+						topmost[j] = topmost[j - 1];
+						--j;
+					}
+
+					topmost[j] = key;
+				}
+
 				for (auto it = topmost.rbegin(); it != topmost.rend(); ++it)
 				{
 					process_events_recursive(*it, mouse_pos, mouse_clicked, mouse_down, click_handled, enter_handled, scroll_target, clicked, tooltip_hover, cursor_hover, false);
@@ -624,7 +662,7 @@ namespace rv
 			// measure the widest line and count lines in one pass
 			float max_w = 0.f;
 			float cur_w = 0.f;
-			int line_count = 1;
+			cstd::int32_t line_count = 1;
 			cstd::uint32_t prev = 0;
 
 			const char* s = text.data();
@@ -714,6 +752,7 @@ namespace rv
 		element* tooltip_hover_ = nullptr;
 		float tooltip_timer_ = 0.f;
 		cursor_type frame_cursor_ = cursor_type::arrow;
+		cstd::int32_t next_panel_z_ = z_index_panel;
 
 		bool layout_dirty_ = true;
 		vector_2d<float> last_display_size_ = { };
