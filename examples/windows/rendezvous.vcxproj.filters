@@ -41,7 +41,7 @@
     <ClInclude Include="src\input\win32.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\log\log.hpp">
+    <ClInclude Include="..\common\log.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\render\render.hpp">

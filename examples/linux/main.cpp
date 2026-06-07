@@ -13,7 +13,7 @@
 #include "gui/comp/value_inspector.hpp"
 #include "gui/comp/key_bind.hpp"
 #include "gui/animation.hpp"
-#include "log/log.hpp"
+#include "../common/log.hpp"
 #include "render/impl/ogl.hpp"
 #include "util/types.hpp"
 #include "input/x11.hpp"

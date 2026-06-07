@@ -197,7 +197,7 @@
     <ClInclude Include="..\..\src\input\input.hpp" />
     <ClInclude Include="..\..\src\input\win32.hpp" />
     <ClInclude Include="..\..\src\input\x11.hpp" />
-    <ClInclude Include="..\..\src\log\log.hpp" />
+    <ClInclude Include="..\common\log.hpp" />
     <ClInclude Include="..\..\src\render\impl\dx11.hpp" />
     <ClInclude Include="..\..\src\render\impl\ogl.hpp" />
     <ClInclude Include="..\..\src\render\ogl_shaders.hpp" />

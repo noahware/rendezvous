@@ -1,6 +1,5 @@
 #include "ogl.hpp"
 #include "../ogl_shaders.hpp"
-#include "../../log/log.hpp"
 
 namespace
 {
@@ -112,16 +111,6 @@ GLuint rv::ogl_renderer::compile_shader(const GLenum type, const char* source) n
 
 	if (!status)
 	{
-		GLint log_length = 0;
-		gl::GetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_length);
-
-		if (log_length > 0)
-		{
-			vector_t<char> log(static_cast<cstd::size_t>(log_length));
-			gl::GetShaderInfoLog(shader, log_length, nullptr, log.data());
-			LOG_ERR("ogl shader compile error: {}", log.data());
-		}
-
 		gl::DeleteShader(shader);
 		return 0;
 	}
@@ -162,16 +151,6 @@ GLuint rv::ogl_renderer::create_program(const char* vertex_src, const char* frag
 
 	if (!status)
 	{
-		GLint log_length = 0;
-		gl::GetProgramiv(program, GL_INFO_LOG_LENGTH, &log_length);
-
-		if (log_length > 0)
-		{
-			vector_t<char> log(static_cast<cstd::size_t>(log_length));
-			gl::GetProgramInfoLog(program, log_length, nullptr, log.data());
-			LOG_ERR("ogl program link error: {}", log.data());
-		}
-
 		gl::DeleteProgram(program);
 		gl::DeleteShader(vs);
 		gl::DeleteShader(fs);
@@ -222,7 +201,6 @@ bool rv::ogl2_renderer::init_backend() noexcept
 {
 	if (!load_gl_functions(false))
 	{
-		LOG_ERR("failed to load GL functions");
 		return false;
 	}
 
@@ -238,7 +216,6 @@ bool rv::ogl2_renderer::init_backend() noexcept
 		programs_[i] = create_program(shaders.vertex, fragment_sources[i], true);
 		if (!programs_[i])
 		{
-			LOG_ERR("failed to create ogl2 shader program {}", i);
 			return false;
 		}
 
@@ -273,7 +250,6 @@ bool rv::ogl3_renderer::init_backend() noexcept
 {
 	if (!load_gl_functions(true))
 	{
-		LOG_ERR("failed to load GL3 functions");
 		return false;
 	}
 
@@ -289,7 +265,6 @@ bool rv::ogl3_renderer::init_backend() noexcept
 		programs_[i] = create_program(shaders.vertex, fragment_sources[i], false);
 		if (!programs_[i])
 		{
-			LOG_ERR("failed to create ogl3 shader program {}", i);
 			return false;
 		}
 
