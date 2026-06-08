@@ -227,12 +227,28 @@ namespace rv
 			text_col.a *= 0.5f;
 		}
 
-		renderer.push_clip_rect(min, max);
+		renderer.push_clip_rect(min, { max.x - 30.f, max.y });
 		renderer.draw_text(*font_, { min.x, text_y }, label, text_col, font_size);
 		renderer.pop_clip_rect();
 
 		// dropdown indicator caret near the right edge
-		renderer.draw_text(*font_, { max.x - 14.f, text_y }, "v", visual_text_color_, font_size);
+		const float x_center = max.x - 8.f;
+		const float y_center = (min.y + max.y) * 0.5f;
+
+		if (open_)
+		{
+			renderer.add_path_point({ x_center - 4.f, y_center + 2.f });
+			renderer.add_path_point({ x_center, y_center - 2.f });
+			renderer.add_path_point({ x_center + 4.f, y_center + 2.f });
+		}
+		else
+		{
+			renderer.add_path_point({ x_center - 4.f, y_center - 2.f });
+			renderer.add_path_point({ x_center, y_center + 2.f });
+			renderer.add_path_point({ x_center + 4.f, y_center - 2.f });
+		}
+
+		renderer.draw_lined_path(visual_text_color_, 1.5f, false, 1.f, cap_style::round, join_style::miter);
 	}
 
 	void combo_box::init_defaults() noexcept
