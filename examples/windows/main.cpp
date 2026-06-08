@@ -1,4 +1,4 @@
-﻿#include "gui/element.hpp"
+#include "gui/element.hpp"
 #include "gui/gui.hpp"
 #include "gui/builders.hpp"
 #include "gui/comp/button.hpp"
@@ -24,6 +24,7 @@ rv::vector_2d<float> screen_size = { 1280.f, 720.f };
 shared_ptr_t<rv::win32_input> input = { };
 
 static bool demo_enabled = true;
+static bool demo_smooth_scroll = false;
 static float demo_radius = 40.f;
 static float demo_rounding = 15.f;
 static float demo_thickness = 2.f;
@@ -577,6 +578,8 @@ cstd::int32_t main(int argc, char* argv[])
 		auto& controls = left_col->add_container("Controls");
 		controls.add_checkbox("Enable rendering").bind(&demo_enabled)
 			.on_change([](const bool v) { LOG_INFO("rendering: {}", v); });
+		controls.add_checkbox("Smooth scrolling").bind(&demo_smooth_scroll)
+			.on_change([](const bool v) { LOG_INFO("smooth scrolling: {}", v); });
 
 		auto& radius_label = controls.add_label("Radius: 40");
 		controls.add_slider(5.f, 100.f, 40.f).bind(&demo_radius)
@@ -956,6 +959,7 @@ cstd::int32_t main(int argc, char* argv[])
 		if (demo_toggle_key != rv::key::none && input->is_key_pressed(static_cast<cstd::int32_t>(demo_toggle_key)))
 			demo_enabled = !demo_enabled;
 
+		gui->default_style().smooth_scroll = demo_smooth_scroll;
 		gui->render(screen_size);
 
 		if (font)

@@ -111,6 +111,13 @@ namespace rv
 			return *this;
 		}
 
+		panel& smooth_scroll(const bool v) noexcept
+		{
+			element::smooth_scroll(v);
+
+			return *this;
+		}
+
 		bool on_mouse_click() override;
 
 		void update(const float dt) override;

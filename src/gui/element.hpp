@@ -504,6 +504,13 @@ namespace rv
 			return *this;
 		}
 
+		element& smooth_scroll(const bool smooth) noexcept
+		{
+			style_.smooth_scroll = smooth;
+
+			return *this;
+		}
+
 		element& dir(const text_direction d) noexcept
 		{
 			style_.dir = d;
@@ -935,6 +942,7 @@ namespace rv
 
 		vector_t<flex_line> flex_lines_;
 		position scroll_offset_ = { 0.f, 0.f };
+		position target_scroll_offset_ = { 0.f, 0.f };
 
 		vector_t<shared_ptr_t<element>> children_ = { };
 		bool* layout_dirty_ptr_ = nullptr;

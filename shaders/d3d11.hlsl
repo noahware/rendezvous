@@ -206,13 +206,9 @@ float4 text_shadow_pixel_shader(ps_input input) : SV_TARGET
     float total_alpha = 0.0f;
     float total_weight = 0.0f;
 
-    // Standard CSS-style Gaussian falloff
     float sigma = max(blur_radius / 2.0f, 0.1f);
     float two_sigma_sq = 2.0f * sigma * sigma;
 
-    // Bounded, linearly-filtered Gaussian: cap taps per axis and step proportionally to the blur
-    // radius. The linear sampler interpolates skipped texels, so a soft shadow looks ~identical at
-    // a fraction of the fetches (was up to (2*ceil(blur)+1)^2 taps per pixel).
     int side = (int)clamp(ceil(blur_radius / 2.5f), 1.0f, 6.0f);
     float fstep = blur_radius / (float)side;
 
@@ -238,7 +234,6 @@ float4 text_shadow_pixel_shader(ps_input input) : SV_TARGET
                     total_alpha += a * weight;
                 }
 
-                // Weight must be accumulated regardless of sample boundary to preserve normalized energy
                 total_weight += weight;
             }
         }
@@ -246,7 +241,6 @@ float4 text_shadow_pixel_shader(ps_input input) : SV_TARGET
     
     float final_alpha = total_weight > 0.0f ? (total_alpha / total_weight) : 0.0f;
     
-    // 1.5x boost for UI vibrancy (avoids intense alpha-stacking banding from higher multipliers)
     final_alpha = saturate(final_alpha * 1.5f);
     
     if (cut_bg > 0.5f)

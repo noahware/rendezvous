@@ -228,25 +228,52 @@ namespace rv
 		// render() and update_all() reuse it instead of each recomputing the keyframe interpolation.
 		cached_anim_props_ = animated_props();
 
+		const auto g = gui_.lock();
+		const bool smooth = style_.smooth_scroll.value_or(g ? g->default_style().smooth_scroll.value_or(false) : false);
+
+		if (smooth)
+		{
+			const float lerp_speed = 20.f;
+			const float factor = cstd::fminf(lerp_speed * dt, 1.f);
+			if (cstd::fabsf(scroll_offset_.x - target_scroll_offset_.x) > 0.05f)
+			{
+				scroll_offset_.x = lerp(scroll_offset_.x, target_scroll_offset_.x, factor);
+			}
+			else
+			{
+				scroll_offset_.x = target_scroll_offset_.x;
+			}
+
+			if (cstd::fabsf(scroll_offset_.y - target_scroll_offset_.y) > 0.05f)
+			{
+				scroll_offset_.y = lerp(scroll_offset_.y, target_scroll_offset_.y, factor);
+			}
+			else
+			{
+				scroll_offset_.y = target_scroll_offset_.y;
+			}
+		}
+
 		// fast path: elements with no colour/visual styling or per-state overrides (plain layout
 		// containers, rows, columns) keep their default visual_* values; skip the resolve + lerps.
 		const bool has_visual = style_.background_color || style_.text_color || style_.border_color
 			|| style_.rounding || style_.radii || style_.opacity
 			|| style_.hover || style_.active || style_.focus || style_.disabled_style || disabled_;
 
+		if (settled_ && animations_.empty() && (!smooth || scroll_offset_ == target_scroll_offset_))
+		{
+			return;
+		}
+
 		if (!has_visual)
 		{
-			settled_ = true;
+			settled_ = (scroll_offset_ == target_scroll_offset_);
 			return;
 		}
 
 		// once eased onto the target with nothing animating and no resolve_visual input changed
 		// (state setters, style setters and animate() all clear settled_), the resolve + lerp below
 		// would be an exact no-op. skipping it is what keeps a large static UI cheap per frame.
-		if (settled_ && animations_.empty())
-		{
-			return;
-		}
 
 		// resolve the per-state target (base style + active hover/press/focus/disabled overrides),
 		// then ease the visual_* values toward it. this single path replaces every widget's bespoke
@@ -266,7 +293,7 @@ namespace rv
 			visual_radii_ = target_radii;
 			visual_opacity_ = target.opacity;
 			transitions_initialized_ = true;
-			settled_ = animations_.empty();
+			settled_ = animations_.empty() && (!smooth || scroll_offset_ == target_scroll_offset_);
 
 			return;
 		}
@@ -286,7 +313,7 @@ namespace rv
 
 		// snap each channel that has effectively reached its target; we are settled once every
 		// channel has snapped and nothing is animating (an animating element keeps re-resolving).
-		bool all_settled = animations_.empty();
+		bool all_settled = animations_.empty() && (!smooth || scroll_offset_ == target_scroll_offset_);
 
 		if (color_close(visual_bg_, target.bg)) { visual_bg_ = target.bg; } else { all_settled = false; }
 		if (color_close(visual_text_color_, target.text)) { visual_text_color_ = target.text; } else { all_settled = false; }
@@ -350,16 +377,38 @@ namespace rv
 		const float max_scroll = cstd::fmaxf(0.f, content_size - viewport);
 		const float scroll_speed = 30.f;
 
+		const bool smooth = style_.smooth_scroll.value_or(defaults.smooth_scroll.value_or(false));
+
 		if (vertical)
 		{
-			scroll_offset_.y += delta * scroll_speed;
-			scroll_offset_.y = cstd::fmaxf(-max_scroll, cstd::fminf(0.f, scroll_offset_.y));
+			if (smooth)
+			{
+				target_scroll_offset_.y += delta * scroll_speed;
+				target_scroll_offset_.y = cstd::fmaxf(-max_scroll, cstd::fminf(0.f, target_scroll_offset_.y));
+			}
+			else
+			{
+				scroll_offset_.y += delta * scroll_speed;
+				scroll_offset_.y = cstd::fmaxf(-max_scroll, cstd::fminf(0.f, scroll_offset_.y));
+				target_scroll_offset_.y = scroll_offset_.y;
+			}
 		}
 		else
 		{
-			scroll_offset_.x += delta * scroll_speed;
-			scroll_offset_.x = cstd::fmaxf(-max_scroll, cstd::fminf(0.f, scroll_offset_.x));
+			if (smooth)
+			{
+				target_scroll_offset_.x += delta * scroll_speed;
+				target_scroll_offset_.x = cstd::fmaxf(-max_scroll, cstd::fminf(0.f, target_scroll_offset_.x));
+			}
+			else
+			{
+				scroll_offset_.x += delta * scroll_speed;
+				scroll_offset_.x = cstd::fmaxf(-max_scroll, cstd::fminf(0.f, scroll_offset_.x));
+				target_scroll_offset_.x = scroll_offset_.x;
+			}
 		}
+
+		mark_unsettled();
 	}
 
 	optional_t<keyframe_props> element::animated_props() const noexcept

@@ -192,6 +192,7 @@ namespace rv
 		optional_t<align_content> align_content_v;
 		optional_t<overflow_mode> overflow;
 		optional_t<bool> show_scrollbar;
+		optional_t<bool> smooth_scroll;
 		optional_t<text_direction> dir;
 		optional_t<color> background_color;
 		optional_t<color> text_color;
