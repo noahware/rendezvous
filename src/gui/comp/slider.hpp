@@ -67,6 +67,13 @@ namespace rv
 			return *this;
 		}
 
+		slider& track_color(const color col) noexcept
+		{
+			track_color_ = col;
+
+			return *this;
+		}
+
 		slider& fill_color(const color col) noexcept
 		{
 			fill_color_ = col;
@@ -91,6 +98,36 @@ namespace rv
 		slider& thumb_radius(const float r) noexcept
 		{
 			thumb_radius_ = r;
+
+			return *this;
+		}
+
+		slider& extend_track(const bool v = true) noexcept
+		{
+			extend_track_ = v;
+
+			if (v)
+			{
+				saved_padding_ = style_.padding.value_or(border_vector{});
+				saved_rounding_ = style_.rounding.value_or(0.f);
+
+				style_.background_color.reset();
+				style_.padding = border_vector{ 0.f, 0.f, 0.f, 0.f };
+				style_.rounding.reset();
+			}
+
+			return *this;
+		}
+
+		slider& background_color(const color c, const element_state state = element_state::normal) noexcept
+		{
+			element::background_color(c, state);
+
+			if (extend_track_ && state == element_state::normal)
+			{
+				style_.padding = saved_padding_;
+				style_.rounding = saved_rounding_;
+			}
 
 			return *this;
 		}
@@ -224,26 +261,26 @@ namespace rv
 			const float height = max.y - min.y;
 			const float center_y = min.y + height * 0.5f;
 			const float track_height = 4.f;
-			const color track_col = style_.background_color.value_or(color{ 0.3f, 0.3f, 0.3f, 1.f });
+			const color track_col = track_color_;
 
-			const position track_min = { min.x + thumb_radius_, center_y - track_height * 0.5f };
-			const position track_max = { max.x - thumb_radius_, center_y + track_height * 0.5f };
+			const float track_inset = extend_track_ ? 0.f : thumb_radius_;
+			const position track_min = { min.x + track_inset, center_y - track_height * 0.5f };
+			const position track_max = { max.x - track_inset, center_y + track_height * 0.5f };
 
 			renderer.draw_rect_filled(track_min, track_max, track_col, track_height * 0.5f);
 
-			const float track_width = track_max.x - track_min.x;
-			const position fill_max = { track_min.x + track_width * visual_t_, track_max.y };
+			const float thumb_min_x = min.x + thumb_radius_;
+			const float thumb_range = (max.x - thumb_radius_) - thumb_min_x;
+			const float thumb_x = thumb_min_x + thumb_range * visual_t_;
 
 			if (visual_t_ > 0.f)
 			{
+				const position fill_max = { thumb_x, track_max.y };
 				renderer.draw_rect_filled(track_min, fill_max, fill_color_, track_height * 0.5f);
 			}
 
-			const float thumb_x = track_min.x + track_width * visual_t_;
-			const position thumb_pos = { thumb_x, center_y };
 			const color thumb_col = (hovered_ || dragging_) ? thumb_color_active_ : thumb_color_;
-
-			renderer.draw_circle_filled(thumb_pos, thumb_radius_, thumb_col);
+			renderer.draw_circle_filled({ thumb_x, center_y }, thumb_radius_, thumb_col);
 		}
 
 		shared_ptr_t<input> input_;
@@ -257,9 +294,13 @@ namespace rv
 		T* bound_ = nullptr;
 
 		float thumb_radius_ = 8.f;
+		color track_color_ = { 0.3f, 0.3f, 0.3f, 1.f };
 		color fill_color_ = { 0.4f, 0.7f, 1.f, 1.f };
 		color thumb_color_ = { 1.f, 1.f, 1.f, 1.f };
 		color thumb_color_active_ = { 0.9f, 0.9f, 0.9f, 1.f };
+		bool extend_track_ = false;
+		border_vector saved_padding_;
+		float saved_rounding_ = 0.f;
 	};
 
 	template <class T = float>
@@ -482,24 +523,25 @@ namespace rv
 			const float height = max.y - min.y;
 			const float center_y = min.y + height * 0.5f;
 			const float track_height = 4.f;
-			const color track_col = base::style_.background_color.value_or(color{ 0.3f, 0.3f, 0.3f, 1.f });
+			const color track_col = base::track_color_;
 
-			const position track_min = { min.x + base::thumb_radius_, center_y - track_height * 0.5f };
-			const position track_max = { max.x - base::thumb_radius_, center_y + track_height * 0.5f };
+			const float track_inset = base::extend_track_ ? 0.f : base::thumb_radius_;
+			const position track_min = { min.x + track_inset, center_y - track_height * 0.5f };
+			const position track_max = { max.x - track_inset, center_y + track_height * 0.5f };
 
 			renderer.draw_rect_filled(track_min, track_max, track_col, track_height * 0.5f);
 
-			const float track_width = track_max.x - track_min.x;
-			const position fill_min = { track_min.x + track_width * visual_low_t_, track_min.y };
-			const position fill_max = { track_min.x + track_width * visual_high_t_, track_max.y };
+			const float thumb_min_x = min.x + base::thumb_radius_;
+			const float thumb_range = (max.x - base::thumb_radius_) - thumb_min_x;
+			const float low_x = thumb_min_x + thumb_range * visual_low_t_;
+			const float high_x = thumb_min_x + thumb_range * visual_high_t_;
 
 			if (visual_high_t_ > visual_low_t_)
 			{
+				const position fill_min = { low_x, track_min.y };
+				const position fill_max = { high_x, track_max.y };
 				renderer.draw_rect_filled(fill_min, fill_max, base::fill_color_, track_height * 0.5f);
 			}
-
-			const float low_x = track_min.x + track_width * visual_low_t_;
-			const float high_x = track_min.x + track_width * visual_high_t_;
 
 			const color low_col = (base::hovered_ || (base::dragging_ && active_ == active_thumb::low))
 				? base::thumb_color_active_ : base::thumb_color_;

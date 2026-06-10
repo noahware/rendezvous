@@ -586,7 +586,8 @@ cstd::int32_t main(int argc, char* argv[])
 		auto& radius_label = controls.add_label("Radius: 40");
 		controls.add_slider(5.f, 100.f, 40.f).bind(&demo_radius)
 			.on_change([lbl = &radius_label](const float v) { lbl->content(std::format("Radius: {:.0f}", v)); })
-			.fill_color({ 0.2f, 0.6f, 1.f, 1.f });
+			.fill_color({ 0.2f, 0.6f, 1.f, 1.f })
+			.extend_track();
 
 		auto& rounding_label = controls.add_label("Rounding: 15");
 		controls.add_slider(0.f, 50.f, 15.f).bind(&demo_rounding)
