@@ -14,6 +14,11 @@
 #include "comp/key_bind.hpp"
 #include "comp/tabs.hpp"
 #include "comp/image.hpp"
+#include "comp/separator.hpp"
+#include "comp/progress_bar.hpp"
+#include "comp/radio_button.hpp"
+#include "comp/collapsing_header.hpp"
+#include "comp/plot_histogram.hpp"
 
 // Single convenience include that pulls in every widget and defines the add_* factory methods
 // for both `element` and `gui`. Include this (instead of the individual comp headers) to build
@@ -44,6 +49,11 @@ namespace rv
 	[[nodiscard]] inline element_size default_row_size() noexcept       { return { styled_size::fill(), styled_size::auto_v() }; }
 	[[nodiscard]] inline element_size default_column_size() noexcept    { return { styled_size::auto_v(), styled_size::auto_v() }; }
 	[[nodiscard]] inline element_size default_container_size() noexcept { return { styled_size::fill(), styled_size::auto_v() }; }
+	[[nodiscard]] inline element_size default_separator_size() noexcept { return { styled_size::fill(), styled_size::px(1.f) }; }
+	[[nodiscard]] inline element_size default_progress_bar_size() noexcept { return { styled_size::fill(), styled_size::px(20.f) }; }
+	[[nodiscard]] inline element_size default_radio_size() noexcept { return { styled_size::auto_v(), styled_size::auto_v() }; }
+	[[nodiscard]] inline element_size default_collapsing_header_size() noexcept { return { styled_size::fill(), styled_size::auto_v() }; }
+	[[nodiscard]] inline element_size default_histogram_size() noexcept { return { styled_size::fill(), styled_size::px(120.f) }; }
 
 	[[nodiscard]] inline border_vector default_slider_padding() noexcept { return { 0.f, 10.f, 0.f, 10.f }; }
 	[[nodiscard]] inline float default_slider_rounding() noexcept { return 14.f; }
@@ -124,7 +134,24 @@ namespace rv
 			w->tab_text_size(default_text_size(*g)); return *w; }                                      \
 		inline image& CLS::add_image(const shared_ptr_t<gui_texture> tex) {                            \
 			auto g = GUI; auto w = g->make_child<image>(PARENT, default_image_size());                 \
-			if (tex) w->texture(tex); return *w; }
+			if (tex) w->texture(tex); return *w; }                                                     \
+		inline separator& CLS::add_separator() {                                                       \
+			auto g = GUI; auto w = g->make_child<separator>(PARENT, default_separator_size());          \
+			return *w; }                                                                               \
+		inline progress_bar& CLS::add_progress_bar(const float value) {                                \
+			auto g = GUI; auto w = g->make_child<progress_bar>(PARENT, default_progress_bar_size(), g->font()); \
+			w->value(value); return *w; }                                                              \
+		inline radio_button& CLS::add_radio_button(const string_view_t label, const cstd::int32_t value) { \
+			auto g = GUI; auto w = g->make_child<radio_button>(PARENT, default_radio_size(), g->font()); \
+			w->text_size(default_text_size(*g)); w->value(value);                                      \
+			if (!label.empty()) w->label(label); return *w; }                                          \
+		inline collapsing_header& CLS::add_collapsing_header(const string_view_t label) {              \
+			auto g = GUI; auto w = g->make_child<collapsing_header>(PARENT, default_collapsing_header_size(), g->font(), g->get_input()); \
+			w->text_size(default_text_size(*g));                                                       \
+			if (!label.empty()) w->label(label); return *w; }                                          \
+		inline plot_histogram& CLS::add_plot_histogram() {                                             \
+			auto g = GUI; auto w = g->make_child<plot_histogram>(PARENT, default_histogram_size(), g->font(), g->get_input()); \
+			w->autoscale(); return *w; }
 
 	// element: lock the weak gui back-ref (kept alive for the call); gui: just itself.
 	RV_WIDGET_FACTORY_DEFS(element, gui_.lock(), shared_from_this())

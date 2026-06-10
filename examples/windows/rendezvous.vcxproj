@@ -157,6 +157,10 @@
     <ClCompile Include="..\..\src\gui\comp\text.cpp" />
     <ClCompile Include="..\..\src\gui\comp\text_box.cpp" />
     <ClCompile Include="..\..\src\gui\comp\tabs.cpp" />
+    <ClCompile Include="..\..\src\gui\comp\progress_bar.cpp" />
+    <ClCompile Include="..\..\src\gui\comp\radio_button.cpp" />
+    <ClCompile Include="..\..\src\gui\comp\collapsing_header.cpp" />
+    <ClCompile Include="..\..\src\gui\comp\plot_histogram.cpp" />
     <ClCompile Include="..\..\src\gui\elements.cpp" />
     <ClCompile Include="..\..\src\gui\layout.cpp" />
     <ClCompile Include="..\..\src\gui\layout_position.cpp" />
@@ -186,6 +190,11 @@
     <ClInclude Include="..\..\src\gui\comp\text_edit.hpp" />
     <ClInclude Include="..\..\src\gui\comp\tabs.hpp" />
     <ClInclude Include="..\..\src\gui\comp\image.hpp" />
+    <ClInclude Include="..\..\src\gui\comp\separator.hpp" />
+    <ClInclude Include="..\..\src\gui\comp\progress_bar.hpp" />
+    <ClInclude Include="..\..\src\gui\comp\radio_button.hpp" />
+    <ClInclude Include="..\..\src\gui\comp\collapsing_header.hpp" />
+    <ClInclude Include="..\..\src\gui\comp\plot_histogram.hpp" />
     <ClInclude Include="..\..\src\gui\text_metrics.hpp" />
     <ClInclude Include="..\..\src\gui\element.hpp" />
     <ClInclude Include="..\..\src\gui\element_types.hpp" />

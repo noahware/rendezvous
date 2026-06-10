@@ -38,6 +38,8 @@ static rv::color demo_fill_color = { 0.2f, 0.6f, 1.f, 1.f };
 static rv::color demo_accent_color = { 1.f, 0.4f, 0.2f, 1.f };
 static rv::key demo_toggle_key = rv::key::none;
 static float demo_anim_speed = 1.f;
+static cstd::int32_t demo_radio_value = 0;
+static float demo_progress = 0.35f;
 static string_t demo_name = "rendezvous";
 static string_t demo_notes = "A GPU-accelerated\n2D vector renderer.";
 
@@ -775,6 +777,35 @@ cstd::int32_t main(int argc, char* argv[])
 		ellip.text_size(14.f).text_ellipsis().letter_spacing(0.5f);
 	}
 
+	left_col->add_separator();
+
+	{
+		auto& radio_section = left_col->add_container("Radio Buttons");
+		radio_section.add_radio_button("Rectangle", 0).bind(&demo_radio_value);
+		radio_section.add_radio_button("Circle", 1).bind(&demo_radio_value);
+		radio_section.add_radio_button("Triangle", 2).bind(&demo_radio_value);
+	}
+
+	{
+		auto& progress_section = left_col->add_container("Progress Bar");
+		auto& pbar = progress_section.add_progress_bar(demo_progress);
+		pbar.bind(&demo_progress).show_text(true);
+		auto& progress_label = progress_section.add_label("Drag to change:");
+		progress_section.add_slider(0.f, 1.f, demo_progress).bind(&demo_progress)
+			.on_change([lbl = &progress_label](const float v) { lbl->content(std::format("Value: {:.0f}%", v * 100.f)); })
+			.fill_color({ 0.4f, 0.7f, 1.f, 1.f });
+	}
+
+	{
+		auto& header = left_col->add_collapsing_header("Advanced Settings");
+		header.content().add_checkbox("Show shadows").bind(&demo_show_shadows);
+		header.content().add_checkbox("Show grid").bind(&demo_show_grid);
+		auto& speed_lbl = header.content().add_label("Anim speed:");
+		header.content().add_slider(0.1f, 3.f, 1.f).bind(&demo_anim_speed)
+			.on_change([lbl = &speed_lbl](const float v) { lbl->content(std::format("Anim speed: {:.1f}x", v)); })
+			.fill_color({ 0.4f, 0.7f, 1.f, 1.f });
+	}
+
 	// Optional stress scene (--stress N): N auto-sized buttons in a wrap row inside the scrollable
 	// left column. Every relayout sizes/positions all N (each measuring its text), update_all walks
 	// all N each frame, and render covers the visible window. That is exactly the GUI hot path the
@@ -814,6 +845,14 @@ cstd::int32_t main(int argc, char* argv[])
 		auto sine_plot = gui->make_child<rv::plot_lines>(viz_row,
 			rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() }, gui_font, input);
 		sine_plot->data(sine_samples).range(-1.f, 1.f).overlay("sine").line_color({ 0.6f, 0.5f, 1.f, 1.f });
+
+		vector_t<float> hist_samples(24);
+		for (cstd::size_t i = 0; i < hist_samples.size(); ++i)
+			hist_samples[i] = cstd::fabsf(cstd::sinf(static_cast<float>(i) * 0.35f));
+
+		auto hist_plot = gui->make_child<rv::plot_histogram>(viz_row,
+			rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() }, gui_font, input);
+		hist_plot->data(hist_samples).range(0.f, 1.f).overlay("histogram").bar_color({ 0.9f, 0.5f, 0.3f, 0.85f }).bar_rounding(2.f);
 	}
 
 	auto inspector = gui->make_child<rv::value_inspector>(viz_row,
