@@ -102,6 +102,21 @@ namespace rv
 			return *this;
 		}
 
+		slider& thumb_size(const float w, const float h) noexcept
+		{
+			thumb_width_ = w;
+			thumb_height_ = h;
+
+			return *this;
+		}
+
+		slider& thumb_rounding(const float r) noexcept
+		{
+			thumb_rounding_ = r;
+
+			return *this;
+		}
+
 		slider& extend_track(const bool v = true) noexcept
 		{
 			extend_track_ = v;
@@ -196,6 +211,25 @@ namespace rv
 			style_.transition_speed = 12.f;
 		}
 
+		[[nodiscard]] float thumb_half_width() const noexcept
+		{
+			return thumb_width_ > 0.f ? thumb_width_ * 0.5f : thumb_radius_;
+		}
+
+		void draw_thumb(gui_renderer& renderer, const float cx, const float cy, const color col) const
+		{
+			if (thumb_width_ > 0.f)
+			{
+				const float hw = thumb_width_ * 0.5f;
+				const float hh = (thumb_height_ > 0.f ? thumb_height_ : thumb_width_) * 0.5f;
+				renderer.draw_rect_filled({ cx - hw, cy - hh }, { cx + hw, cy + hh }, col, thumb_rounding_);
+			}
+			else
+			{
+				renderer.draw_circle_filled({ cx, cy }, thumb_radius_, col);
+			}
+		}
+
 		[[nodiscard]] float normalize(const T v) const noexcept
 		{
 			if (max_value_ == min_value_)
@@ -228,8 +262,9 @@ namespace rv
 		void update_value_from_mouse()
 		{
 			const position mouse_pos = input_->mouse_pos();
-			const float track_x = visual_pos().x + thumb_radius_;
-			const float track_width = computed_size_.x - thumb_radius_ * 2.f;
+			const float hw = thumb_half_width();
+			const float track_x = visual_pos().x + hw;
+			const float track_width = computed_size_.x - hw * 2.f;
 
 			if (track_width <= 0.f)
 			{
@@ -262,15 +297,16 @@ namespace rv
 			const float center_y = min.y + height * 0.5f;
 			const float track_height = 4.f;
 			const color track_col = track_color_;
+			const float hw = thumb_half_width();
 
-			const float track_inset = extend_track_ ? 0.f : thumb_radius_;
+			const float track_inset = extend_track_ ? 0.f : hw;
 			const position track_min = { min.x + track_inset, center_y - track_height * 0.5f };
 			const position track_max = { max.x - track_inset, center_y + track_height * 0.5f };
 
 			renderer.draw_rect_filled(track_min, track_max, track_col, track_height * 0.5f);
 
-			const float thumb_min_x = min.x + thumb_radius_;
-			const float thumb_range = (max.x - thumb_radius_) - thumb_min_x;
+			const float thumb_min_x = min.x + hw;
+			const float thumb_range = (max.x - hw) - thumb_min_x;
 			const float thumb_x = thumb_min_x + thumb_range * visual_t_;
 
 			if (visual_t_ > 0.f)
@@ -280,7 +316,7 @@ namespace rv
 			}
 
 			const color thumb_col = (hovered_ || dragging_) ? thumb_color_active_ : thumb_color_;
-			renderer.draw_circle_filled({ thumb_x, center_y }, thumb_radius_, thumb_col);
+			draw_thumb(renderer, thumb_x, center_y, thumb_col);
 		}
 
 		shared_ptr_t<input> input_;
@@ -293,7 +329,10 @@ namespace rv
 		bool dragging_ = false;
 		T* bound_ = nullptr;
 
-		float thumb_radius_ = 8.f;
+		float thumb_radius_ = 6.f;
+		float thumb_width_ = 0.f;
+		float thumb_height_ = 0.f;
+		float thumb_rounding_ = 0.f;
 		color track_color_ = { 0.3f, 0.3f, 0.3f, 1.f };
 		color fill_color_ = { 0.4f, 0.7f, 1.f, 1.f };
 		color thumb_color_ = { 1.f, 1.f, 1.f, 1.f };
@@ -364,8 +403,9 @@ namespace rv
 			base::dragging_ = true;
 
 			const position mouse_pos = base::input_->mouse_pos();
-			const float track_x = base::visual_pos().x + base::thumb_radius_;
-			const float track_width = base::computed_size_.x - base::thumb_radius_ * 2.f;
+			const float hw = base::thumb_half_width();
+			const float track_x = base::visual_pos().x + hw;
+			const float track_width = base::computed_size_.x - hw * 2.f;
 
 			if (track_width <= 0.f)
 			{
@@ -464,8 +504,9 @@ namespace rv
 		void update_range_from_mouse()
 		{
 			const position mouse_pos = base::input_->mouse_pos();
-			const float track_x = base::visual_pos().x + base::thumb_radius_;
-			const float track_width = base::computed_size_.x - base::thumb_radius_ * 2.f;
+			const float hw = base::thumb_half_width();
+			const float track_x = base::visual_pos().x + hw;
+			const float track_width = base::computed_size_.x - hw * 2.f;
 
 			if (track_width <= 0.f)
 			{
@@ -524,15 +565,16 @@ namespace rv
 			const float center_y = min.y + height * 0.5f;
 			const float track_height = 4.f;
 			const color track_col = base::track_color_;
+			const float hw = base::thumb_half_width();
 
-			const float track_inset = base::extend_track_ ? 0.f : base::thumb_radius_;
+			const float track_inset = base::extend_track_ ? 0.f : hw;
 			const position track_min = { min.x + track_inset, center_y - track_height * 0.5f };
 			const position track_max = { max.x - track_inset, center_y + track_height * 0.5f };
 
 			renderer.draw_rect_filled(track_min, track_max, track_col, track_height * 0.5f);
 
-			const float thumb_min_x = min.x + base::thumb_radius_;
-			const float thumb_range = (max.x - base::thumb_radius_) - thumb_min_x;
+			const float thumb_min_x = min.x + hw;
+			const float thumb_range = (max.x - hw) - thumb_min_x;
 			const float low_x = thumb_min_x + thumb_range * visual_low_t_;
 			const float high_x = thumb_min_x + thumb_range * visual_high_t_;
 
@@ -548,8 +590,8 @@ namespace rv
 			const color high_col = (base::hovered_ || (base::dragging_ && active_ == active_thumb::high))
 				? base::thumb_color_active_ : base::thumb_color_;
 
-			renderer.draw_circle_filled(position{ low_x, center_y }, base::thumb_radius_, low_col);
-			renderer.draw_circle_filled(position{ high_x, center_y }, base::thumb_radius_, high_col);
+			base::draw_thumb(renderer, low_x, center_y, low_col);
+			base::draw_thumb(renderer, high_x, center_y, high_col);
 		}
 
 		function_t<void(T, T)> on_range_change_;

@@ -587,17 +587,20 @@ cstd::int32_t main(int argc, char* argv[])
 		controls.add_slider(5.f, 100.f, 40.f).bind(&demo_radius)
 			.on_change([lbl = &radius_label](const float v) { lbl->content(std::format("Radius: {:.0f}", v)); })
 			.fill_color({ 0.2f, 0.6f, 1.f, 1.f })
+			.thumb_size(8.f, 18.f).thumb_rounding(2.f)
 			.extend_track();
 
 		auto& rounding_label = controls.add_label("Rounding: 15");
 		controls.add_slider(0.f, 50.f, 15.f).bind(&demo_rounding)
 			.on_change([lbl = &rounding_label](const float v) { lbl->content(std::format("Rounding: {:.0f}", v)); })
-			.fill_color({ 0.2f, 0.8f, 0.5f, 1.f });
+			.fill_color({ 0.2f, 0.8f, 0.5f, 1.f })
+			.thumb_size(8.f, 18.f).thumb_rounding(2.f);
 
 		auto& thick_label = controls.add_label("Thickness: 2.0");
 		controls.add_slider(0.5f, 8.f, 2.f).bind(&demo_thickness)
 			.on_change([lbl = &thick_label](const float v) { lbl->content(std::format("Thickness: {:.1f}", v)); })
-			.fill_color({ 0.9f, 0.5f, 0.2f, 1.f });
+			.fill_color({ 0.9f, 0.5f, 0.2f, 1.f })
+			.thumb_size(8.f, 18.f).thumb_rounding(2.f);
 
 		auto& range_label = controls.add_label("Gradient: 20% - 80%");
 		controls.add_range_slider(0.f, 1.f, 0.2f, 0.8f)

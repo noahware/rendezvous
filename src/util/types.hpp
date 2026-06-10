@@ -149,6 +149,16 @@ namespace cstd
 		return std::roundf(x);
 	}
 
+	inline float ceilf(const float x)
+	{
+		return std::ceilf(x);
+	}
+
+	inline float log10f(const float x)
+	{
+		return std::log10f(x);
+	}
+
 	inline float powf(const float base, const float exp)
 	{
 		return std::powf(base, exp);
