@@ -47,10 +47,10 @@ namespace rv
 	class font
 	{
 	public:
-		explicit font(shared_ptr_t<texture> texture, const vector_t<glyph>& glyphs, const cstd::uint32_t min_char, const cstd::uint32_t max_char, const float baked_size,
+		explicit font(shared_ptr_t<class texture> tex, const vector_t<struct glyph>& glyphs, const cstd::uint32_t min_char, const cstd::uint32_t max_char, const float baked_size,
 		              const float ascent, const float descent, const float line_height, const float line_gap,
 		              unordered_map_t<cstd::uint64_t, float> kerning_table = { })
-				:	texture_(cstd::move(texture)),
+				:	texture_(cstd::move(tex)),
 					glyphs_(glyphs),
 					min_char_(min_char),
 					max_char_(max_char),
@@ -63,7 +63,7 @@ namespace rv
 
 		// a font owns exactly one atlas; a codepoint outside its baked range substitutes '?' (or the
 		// first glyph). Mixing scripts/icons means drawing separate strings, each with its own font.
-		[[nodiscard]] const glyph& glyph(const cstd::uint32_t c) const
+		[[nodiscard]] const struct glyph& glyph(const cstd::uint32_t c) const
 		{
 			if (c < min_char_ || max_char_ < c || glyphs_.empty())
 			{
@@ -92,7 +92,7 @@ namespace rv
 			return 0.f;
 		}
 
-		[[nodiscard]] shared_ptr_t<texture> texture() const
+		[[nodiscard]] shared_ptr_t<class texture> texture() const
 		{
 			return texture_;
 		}
