@@ -115,6 +115,48 @@ namespace rv
 			return *this;
 		}
 
+		plot_histogram& show_axis(const bool on) noexcept
+		{
+			show_axis_ = on;
+
+			return *this;
+		}
+
+		plot_histogram& show_grid(const bool on) noexcept
+		{
+			show_grid_ = on;
+
+			return *this;
+		}
+
+		plot_histogram& axis_ticks(const cstd::int32_t n) noexcept
+		{
+			axis_ticks_ = n > 0 ? n : 1;
+
+			return *this;
+		}
+
+		plot_histogram& axis_color(const color c) noexcept
+		{
+			axis_color_ = c;
+
+			return *this;
+		}
+
+		plot_histogram& grid_color(const color c) noexcept
+		{
+			grid_color_ = c;
+
+			return *this;
+		}
+
+		plot_histogram& axis_font_size(const float px) noexcept
+		{
+			axis_font_size_ = px;
+
+			return *this;
+		}
+
 		bool on_mouse_click() override;
 
 		void update(const float dt) override;
@@ -150,6 +192,12 @@ namespace rv
 
 		void draw_overlay(gui_renderer& renderer, const position min) const;
 
+		static float nice_number(float x, bool round_up) noexcept;
+		void compute_axis_range(float data_lo, float data_hi, float& axis_lo, float& axis_hi, float& tick_step) const noexcept;
+		static string_t format_axis_value(float v, float tick_step);
+		float compute_axis_margin(float axis_lo, float axis_hi, float tick_step) const noexcept;
+		void draw_axis(gui_renderer& renderer, position element_min, position plot_min, position plot_max, float axis_lo, float axis_hi, float tick_step) const;
+
 		vector_t<float> data_;
 		cstd::size_t capacity_ = 128;
 		cstd::size_t offset_ = 0;
@@ -178,5 +226,12 @@ namespace rv
 		color overlay_color_{ 0.7f, 0.7f, 0.75f, 1.f };
 		shared_ptr_t<gui_font> font_;
 		shared_ptr_t<input> input_;
+
+		bool show_axis_ = false;
+		bool show_grid_ = false;
+		cstd::int32_t axis_ticks_ = 5;
+		float axis_font_size_ = 14.f;
+		color axis_color_{ 0.5f, 0.5f, 0.55f, 1.f };
+		color grid_color_{ 0.2f, 0.2f, 0.24f, 0.5f };
 	};
 }

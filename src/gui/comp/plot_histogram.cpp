@@ -225,7 +225,7 @@ namespace rv
 
 	void plot_histogram::render_self(gui_renderer& renderer, const position min, const position max) const
 	{
-		renderer.push_clip_rect(min, max, style_.rounding.value_or(0.f));
+		renderer.push_clip_rect(min, max, 0.f);
 
 		const cstd::size_t count = data_.size();
 
@@ -236,8 +236,6 @@ namespace rv
 			return;
 		}
 
-		const float w = max.x - min.x;
-		const float h = max.y - min.y;
 		const float fcount = static_cast<float>(count);
 
 		const float vo = (!fit_all_ && count >= 1) ? view_offset_ : 0.f;
@@ -259,6 +257,51 @@ namespace rv
 		float lo = 0.f;
 		float hi = 1.f;
 		resolve_scale(i0, i1, lo, hi);
+
+		float tick_step = 0.f;
+		float margin = 0.f;
+		const bool draw_ax = show_axis_ && font_;
+
+		if (draw_ax)
+		{
+			if (autoscale_)
+			{
+				compute_axis_range(lo, hi, lo, hi, tick_step);
+			}
+			else
+			{
+				const float ticks = static_cast<float>(axis_ticks_ > 0 ? axis_ticks_ : 5);
+				tick_step = nice_number((hi - lo) / ticks, true);
+			}
+
+			margin = compute_axis_margin(lo, hi, tick_step);
+
+			if (margin >= (max.x - min.x) * 0.5f)
+			{
+				margin = 0.f;
+				tick_step = 0.f;
+			}
+		}
+
+		const float plot_left = min.x + margin;
+		const float w = max.x - plot_left;
+
+		float label_inset = 0.f;
+
+		if (draw_ax && tick_step > 0.f && font_)
+		{
+			const float scale = axis_font_size_ / font_->baked_size();
+			label_inset = font_->line_height() * scale * 0.5f + 2.f;
+
+			if (label_inset * 2.f >= (max.y - min.y) * 0.4f)
+			{
+				label_inset = 0.f;
+			}
+		}
+
+		const float plot_top = min.y + label_inset;
+		const float plot_bot = max.y - label_inset;
+		const float h = plot_bot - plot_top;
 		const float inv_range = 1.f / (hi - lo);
 
 		const cstd::size_t vis_count = i1 - i0 + 1;
@@ -267,15 +310,17 @@ namespace rv
 
 		cstd::size_t hover_idx = static_cast<cstd::size_t>(-1);
 
+		renderer.push_clip_rect({ plot_left, min.y }, max, style_.rounding.value_or(0.f));
+
 		for (cstd::size_t i = 0; i < vis_count; ++i)
 		{
 			const cstd::size_t data_idx = i0 + i;
 			const float val = clampf((sample(data_idx) - lo) * inv_range, 0.f, 1.f);
 			const float bar_h = val * h;
 
-			const float x0 = min.x + static_cast<float>(i) * (bar_w + bar_gap_);
+			const float x0 = plot_left + static_cast<float>(i) * (bar_w + bar_gap_);
 			const float x1 = x0 + bar_w;
-			const float y0 = max.y - bar_h;
+			const float y0 = plot_bot - bar_h;
 
 			if (bar_h > 0.5f)
 			{
@@ -286,11 +331,11 @@ namespace rv
 						? rounding_flags_all
 						: static_cast<rounding_flags>(rounding_flags_top_left | rounding_flags_top_right);
 
-					renderer.draw_rect_filled({ x0, y0 }, { x1, max.y }, bar_color_, bar_rounding_, flags);
+					renderer.draw_rect_filled({ x0, y0 }, { x1, plot_bot }, bar_color_, bar_rounding_, flags);
 				}
 				else
 				{
-					renderer.draw_rect_filled({ x0, y0 }, { x1, max.y }, bar_color_);
+					renderer.draw_rect_filled({ x0, y0 }, { x1, plot_bot }, bar_color_);
 				}
 			}
 
@@ -336,7 +381,14 @@ namespace rv
 			renderer.draw_text(*font_, { bx + pad, by + pad }, label, readout_text_, readout_size_);
 		}
 
-		draw_overlay(renderer, min);
+		renderer.pop_clip_rect();
+
+		if (draw_ax && tick_step > 0.f)
+		{
+			draw_axis(renderer, min, { plot_left, plot_top }, { max.x, plot_bot }, lo, hi, tick_step);
+		}
+
+		draw_overlay(renderer, { plot_left, min.y });
 
 		renderer.pop_clip_rect();
 	}
@@ -349,5 +401,132 @@ namespace rv
 		}
 
 		renderer.draw_text(*font_, { min.x + 4.f, min.y + 3.f }, overlay_, overlay_color_, readout_size_);
+	}
+
+	float plot_histogram::nice_number(const float x, const bool round_up) noexcept
+	{
+		if (x <= 0.f)
+		{
+			return 0.f;
+		}
+
+		const float exp = cstd::floorf(cstd::log10f(x));
+		const float base = cstd::powf(10.f, exp);
+		const float frac = x / base;
+		float nice;
+
+		if (round_up)
+		{
+			if (frac <= 1.001f) nice = 1.f;
+			else if (frac <= 2.001f) nice = 2.f;
+			else if (frac <= 5.001f) nice = 5.f;
+			else nice = 10.f;
+		}
+		else
+		{
+			if (frac < 1.5f) nice = 1.f;
+			else if (frac < 3.f) nice = 2.f;
+			else if (frac < 7.f) nice = 5.f;
+			else nice = 10.f;
+		}
+
+		return nice * base;
+	}
+
+	void plot_histogram::compute_axis_range(const float data_lo, const float data_hi,
+	                                         float& axis_lo, float& axis_hi, float& tick_step) const noexcept
+	{
+		const float data_range = data_hi - data_lo;
+
+		if (data_range <= 0.f)
+		{
+			tick_step = 1.f;
+			axis_lo = data_lo - 1.f;
+			axis_hi = data_lo + 1.f;
+			return;
+		}
+
+		const float ticks = static_cast<float>(axis_ticks_ > 0 ? axis_ticks_ : 5);
+		tick_step = nice_number(data_range / ticks, true);
+		axis_lo = cstd::floorf(data_lo / tick_step) * tick_step;
+		axis_hi = cstd::ceilf(data_hi / tick_step) * tick_step;
+
+		if (axis_hi <= axis_lo)
+		{
+			axis_hi = axis_lo + tick_step;
+		}
+	}
+
+	string_t plot_histogram::format_axis_value(const float v, const float tick_step)
+	{
+		if (tick_step >= 1.f && cstd::fabsf(v - cstd::roundf(v)) < 0.001f)
+		{
+			return cstd::format("{}", static_cast<cstd::int64_t>(cstd::roundf(v)));
+		}
+
+		if (tick_step >= 0.1f)
+		{
+			return cstd::format("{:.1f}", v);
+		}
+
+		if (tick_step >= 0.01f)
+		{
+			return cstd::format("{:.2f}", v);
+		}
+
+		return cstd::format("{:.3f}", v);
+	}
+
+	float plot_histogram::compute_axis_margin(const float axis_lo, const float axis_hi, const float tick_step) const noexcept
+	{
+		if (!font_ || tick_step <= 0.f)
+		{
+			return 0.f;
+		}
+
+		const float scale = axis_font_size_ / font_->baked_size();
+		float max_w = 0.f;
+		const float first = cstd::ceilf(axis_lo / tick_step) * tick_step;
+		cstd::int32_t safety = 100;
+
+		for (float v = first; v <= axis_hi + tick_step * 0.5f && safety > 0; v += tick_step, --safety)
+		{
+			const string_t label = format_axis_value(v, tick_step);
+			const float tw = measure_text(label, scale);
+			max_w = cstd::fmaxf(max_w, tw);
+		}
+
+		return max_w + 14.f;
+	}
+
+	void plot_histogram::draw_axis(gui_renderer& renderer, const position element_min,
+	                                const position plot_min, const position plot_max,
+	                                const float axis_lo, const float axis_hi, const float tick_step) const
+	{
+		const float h = plot_max.y - plot_min.y;
+		const float inv_range = (axis_hi > axis_lo) ? 1.f / (axis_hi - axis_lo) : 1.f;
+		const float scale = axis_font_size_ / font_->baked_size();
+		const float line_h = font_->line_height() * scale;
+
+		renderer.draw_line(plot_min, { plot_min.x, plot_max.y }, axis_color_, 1.f);
+
+		const float first = cstd::ceilf(axis_lo / tick_step) * tick_step;
+		cstd::int32_t safety = 100;
+
+		for (float v = first; v <= axis_hi + tick_step * 0.5f && safety > 0; v += tick_step, --safety)
+		{
+			const float t = clampf((v - axis_lo) * inv_range, 0.f, 1.f);
+			const float y = plot_max.y - t * h;
+
+			if (show_grid_)
+			{
+				renderer.draw_line({ plot_min.x, y }, { plot_max.x, y }, grid_color_, 1.f);
+			}
+
+			const string_t label = format_axis_value(v, tick_step);
+			const float tw = measure_text(label, scale);
+			renderer.draw_text(*font_, { plot_min.x - tw - 4.f, y - line_h * 0.5f },
+			                   label, axis_color_, axis_font_size_);
+		}
 	}
 }
