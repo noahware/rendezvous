@@ -284,3 +284,126 @@ rv::clip_constants rv::renderer::pack_clip_constants(const optional_t<clip_rect_
 
     return out;
 }
+
+void rv::renderer::flush_for_capture() noexcept
+{
+    flush_pending_vertices();
+}
+
+void rv::renderer::execute_backdrop_blur(const position min, const position max, const float sigma, const float rounding) noexcept
+{
+    const float elem_w = max.x - min.x;
+    const float elem_h = max.y - min.y;
+    if (elem_w <= 0.f || elem_h <= 0.f || sigma <= 0.f) return;
+
+    const float pad = sigma * 2.f;
+    const float cap_x = (min.x - pad > 0.f) ? (min.x - pad) : 0.f;
+    const float cap_y = (min.y - pad > 0.f) ? (min.y - pad) : 0.f;
+    const float cap_r = (max.x + pad < state_.display_size.x) ? (max.x + pad) : state_.display_size.x;
+    const float cap_b = (max.y + pad < state_.display_size.y) ? (max.y + pad) : state_.display_size.y;
+
+    const cstd::uint32_t cap_w = static_cast<cstd::uint32_t>(cap_r - cap_x);
+    const cstd::uint32_t cap_h = static_cast<cstd::uint32_t>(cap_b - cap_y);
+    if (cap_w == 0 || cap_h == 0) return;
+
+    const cstd::uint32_t half_w = (cap_w + 1) / 2;
+    const cstd::uint32_t half_h = (cap_h + 1) / 2;
+    if (half_w == 0 || half_h == 0) return;
+
+    flush_for_capture();
+
+    auto capture_rt = create_render_target(cap_w, cap_h);
+    auto rt_a = create_render_target(half_w, half_h);
+    auto rt_b = create_render_target(half_w, half_h);
+    if (!capture_rt || !rt_a || !rt_b) return;
+
+    capture_backbuffer_region(capture_rt,
+        static_cast<cstd::uint32_t>(cap_x), static_cast<cstd::uint32_t>(cap_y), cap_w, cap_h);
+
+    auto saved_clips = cstd::move(clip_rects_);
+    clip_rects_.clear();
+    auto saved_texture = current_texture_;
+    const auto saved_display = state_.display_size;
+
+    constexpr cstd::uint32_t white_packed = 0xFFFFFFFF;
+
+    set_render_target(rt_a);
+    state_.display_size = {static_cast<float>(half_w), static_cast<float>(half_h)};
+    {
+        current_texture_ = capture_rt;
+        const float texel_x = 1.f / static_cast<float>(cap_w);
+        const float texel_y = 1.f / static_cast<float>(cap_h);
+
+        auto writer = reserve_indexed(4, 6, shader_type::blur_shader);
+        if (!writer.vertices.empty())
+        {
+            writer.vertices[0].pos = {-1.f, 1.f};  writer.vertices[0].col = white_packed;
+            writer.vertices[0].uv = {0.f, 0.f};    writer.vertices[0].custom_data = {1.f, 0.f, texel_x, texel_y, 0.f, 0.f, 0.f, 0.f};
+            writer.vertices[1].pos = { 1.f, 1.f};  writer.vertices[1].col = white_packed;
+            writer.vertices[1].uv = {1.f, 0.f};    writer.vertices[1].custom_data = {1.f, 0.f, texel_x, texel_y, 0.f, 0.f, 0.f, 0.f};
+            writer.vertices[2].pos = { 1.f,-1.f};  writer.vertices[2].col = white_packed;
+            writer.vertices[2].uv = {1.f, 1.f};    writer.vertices[2].custom_data = {1.f, 0.f, texel_x, texel_y, 0.f, 0.f, 0.f, 0.f};
+            writer.vertices[3].pos = {-1.f,-1.f};  writer.vertices[3].col = white_packed;
+            writer.vertices[3].uv = {0.f, 1.f};    writer.vertices[3].custom_data = {1.f, 0.f, texel_x, texel_y, 0.f, 0.f, 0.f, 0.f};
+
+            writer.indices[0] = writer.base_index;     writer.indices[1] = writer.base_index + 1;
+            writer.indices[2] = writer.base_index + 2;  writer.indices[3] = writer.base_index;
+            writer.indices[4] = writer.base_index + 2;  writer.indices[5] = writer.base_index + 3;
+        }
+        flush_pending_vertices();
+    }
+    reset_render_target();
+    state_.display_size = saved_display;
+
+    set_render_target(rt_b);
+    state_.display_size = {static_cast<float>(half_w), static_cast<float>(half_h)};
+    {
+        current_texture_ = rt_a;
+        const float texel_x = 1.f / static_cast<float>(half_w);
+        const float texel_y = 1.f / static_cast<float>(half_h);
+
+        auto writer = reserve_indexed(4, 6, shader_type::blur_shader);
+        if (!writer.vertices.empty())
+        {
+            writer.vertices[0].pos = {-1.f, 1.f};  writer.vertices[0].col = white_packed;
+            writer.vertices[0].uv = {0.f, 0.f};    writer.vertices[0].custom_data = {0.f, 1.f, texel_x, texel_y, 0.f, 0.f, 0.f, 0.f};
+            writer.vertices[1].pos = { 1.f, 1.f};  writer.vertices[1].col = white_packed;
+            writer.vertices[1].uv = {1.f, 0.f};    writer.vertices[1].custom_data = {0.f, 1.f, texel_x, texel_y, 0.f, 0.f, 0.f, 0.f};
+            writer.vertices[2].pos = { 1.f,-1.f};  writer.vertices[2].col = white_packed;
+            writer.vertices[2].uv = {1.f, 1.f};    writer.vertices[2].custom_data = {0.f, 1.f, texel_x, texel_y, 0.f, 0.f, 0.f, 0.f};
+            writer.vertices[3].pos = {-1.f,-1.f};  writer.vertices[3].col = white_packed;
+            writer.vertices[3].uv = {0.f, 1.f};    writer.vertices[3].custom_data = {0.f, 1.f, texel_x, texel_y, 0.f, 0.f, 0.f, 0.f};
+
+            writer.indices[0] = writer.base_index;     writer.indices[1] = writer.base_index + 1;
+            writer.indices[2] = writer.base_index + 2;  writer.indices[3] = writer.base_index;
+            writer.indices[4] = writer.base_index + 2;  writer.indices[5] = writer.base_index + 3;
+        }
+        flush_pending_vertices();
+    }
+    reset_render_target();
+    state_.display_size = saved_display;
+    clip_rects_ = cstd::move(saved_clips);
+    current_texture_ = saved_texture;
+
+    const float u_offset = (min.x - cap_x) / static_cast<float>(cap_w);
+    const float v_offset = (min.y - cap_y) / static_cast<float>(cap_h);
+    const float u_scale = elem_w / static_cast<float>(cap_w);
+    const float v_scale = elem_h / static_cast<float>(cap_h);
+
+    const float u0 = u_offset;
+    const float u1 = u_offset + u_scale;
+    float v0, v1;
+
+    if (rt_uv_flipped_)
+    {
+        v0 = 1.f - v_offset;
+        v1 = 1.f - (v_offset + v_scale);
+    }
+    else
+    {
+        v0 = v_offset;
+        v1 = v_offset + v_scale;
+    }
+
+    draw_image_rounded(rt_b, min, max, rounding, rounding_flags_all, {u0, v0}, {u1, v1});
+}

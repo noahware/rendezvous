@@ -31,7 +31,8 @@ bool rv::dx11_renderer::init_backend() noexcept
 		FAILED(device_->CreatePixelShader(d3d11_shadow_pixel_shader.data(), d3d11_shadow_pixel_shader.size(), nullptr, shadow_pixel_shader_.release_and_get())) ||
 		FAILED(device_->CreatePixelShader(d3d11_rect_pixel_shader.data(), d3d11_rect_pixel_shader.size(), nullptr, rect_pixel_shader_.release_and_get())) ||
 		FAILED(device_->CreatePixelShader(d3d11_image_pixel_shader.data(), d3d11_image_pixel_shader.size(), nullptr, image_pixel_shader_.release_and_get())) ||
-		FAILED(device_->CreatePixelShader(d3d11_text_shadow_pixel_shader.data(), d3d11_text_shadow_pixel_shader.size(), nullptr, text_shadow_pixel_shader_.release_and_get()))) {
+		FAILED(device_->CreatePixelShader(d3d11_text_shadow_pixel_shader.data(), d3d11_text_shadow_pixel_shader.size(), nullptr, text_shadow_pixel_shader_.release_and_get())) ||
+		FAILED(device_->CreatePixelShader(d3d11_blur_pixel_shader.data(), d3d11_blur_pixel_shader.size(), nullptr, blur_pixel_shader_.release_and_get()))) {
 		return false;
 	}
 
@@ -272,6 +273,10 @@ void rv::dx11_renderer::flush_pending_vertices() noexcept
 			{
 				context_->PSSetShader(text_shadow_pixel_shader_.value(), nullptr, 0);
 			}
+			else if (batch.shader == shader_type::blur_shader)
+			{
+				context_->PSSetShader(blur_pixel_shader_.value(), nullptr, 0);
+			}
 			else
 			{
 				context_->PSSetShader(pixel_shader_.value(), nullptr, 0);
@@ -391,6 +396,96 @@ shared_ptr_t<rv::texture> rv::dx11_renderer::create_texture_from_srv(void* raw_s
 	*shader_resource.release_and_get() = srv;
 
 	return cstd::make_shared<dx11_texture>(this, cstd::move(empty_texture), cstd::move(shader_resource));
+}
+
+shared_ptr_t<rv::texture> rv::dx11_renderer::create_render_target(const cstd::uint32_t width, const cstd::uint32_t height)
+{
+	D3D11_TEXTURE2D_DESC desc = {};
+	desc.Width = width;
+	desc.Height = height;
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.SampleDesc.Count = 1;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+
+	dx11_object<ID3D11Texture2D> tex2d;
+	if (FAILED(device_->CreateTexture2D(&desc, nullptr, tex2d.release_and_get())))
+	{
+		return {};
+	}
+
+	dx11_object<ID3D11ShaderResourceView> srv;
+	if (FAILED(device_->CreateShaderResourceView(tex2d.value(), nullptr, srv.release_and_get())))
+	{
+		return {};
+	}
+
+	dx11_object<ID3D11RenderTargetView> rtv;
+	if (FAILED(device_->CreateRenderTargetView(tex2d.value(), nullptr, rtv.release_and_get())))
+	{
+		return {};
+	}
+
+	return cstd::make_shared<dx11_render_target>(this, cstd::move(tex2d), cstd::move(srv), cstd::move(rtv), width, height);
+}
+
+void rv::dx11_renderer::capture_backbuffer_region(const shared_ptr_t<texture>& dst,
+	const cstd::uint32_t x, const cstd::uint32_t y, const cstd::uint32_t w, const cstd::uint32_t h)
+{
+	auto* rt = static_cast<dx11_texture*>(dst.get());
+
+	ID3D11RenderTargetView* current_rtv = nullptr;
+	context_->OMGetRenderTargets(1, &current_rtv, nullptr);
+	if (!current_rtv) return;
+
+	ID3D11Resource* src_resource = nullptr;
+	current_rtv->GetResource(&src_resource);
+	current_rtv->Release();
+	if (!src_resource) return;
+
+	D3D11_BOX box = {};
+	box.left = x;
+	box.top = y;
+	box.right = x + w;
+	box.bottom = y + h;
+	box.front = 0;
+	box.back = 1;
+
+	context_->CopySubresourceRegion(rt->texture_2d(), 0, 0, 0, 0, src_resource, 0, &box);
+	src_resource->Release();
+}
+
+void rv::dx11_renderer::set_render_target(const shared_ptr_t<texture>& target)
+{
+	ID3D11RenderTargetView* current_rtv = nullptr;
+	context_->OMGetRenderTargets(1, &current_rtv, nullptr);
+	saved_rtv_ = dx11_object<ID3D11RenderTargetView>(current_rtv);
+
+	UINT num_viewports = 1;
+	context_->RSGetViewports(&num_viewports, &saved_viewport_);
+
+	auto* rt = static_cast<dx11_render_target*>(target.get());
+	ID3D11RenderTargetView* new_rtv = rt->render_target_view();
+	context_->OMSetRenderTargets(1, &new_rtv, nullptr);
+
+	D3D11_VIEWPORT vp = {};
+	vp.Width = static_cast<float>(target->width());
+	vp.Height = static_cast<float>(target->height());
+	vp.MaxDepth = 1.f;
+	context_->RSSetViewports(1, &vp);
+
+	constexpr float clear_color[4] = {0.f, 0.f, 0.f, 0.f};
+	context_->ClearRenderTargetView(new_rtv, clear_color);
+}
+
+void rv::dx11_renderer::reset_render_target()
+{
+	ID3D11RenderTargetView* rtv = saved_rtv_.value();
+	context_->OMSetRenderTargets(1, &rtv, nullptr);
+	context_->RSSetViewports(1, &saved_viewport_);
+	saved_rtv_ = dx11_object<ID3D11RenderTargetView>();
 }
 
 #endif // _WIN32

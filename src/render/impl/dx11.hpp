@@ -96,9 +96,33 @@ namespace rv
 			return shader_resource_.value();
 		}
 
+		[[nodiscard]] ID3D11Texture2D* texture_2d() const noexcept
+		{
+			return texture_2d_.value();
+		}
+
 	protected:
 		dx11_object<ID3D11Texture2D> texture_2d_;
 		dx11_object<ID3D11ShaderResourceView> shader_resource_;
+	};
+
+	class dx11_render_target : public dx11_texture
+	{
+	public:
+		explicit dx11_render_target(renderer* const renderer, dx11_object<ID3D11Texture2D> texture_2d,
+		                            dx11_object<ID3D11ShaderResourceView> shader_resource,
+		                            dx11_object<ID3D11RenderTargetView> rtv,
+		                            const cstd::uint32_t width, const cstd::uint32_t height)
+				:	dx11_texture(renderer, cstd::move(texture_2d), cstd::move(shader_resource), width, height),
+					rtv_(cstd::move(rtv)) { }
+
+		[[nodiscard]] ID3D11RenderTargetView* render_target_view() const noexcept
+		{
+			return rtv_.value();
+		}
+
+	private:
+		dx11_object<ID3D11RenderTargetView> rtv_;
 	};
 
 	class dx11_renderer : public renderer
@@ -124,6 +148,11 @@ namespace rv
 		void begin_frame_backend(vector_2d<float> display_size) noexcept override;
 		void flush_pending_vertices() noexcept override;
 
+		shared_ptr_t<texture> create_render_target(cstd::uint32_t width, cstd::uint32_t height) override;
+		void capture_backbuffer_region(const shared_ptr_t<texture>& dst, cstd::uint32_t x, cstd::uint32_t y, cstd::uint32_t w, cstd::uint32_t h) override;
+		void set_render_target(const shared_ptr_t<texture>& target) override;
+		void reset_render_target() override;
+
 		dx11_object<ID3D11Device> device_;
 		dx11_object<ID3D11DeviceContext> context_;
 
@@ -133,6 +162,7 @@ namespace rv
 		dx11_object<ID3D11PixelShader> rect_pixel_shader_;
 		dx11_object<ID3D11PixelShader> image_pixel_shader_;
 		dx11_object<ID3D11PixelShader> text_shadow_pixel_shader_;
+		dx11_object<ID3D11PixelShader> blur_pixel_shader_;
 		dx11_object<ID3D11VertexShader> vertex_shader_;
 		dx11_object<ID3D11InputLayout> input_layout_;
 		dx11_object<ID3D11RasterizerState> rasterizer_state_;
@@ -140,6 +170,9 @@ namespace rv
 		dx11_object<ID3D11Buffer> buffer_;
 		dx11_object<ID3D11Buffer> index_buffer_;
 		dx11_object<ID3D11Buffer> clip_cbuffer_;
+
+		dx11_object<ID3D11RenderTargetView> saved_rtv_;
+		D3D11_VIEWPORT saved_viewport_ = {};
 	};
 }
 

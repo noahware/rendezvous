@@ -257,3 +257,27 @@ float4 text_shadow_pixel_shader(ps_input input) : SV_TARGET
     result.a *= apply_clip(input.position.xy);
     return result;
 }
+
+float4 blur_pixel_shader(ps_input input) : SV_TARGET
+{
+    float2 dir = input.custom_data.xy;
+    float2 texel = input.custom_data.zw;
+    float2 step_v = dir * texel;
+
+    float4 sum = textr.SampleLevel(samplr, input.uv, 0) * 0.1964825501511404f;
+
+    static const float offsets[6] = { 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f };
+    static const float weights[6] = {
+        0.2969069646728344f, 0.2195956971744843f, 0.1216189697978516f,
+        0.0540539696760839f, 0.0216215478581836f, 0.0043243095716367f
+    };
+
+    [unroll]
+    for (int i = 0; i < 6; ++i)
+    {
+        sum += textr.SampleLevel(samplr, input.uv + step_v * offsets[i], 0) * weights[i];
+        sum += textr.SampleLevel(samplr, input.uv - step_v * offsets[i], 0) * weights[i];
+    }
+
+    return sum;
+}

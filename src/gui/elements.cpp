@@ -61,6 +61,12 @@ namespace rv
 			}
 		}
 
+		const float blur_sigma = style_.backdrop_blur.value_or(0.f);
+		if (blur_sigma > 0.f)
+		{
+			renderer.execute_backdrop_blur(min, max, blur_sigma, effective_radii.max());
+		}
+
 		if (effective_bg.a > 0.001f)
 		{
 			const color shadow_col = style_.shadow_color.value_or(color{0.f, 0.f, 0.f, 0.f});

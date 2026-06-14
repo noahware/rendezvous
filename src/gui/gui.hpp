@@ -135,6 +135,8 @@ namespace rv
 		[[nodiscard]] virtual cstd::size_t vertex_count() const noexcept = 0;
 		virtual void modify_alpha(cstd::size_t start, cstd::size_t end, float alpha) noexcept = 0;
 		virtual void modify_scale(cstd::size_t start, cstd::size_t end, position center, float scale) noexcept = 0;
+
+		virtual void execute_backdrop_blur(position min, position max, float sigma, float rounding) noexcept = 0;
 	};
 
 	class gui_renderer_impl : public gui_renderer
@@ -288,6 +290,11 @@ namespace rv
 		float delta_time() const noexcept override
 		{
 			return renderer_->state().delta_time;
+		}
+
+		void execute_backdrop_blur(const position min, const position max, const float sigma, const float rounding) noexcept override
+		{
+			renderer_->execute_backdrop_blur(min, max, sigma, rounding);
 		}
 
 	protected:

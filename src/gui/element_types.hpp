@@ -234,6 +234,7 @@ namespace rv
 		optional_t<float> letter_spacing;  // extra px inserted between glyphs
 		optional_t<text_decoration> decoration;
 		optional_t<bool> text_ellipsis;    // truncate overflowing single-line text with an ellipsis
+		optional_t<float> backdrop_blur;
 	};
 
 	// helper to resolve gap for the correct axis

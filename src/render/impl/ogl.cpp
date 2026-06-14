@@ -62,6 +62,11 @@ namespace rv::gl
 	PFN_glGenVertexArrays GenVertexArrays = nullptr;
 	PFN_glBindVertexArray BindVertexArray = nullptr;
 	PFN_glDeleteVertexArrays DeleteVertexArrays = nullptr;
+	PFN_glGenFramebuffers GenFramebuffers = nullptr;
+	PFN_glDeleteFramebuffers DeleteFramebuffers = nullptr;
+	PFN_glBindFramebuffer BindFramebuffer = nullptr;
+	PFN_glFramebufferTexture2D FramebufferTexture2D = nullptr;
+	PFN_glCheckFramebufferStatus CheckFramebufferStatus = nullptr;
 }
 
 bool rv::ogl_renderer::load_gl_functions(const bool require_ubo) noexcept
@@ -89,6 +94,8 @@ bool rv::ogl_renderer::load_gl_functions(const bool require_ubo) noexcept
 
 	RV_GL_OPT(BindBufferBase); RV_GL_OPT(GetUniformBlockIndex); RV_GL_OPT(UniformBlockBinding);
 	RV_GL_OPT(GenVertexArrays); RV_GL_OPT(BindVertexArray); RV_GL_OPT(DeleteVertexArrays);
+	RV_GL_OPT(GenFramebuffers); RV_GL_OPT(DeleteFramebuffers); RV_GL_OPT(BindFramebuffer);
+	RV_GL_OPT(FramebufferTexture2D); RV_GL_OPT(CheckFramebufferStatus);
 
 #undef RV_GL_OPT
 
@@ -195,6 +202,11 @@ rv::ogl_renderer::~ogl_renderer()
 	{
 		gl::DeleteBuffers(1, &ebo_);
 	}
+
+	if (blur_fbo_ && gl::DeleteFramebuffers)
+	{
+		gl::DeleteFramebuffers(1, &blur_fbo_);
+	}
 }
 
 bool rv::ogl2_renderer::init_backend() noexcept
@@ -208,7 +220,8 @@ bool rv::ogl2_renderer::init_backend() noexcept
 	const char* fragment_sources[shader_count_] =
 	{
 		shaders.default_fragment, shaders.shadow_fragment,
-		shaders.rect_fragment, shaders.image_fragment, shaders.text_shadow_fragment
+		shaders.rect_fragment, shaders.image_fragment, shaders.text_shadow_fragment,
+		shaders.blur_fragment
 	};
 
 	for (cstd::size_t i = 0; i < shader_count_; ++i)
@@ -257,7 +270,8 @@ bool rv::ogl3_renderer::init_backend() noexcept
 	const char* fragment_sources[shader_count_] =
 	{
 		shaders.default_fragment, shaders.shadow_fragment,
-		shaders.rect_fragment, shaders.image_fragment, shaders.text_shadow_fragment
+		shaders.rect_fragment, shaders.image_fragment, shaders.text_shadow_fragment,
+		shaders.blur_fragment
 	};
 
 	for (cstd::size_t i = 0; i < shader_count_; ++i)
@@ -527,4 +541,71 @@ shared_ptr_t<rv::texture> rv::ogl_renderer::create_texture_from_srv(void* raw_sr
 
 	const GLuint tex_id = static_cast<GLuint>(reinterpret_cast<cstd::size_t>(raw_srv));
 	return cstd::make_shared<ogl_texture>(this, tex_id);
+}
+
+shared_ptr_t<rv::texture> rv::ogl_renderer::create_render_target(const cstd::uint32_t width, const cstd::uint32_t height)
+{
+	GLuint tex = 0;
+	glGenTextures(1, &tex);
+	glBindTexture(GL_TEXTURE_2D, tex);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, static_cast<GLsizei>(width), static_cast<GLsizei>(height),
+	             0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	return cstd::make_shared<ogl_texture>(this, tex, width, height);
+}
+
+void rv::ogl_renderer::capture_backbuffer_region(const shared_ptr_t<texture>& dst,
+	const cstd::uint32_t x, const cstd::uint32_t y, const cstd::uint32_t w, const cstd::uint32_t h)
+{
+	if (gl::BindFramebuffer)
+	{
+		gl::BindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+
+	auto* tex = static_cast<ogl_texture*>(dst.get());
+	glBindTexture(GL_TEXTURE_2D, tex->id());
+
+	const GLint gl_y = static_cast<GLint>(state_.display_size.y) - static_cast<GLint>(y) - static_cast<GLint>(h);
+	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, static_cast<GLint>(x), gl_y,
+	                    static_cast<GLsizei>(w), static_cast<GLsizei>(h));
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void rv::ogl_renderer::set_render_target(const shared_ptr_t<texture>& target)
+{
+	if (!gl::BindFramebuffer) return;
+
+	auto* tex = static_cast<ogl_texture*>(target.get());
+
+	if (!blur_fbo_)
+	{
+		gl::GenFramebuffers(1, &blur_fbo_);
+	}
+
+	glGetIntegerv(GL_VIEWPORT, saved_viewport_);
+
+	gl::BindFramebuffer(GL_FRAMEBUFFER, blur_fbo_);
+	gl::FramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->id(), 0);
+
+	glViewport(0, 0, static_cast<GLsizei>(target->width()), static_cast<GLsizei>(target->height()));
+
+	glClearColor(0.f, 0.f, 0.f, 0.f);
+	glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void rv::ogl_renderer::reset_render_target()
+{
+	if (!gl::BindFramebuffer) return;
+
+	gl::BindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(saved_viewport_[0], saved_viewport_[1], saved_viewport_[2], saved_viewport_[3]);
 }

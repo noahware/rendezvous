@@ -12,6 +12,7 @@ namespace rv
 			const char* shadow_fragment;
 			const char* image_fragment;
 			const char* text_shadow_fragment;
+			const char* blur_fragment;
 		};
 
 		// ---- GLSL 120 (OpenGL 2) ----
@@ -424,7 +425,43 @@ void main()
 }
 )glsl";
 
-			constexpr shader_set set = { vertex_shader, default_fragment, rect_fragment, shadow_fragment, image_fragment, text_shadow_fragment };
+			constexpr const char* blur_fragment = R"glsl(
+#version 120
+
+varying vec4 v_color;
+varying vec2 v_uv;
+varying vec4 v_custom_data;
+varying vec4 v_custom_data2;
+varying vec2 v_screen_pos;
+
+uniform sampler2D u_texture;
+
+void main()
+{
+    vec2 dir = v_custom_data.xy;
+    vec2 texel = v_custom_data.zw;
+    vec2 step_v = dir * texel;
+
+    vec4 sum = texture2D(u_texture, v_uv) * 0.1964825501511404;
+
+    sum += texture2D(u_texture, v_uv + step_v * 1.0) * 0.2969069646728344;
+    sum += texture2D(u_texture, v_uv - step_v * 1.0) * 0.2969069646728344;
+    sum += texture2D(u_texture, v_uv + step_v * 2.0) * 0.2195956971744843;
+    sum += texture2D(u_texture, v_uv - step_v * 2.0) * 0.2195956971744843;
+    sum += texture2D(u_texture, v_uv + step_v * 3.0) * 0.1216189697978516;
+    sum += texture2D(u_texture, v_uv - step_v * 3.0) * 0.1216189697978516;
+    sum += texture2D(u_texture, v_uv + step_v * 4.0) * 0.0540539696760839;
+    sum += texture2D(u_texture, v_uv - step_v * 4.0) * 0.0540539696760839;
+    sum += texture2D(u_texture, v_uv + step_v * 5.0) * 0.0216215478581836;
+    sum += texture2D(u_texture, v_uv - step_v * 5.0) * 0.0216215478581836;
+    sum += texture2D(u_texture, v_uv + step_v * 6.0) * 0.0043243095716367;
+    sum += texture2D(u_texture, v_uv - step_v * 6.0) * 0.0043243095716367;
+
+    gl_FragColor = sum;
+}
+)glsl";
+
+			constexpr shader_set set = { vertex_shader, default_fragment, rect_fragment, shadow_fragment, image_fragment, text_shadow_fragment, blur_fragment };
 		}
 
 		// ---- GLSL 330 core (OpenGL 3) ----
@@ -867,7 +904,45 @@ void main()
 }
 )glsl";
 
-			constexpr shader_set set = { vertex_shader, default_fragment, rect_fragment, shadow_fragment, image_fragment, text_shadow_fragment };
+			constexpr const char* blur_fragment = R"glsl(
+#version 330 core
+
+in vec4 v_color;
+in vec2 v_uv;
+in vec4 v_custom_data;
+in vec4 v_custom_data2;
+in vec2 v_screen_pos;
+
+out vec4 frag_color;
+
+uniform sampler2D u_texture;
+
+void main()
+{
+    vec2 dir = v_custom_data.xy;
+    vec2 texel = v_custom_data.zw;
+    vec2 step_v = dir * texel;
+
+    vec4 sum = texture(u_texture, v_uv) * 0.1964825501511404;
+
+    sum += texture(u_texture, v_uv + step_v * 1.0) * 0.2969069646728344;
+    sum += texture(u_texture, v_uv - step_v * 1.0) * 0.2969069646728344;
+    sum += texture(u_texture, v_uv + step_v * 2.0) * 0.2195956971744843;
+    sum += texture(u_texture, v_uv - step_v * 2.0) * 0.2195956971744843;
+    sum += texture(u_texture, v_uv + step_v * 3.0) * 0.1216189697978516;
+    sum += texture(u_texture, v_uv - step_v * 3.0) * 0.1216189697978516;
+    sum += texture(u_texture, v_uv + step_v * 4.0) * 0.0540539696760839;
+    sum += texture(u_texture, v_uv - step_v * 4.0) * 0.0540539696760839;
+    sum += texture(u_texture, v_uv + step_v * 5.0) * 0.0216215478581836;
+    sum += texture(u_texture, v_uv - step_v * 5.0) * 0.0216215478581836;
+    sum += texture(u_texture, v_uv + step_v * 6.0) * 0.0043243095716367;
+    sum += texture(u_texture, v_uv - step_v * 6.0) * 0.0043243095716367;
+
+    frag_color = sum;
+}
+)glsl";
+
+			constexpr shader_set set = { vertex_shader, default_fragment, rect_fragment, shadow_fragment, image_fragment, text_shadow_fragment, blur_fragment };
 		}
 	}
 }

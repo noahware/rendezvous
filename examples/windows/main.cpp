@@ -952,6 +952,20 @@ cstd::int32_t main(int argc, char* argv[])
 		{ .duration = 1.2f, .ease = rv::easing::ease_out_cubic }
 	);
 
+	auto& blur_panel = gui->add_panel();
+	blur_panel.set_declared_size({ rv::styled_size::px(280.f), rv::styled_size::px(180.f) });
+	blur_panel.padding(16.f).gap(10.f)
+		.inset_top(rv::styled_size::px(340.f)).inset_left(rv::styled_size::px(400.f));
+	blur_panel.backdrop_blur(16.f)
+		.background_color({ 0.15f, 0.15f, 0.2f, 0.4f })
+		.rounding(12.f);
+
+	blur_panel.add_label("Frosted Glass").text_size(18.f).text_color({ 0.9f, 0.9f, 0.95f, 1.f });
+	blur_panel.add_label("This panel uses backdrop blur.").text_size(13.f).text_color({ 0.7f, 0.7f, 0.75f, 0.9f });
+	blur_panel.add_button("Blurred Button")
+		.background_color({ 0.3f, 0.5f, 0.9f, 0.6f })
+		.rounding(8.f);
+
 	rv::vector_2d<float> last_screen_size = screen_size;
 	MSG msg = { };
 

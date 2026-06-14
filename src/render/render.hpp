@@ -57,7 +57,8 @@ namespace rv
 		shadow_shader,
 		rect_shader,
 		image_shader,
-		text_shadow_shader
+		text_shadow_shader,
+		blur_shader
 	};
 
 	struct clip_rect_data
@@ -209,7 +210,14 @@ namespace rv
 		shared_ptr_t<texture> load_texture(const string_t& path);
 		shared_ptr_t<texture> load_texture_from_memory(span_t<const cstd::uint8_t> encoded);
 
+		void flush_for_capture() noexcept;
+		void execute_backdrop_blur(position min, position max, float sigma, float rounding) noexcept;
+
 	protected:
+		virtual shared_ptr_t<texture> create_render_target(cstd::uint32_t width, cstd::uint32_t height) = 0;
+		virtual void capture_backbuffer_region(const shared_ptr_t<texture>& dst, cstd::uint32_t x, cstd::uint32_t y, cstd::uint32_t w, cstd::uint32_t h) = 0;
+		virtual void set_render_target(const shared_ptr_t<texture>& target) = 0;
+		virtual void reset_render_target() = 0;
 		virtual bool init_backend() noexcept = 0;
 		virtual void begin_frame_backend(vector_2d<float> display_size) noexcept = 0;
 		virtual void flush_pending_vertices() noexcept = 0;
@@ -245,5 +253,7 @@ namespace rv
 		// 2 / display_size, precomputed each frame so to_ndc multiplies instead of dividing per vertex.
 		float inv_display_x_ = 0.f;
 		float inv_display_y_ = 0.f;
+
+		bool rt_uv_flipped_ = false;
 	};
 }

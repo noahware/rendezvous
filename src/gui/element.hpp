@@ -608,6 +608,12 @@ namespace rv
 			return *this;
 		}
 
+		element& backdrop_blur(const float sigma) noexcept
+		{
+			style_.backdrop_blur = sigma;
+			return *this;
+		}
+
 		element& transition_speed(const float speed) noexcept
 		{
 			style_.transition_speed = speed;

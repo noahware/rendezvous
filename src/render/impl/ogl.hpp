@@ -61,6 +61,15 @@ typedef ptrdiff_t GLintptr;
 #ifndef GL_STREAM_DRAW
 	#define GL_STREAM_DRAW                    0x88E0
 #endif
+#ifndef GL_FRAMEBUFFER
+	#define GL_FRAMEBUFFER                    0x8D40
+#endif
+#ifndef GL_COLOR_ATTACHMENT0
+	#define GL_COLOR_ATTACHMENT0              0x8CE0
+#endif
+#ifndef GL_FRAMEBUFFER_COMPLETE
+	#define GL_FRAMEBUFFER_COMPLETE           0x8CD5
+#endif
 
 // GL function pointer types
 typedef GLuint (APIENTRY* PFN_glCreateShader)(GLenum type);
@@ -100,6 +109,12 @@ typedef void   (APIENTRY* PFN_glUniformBlockBinding)(GLuint program, GLuint unif
 typedef void   (APIENTRY* PFN_glGenVertexArrays)(GLsizei n, GLuint* arrays);
 typedef void   (APIENTRY* PFN_glBindVertexArray)(GLuint array);
 typedef void   (APIENTRY* PFN_glDeleteVertexArrays)(GLsizei n, const GLuint* arrays);
+// FBO (core in GL3, available as extension in GL2)
+typedef void   (APIENTRY* PFN_glGenFramebuffers)(GLsizei n, GLuint* framebuffers);
+typedef void   (APIENTRY* PFN_glDeleteFramebuffers)(GLsizei n, const GLuint* framebuffers);
+typedef void   (APIENTRY* PFN_glBindFramebuffer)(GLenum target, GLuint framebuffer);
+typedef void   (APIENTRY* PFN_glFramebufferTexture2D)(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
+typedef GLenum (APIENTRY* PFN_glCheckFramebufferStatus)(GLenum target);
 
 namespace rv
 {
@@ -143,6 +158,12 @@ namespace rv
 		extern PFN_glGenVertexArrays GenVertexArrays;
 		extern PFN_glBindVertexArray BindVertexArray;
 		extern PFN_glDeleteVertexArrays DeleteVertexArrays;
+		// FBO (optional, needed for backdrop blur)
+		extern PFN_glGenFramebuffers GenFramebuffers;
+		extern PFN_glDeleteFramebuffers DeleteFramebuffers;
+		extern PFN_glBindFramebuffer BindFramebuffer;
+		extern PFN_glFramebufferTexture2D FramebufferTexture2D;
+		extern PFN_glCheckFramebufferStatus CheckFramebufferStatus;
 	}
 
 	class ogl_texture : public texture
@@ -189,7 +210,7 @@ namespace rv
 		shared_ptr_t<texture> create_texture_from_srv(void* srv) override;
 
 	protected:
-		ogl_renderer() noexcept = default;
+		ogl_renderer() noexcept { rt_uv_flipped_ = true; }
 
 		bool load_gl_functions(bool require_ubo) noexcept;
 		GLuint compile_shader(GLenum type, const char* source) noexcept;
@@ -198,7 +219,12 @@ namespace rv
 		void begin_frame_backend(vector_2d<float> display_size) noexcept override;
 		void flush_pending_vertices() noexcept override;
 
-		static constexpr cstd::size_t shader_count_ = 5;
+		shared_ptr_t<texture> create_render_target(cstd::uint32_t width, cstd::uint32_t height) override;
+		void capture_backbuffer_region(const shared_ptr_t<texture>& dst, cstd::uint32_t x, cstd::uint32_t y, cstd::uint32_t w, cstd::uint32_t h) override;
+		void set_render_target(const shared_ptr_t<texture>& target) override;
+		void reset_render_target() override;
+
+		static constexpr cstd::size_t shader_count_ = 6;
 		GLuint programs_[shader_count_] = { };
 
 		struct program_uniforms
@@ -221,6 +247,9 @@ namespace rv
 		GLuint vao_ = 0;
 
 		vector_t<cstd::uint32_t> adjusted_indices_;
+
+		GLuint blur_fbo_ = 0;
+		GLint saved_viewport_[4] = {};
 	};
 
 	class ogl2_renderer : public ogl_renderer
