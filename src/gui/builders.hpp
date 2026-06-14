@@ -18,6 +18,7 @@
 #include "comp/progress_bar.hpp"
 #include "comp/radio_button.hpp"
 #include "comp/collapsing_header.hpp"
+#include "comp/multi_combo_box.hpp"
 #include "comp/plot_histogram.hpp"
 
 // Single convenience include that pulls in every widget and defines the add_* factory methods
@@ -54,6 +55,7 @@ namespace rv
 	[[nodiscard]] inline element_size default_radio_size() noexcept { return { styled_size::auto_v(), styled_size::auto_v() }; }
 	[[nodiscard]] inline element_size default_collapsing_header_size() noexcept { return { styled_size::fill(), styled_size::auto_v() }; }
 	[[nodiscard]] inline element_size default_histogram_size() noexcept { return { styled_size::fill(), styled_size::px(120.f) }; }
+	[[nodiscard]] inline element_size default_multi_combo_size() noexcept { return { styled_size::fill(), styled_size::px(32.f) }; }
 
 	[[nodiscard]] inline border_vector default_slider_padding() noexcept { return { 0.f, 10.f, 0.f, 10.f }; }
 	[[nodiscard]] inline float default_slider_rounding() noexcept { return 14.f; }
@@ -151,7 +153,10 @@ namespace rv
 			if (!label.empty()) w->label(label); return *w; }                                          \
 		inline plot_histogram& CLS::add_plot_histogram() {                                             \
 			auto g = GUI; auto w = g->make_child<plot_histogram>(PARENT, default_histogram_size(), g->font(), g->get_input()); \
-			w->autoscale(); return *w; }
+			w->autoscale(); return *w; }                                                              \
+		inline multi_combo_box& CLS::add_multi_combo_box(vector_t<string_t> options) {                \
+			auto g = GUI; auto w = g->make_child<multi_combo_box>(PARENT, default_multi_combo_size(), g->font(), g->get_input()); \
+			w->text_size(default_text_size(*g)); if (!options.empty()) w->options(cstd::move(options)); return *w; }
 
 	// element: lock the weak gui back-ref (kept alive for the call); gui: just itself.
 	RV_WIDGET_FACTORY_DEFS(element, gui_.lock(), shared_from_this())

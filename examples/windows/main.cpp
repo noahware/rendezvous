@@ -32,6 +32,7 @@ static float demo_range_lo = 0.2f;
 static float demo_range_hi = 0.8f;
 static cstd::int32_t demo_shape = 0;
 static cstd::int32_t demo_easing = 0;
+static vector_t<cstd::int32_t> demo_multi_sel;
 static bool demo_show_shadows = true;
 static bool demo_show_grid = false;
 static rv::color demo_fill_color = { 0.2f, 0.6f, 1.f, 1.f };
@@ -621,6 +622,11 @@ cstd::int32_t main(int argc, char* argv[])
 		controls.add_combo_box({ "Linear", "Ease Out Cubic", "Ease Out Back", "Ease Out Elastic", "Ease Out Bounce", "Ease In Out Sine", "Ease In Out Quad" })
 			.bind(&demo_easing)
 			.on_change([](const cstd::int32_t i) { LOG_INFO("easing: {}", i); });
+
+		controls.add_label("Tags:");
+		controls.add_multi_combo_box({ "Alpha", "Beta", "Gamma", "Delta", "Epsilon" })
+			.bind(&demo_multi_sel)
+			.on_change([](const vector_t<cstd::int32_t>& sel) { LOG_INFO("multi: {} selected", sel.size()); });
 	}
 
 	{
@@ -839,7 +845,8 @@ cstd::int32_t main(int argc, char* argv[])
 
 	auto fps_plot_elem = gui->make_child<rv::plot_lines>(viz_row,
 		rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() }, gui_font, input);
-	fps_plot_elem->unbounded().view_window(300).overlay("frame ms").line_color({ 0.4f, 0.9f, 0.6f, 1.f });
+	fps_plot_elem->unbounded().view_window(300).overlay("frame ms").line_color({ 0.4f, 0.9f, 0.6f, 1.f })
+		.show_axis(true);
 
 	{
 		vector_t<float> sine_samples(96);
@@ -848,7 +855,8 @@ cstd::int32_t main(int argc, char* argv[])
 
 		auto sine_plot = gui->make_child<rv::plot_lines>(viz_row,
 			rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() }, gui_font, input);
-		sine_plot->data(sine_samples).range(-1.f, 1.f).overlay("sine").line_color({ 0.6f, 0.5f, 1.f, 1.f });
+		sine_plot->data(sine_samples).range(-1.f, 1.f).overlay("sine").line_color({ 0.6f, 0.5f, 1.f, 1.f })
+			.show_axis(true).show_grid(true);
 
 		vector_t<float> hist_samples(24);
 		for (cstd::size_t i = 0; i < hist_samples.size(); ++i)
@@ -856,7 +864,8 @@ cstd::int32_t main(int argc, char* argv[])
 
 		auto hist_plot = gui->make_child<rv::plot_histogram>(viz_row,
 			rv::element_size{ rv::styled_size::fill(), rv::styled_size::fill() }, gui_font, input);
-		hist_plot->data(hist_samples).range(0.f, 1.f).overlay("histogram").bar_color({ 0.9f, 0.5f, 0.3f, 0.85f }).bar_rounding(2.f);
+		hist_plot->data(hist_samples).range(0.f, 1.f).overlay("histogram").bar_color({ 0.9f, 0.5f, 0.3f, 0.85f }).bar_rounding(2.f)
+			.show_axis(true).show_grid(true);
 	}
 
 	auto inspector = gui->make_child<rv::value_inspector>(viz_row,

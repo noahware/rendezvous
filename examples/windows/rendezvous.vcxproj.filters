@@ -45,6 +45,9 @@
     <ClCompile Include="..\..\src\gui\comp\plot_histogram.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\gui\comp\multi_combo_box.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="vcpkg.json" />
@@ -138,6 +141,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\gui\comp\plot_histogram.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\gui\comp\multi_combo_box.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

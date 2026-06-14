@@ -32,6 +32,7 @@ namespace rv
 	class radio_button;
 	class collapsing_header;
 	class plot_histogram;
+	class multi_combo_box;
 	template <class T> class slider;
 	template <class T> class range_slider;
 
@@ -60,7 +61,8 @@ namespace rv
 		progress_bar& add_progress_bar(float value = 0.f);                                        \
 		radio_button& add_radio_button(string_view_t label = {}, cstd::int32_t value = 0);        \
 		collapsing_header& add_collapsing_header(string_view_t label = {});                       \
-		plot_histogram& add_plot_histogram();
+		plot_histogram& add_plot_histogram();                                             \
+	multi_combo_box& add_multi_combo_box(vector_t<string_t> options = {});
 
 	template <class T, class ...Args>
 	[[nodiscard]] shared_ptr_t<T> make_element(Args&&... args)
