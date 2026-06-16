@@ -101,6 +101,64 @@ namespace rv
 		rtl
 	};
 
+	enum class gradient_direction : cstd::uint8_t
+	{
+		to_right,
+		to_left,
+		to_bottom,
+		to_top,
+		to_bottom_right,
+		to_bottom_left,
+		to_top_right,
+		to_top_left
+	};
+
+	struct gradient
+	{
+		color start;
+		color end;
+		gradient_direction direction = gradient_direction::to_bottom;
+	};
+
+	inline void gradient_to_corners(const gradient& g, color& tl, color& tr, color& br, color& bl) noexcept
+	{
+		const color mid =
+		{
+			(g.start.r + g.end.r) * 0.5f,
+			(g.start.g + g.end.g) * 0.5f,
+			(g.start.b + g.end.b) * 0.5f,
+			(g.start.a + g.end.a) * 0.5f
+		};
+
+		switch (g.direction)
+		{
+		case gradient_direction::to_right:
+			tl = g.start; tr = g.end; br = g.end; bl = g.start;
+			break;
+		case gradient_direction::to_left:
+			tl = g.end; tr = g.start; br = g.start; bl = g.end;
+			break;
+		case gradient_direction::to_bottom:
+			tl = g.start; tr = g.start; br = g.end; bl = g.end;
+			break;
+		case gradient_direction::to_top:
+			tl = g.end; tr = g.end; br = g.start; bl = g.start;
+			break;
+		case gradient_direction::to_bottom_right:
+			tl = g.start; tr = mid; br = g.end; bl = mid;
+			break;
+		case gradient_direction::to_bottom_left:
+			tl = mid; tr = g.start; br = mid; bl = g.end;
+			break;
+		case gradient_direction::to_top_right:
+			tl = mid; tr = g.end; br = mid; bl = g.start;
+			break;
+		case gradient_direction::to_top_left:
+			tl = g.end; tr = mid; br = g.start; bl = mid;
+			break;
+		}
+	}
+
 	// interaction state used to select per-state style overrides. `normal` is the base style.
 	enum class element_state : cstd::uint8_t
 	{
@@ -235,6 +293,7 @@ namespace rv
 		optional_t<text_decoration> decoration;
 		optional_t<bool> text_ellipsis;    // truncate overflowing single-line text with an ellipsis
 		optional_t<float> backdrop_blur;
+		optional_t<gradient> background_gradient;
 	};
 
 	// helper to resolve gap for the correct axis

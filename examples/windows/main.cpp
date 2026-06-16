@@ -1004,6 +1004,40 @@ cstd::int32_t main(int argc, char* argv[])
 		manual_panel.portrait_focus(manual_focused);
 	});
 
+	// gradient demo
+	auto& gradient_panel = gui->add_panel();
+	gradient_panel.set_declared_size({ rv::styled_size::px(300.f), rv::styled_size::px(200.f) });
+	gradient_panel.draggable(true);
+	gradient_panel.padding(16.f).gap(10.f)
+		.direction(rv::layout_direction::vertical);
+	gradient_panel.rounding(12.f);
+	gradient_panel.background_gradient({ 0.15f, 0.05f, 0.30f, 0.98f }, { 0.05f, 0.20f, 0.35f, 0.98f },
+	                                   rv::gradient_direction::to_bottom_right);
+	gradient_panel.inset_left(rv::styled_size::px(640.f));
+	gradient_panel.inset_top(rv::styled_size::px(400.f));
+
+	gradient_panel.add_label("Gradient Background").text_size(18.f).text_color({ 0.9f, 0.9f, 0.95f, 1.f });
+	gradient_panel.add_label("Diagonal gradient fill.").text_size(13.f)
+		.text_color({ 0.7f, 0.7f, 0.75f, 0.9f });
+
+	auto& gradient_row = gradient_panel.add_row();
+	gradient_row.gap(8.f);
+
+	auto& grad_swatch_1 = gradient_row.add_container();
+	grad_swatch_1.set_declared_size({ rv::styled_size::px(60.f), rv::styled_size::px(40.f) });
+	grad_swatch_1.rounding(6.f).background_gradient({ 1.f, 0.3f, 0.3f, 1.f }, { 0.3f, 0.3f, 1.f, 1.f },
+	                                                 rv::gradient_direction::to_right);
+
+	auto& grad_swatch_2 = gradient_row.add_container();
+	grad_swatch_2.set_declared_size({ rv::styled_size::px(60.f), rv::styled_size::px(40.f) });
+	grad_swatch_2.rounding(6.f).background_gradient({ 0.2f, 0.8f, 0.4f, 1.f }, { 0.8f, 0.8f, 0.1f, 1.f },
+	                                                 rv::gradient_direction::to_bottom);
+
+	auto& grad_swatch_3 = gradient_row.add_container();
+	grad_swatch_3.set_declared_size({ rv::styled_size::px(60.f), rv::styled_size::px(40.f) });
+	grad_swatch_3.rounding(6.f).background_gradient({ 0.9f, 0.5f, 0.1f, 1.f }, { 0.9f, 0.1f, 0.5f, 1.f },
+	                                                 rv::gradient_direction::to_top_right);
+
 	rv::vector_2d<float> last_screen_size = screen_size;
 	MSG msg = { };
 

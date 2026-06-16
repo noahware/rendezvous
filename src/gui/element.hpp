@@ -548,6 +548,28 @@ namespace rv
 			return *this;
 		}
 
+		element& background_gradient(const color start, const color end,
+		                             const gradient_direction dir = gradient_direction::to_bottom) noexcept
+		{
+			style_.background_gradient = gradient{ start, end, dir };
+
+			return *this;
+		}
+
+		element& background_gradient(const gradient& g) noexcept
+		{
+			style_.background_gradient = g;
+
+			return *this;
+		}
+
+		element& clear_background_gradient() noexcept
+		{
+			style_.background_gradient = {};
+
+			return *this;
+		}
+
 		// CSS-like background image, painted over background_color and behind this element's content.
 		// Defaults to object-fit: cover. The texture is shared-owned, so it outlives the element.
 		element& background_image(shared_ptr_t<gui_texture> tex, const image_fit fit = image_fit::cover,

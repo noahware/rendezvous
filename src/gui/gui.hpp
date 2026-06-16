@@ -109,6 +109,7 @@ namespace rv
 		virtual void draw_rect_filled_multi_color(position min, position max, color col_tl, color col_tr, color col_br, color col_bl, float rounding = 0.f, rounding_flags flags = rounding_flags_all) noexcept = 0;
 		virtual void draw_rect(position min, position max, color col, float thickness, corner_radii radii) noexcept = 0;
 		virtual void draw_rect_filled(position min, position max, color col, corner_radii radii) noexcept = 0;
+		virtual void draw_rect_filled_multi_color(position min, position max, color col_tl, color col_tr, color col_br, color col_bl, corner_radii radii) noexcept = 0;
 		virtual void draw_circle(position pos, float radius, color col, float thickness = 1.f, cstd::size_t segment_count = 32) noexcept = 0;
 		virtual void draw_circle_filled(position pos, float radius, color col) noexcept = 0;
 		virtual void draw_shadow_rect(position min, position max, color col, float rounding = 0.f,
@@ -173,6 +174,12 @@ namespace rv
 		void draw_rect_filled(const position min, const position max, const color col, const corner_radii radii) noexcept override
 		{
 			return renderer_->draw_rect_filled(min, max, col, radii);
+		}
+
+		void draw_rect_filled_multi_color(const position min, const position max, const color col_tl, const color col_tr,
+		                                  const color col_br, const color col_bl, const corner_radii radii) noexcept override
+		{
+			return renderer_->draw_rect_filled_multi_color(min, max, col_tl, col_tr, col_br, col_bl, radii);
 		}
 
 		[[nodiscard]] cstd::size_t vertex_count() const noexcept override

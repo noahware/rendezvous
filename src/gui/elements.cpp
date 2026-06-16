@@ -67,7 +67,8 @@ namespace rv
 			renderer.execute_backdrop_blur(min, max, blur_sigma, effective_radii.max());
 		}
 
-		if (effective_bg.a > 0.001f)
+		const bool has_gradient = style_.background_gradient.has_value();
+		if (effective_bg.a > 0.001f || has_gradient)
 		{
 			const color shadow_col = style_.shadow_color.value_or(color{0.f, 0.f, 0.f, 0.f});
 			if (shadow_col.a > 0.001f)
@@ -77,7 +78,16 @@ namespace rv
 				renderer.draw_shadow_rect(min, max, shadow_col, effective_radii.max(), shadow_blur, shadow_spread);
 			}
 
-			renderer.draw_rect_filled(min, max, effective_bg, effective_radii);
+			if (has_gradient)
+			{
+				color tl, tr, br, bl;
+				gradient_to_corners(*style_.background_gradient, tl, tr, br, bl);
+				renderer.draw_rect_filled_multi_color(min, max, tl, tr, br, bl, effective_radii);
+			}
+			else
+			{
+				renderer.draw_rect_filled(min, max, effective_bg, effective_radii);
+			}
 		}
 
 		// background image sits over the fill and under the element's own content (render_self),
