@@ -312,6 +312,19 @@ namespace rv
 		float total_ms = 0.f;
 	};
 
+	class portrait_background_element final : public element
+	{
+	public:
+		portrait_background_element() noexcept
+			: element(element_size{ styled_size::fill(), styled_size::fill() })
+		{
+			z_index(z_index_popup - 1);
+			style_.position = position_type::absolute;
+		}
+
+		bool on_mouse_click() override;
+	};
+
 	class gui
 	{
 	public:
@@ -336,6 +349,43 @@ namespace rv
 			}
 
 			return next_panel_z_;
+		}
+
+		void show_portrait_focus(const shared_ptr_t<element>& target, const float blur_sigma = 8.f,
+		                        const color dim = { 0, 0, 0, 0.3f })
+		{
+			if (!portrait_background_)
+			{
+				portrait_background_ = tree_.make_child<portrait_background_element>(tree_.root());
+			}
+
+			portrait_background_->backdrop_blur(blur_sigma);
+			portrait_background_->background_color(dim);
+			portrait_background_->set_visible(true);
+			portrait_target_ = target;
+			target->z_index(z_index_popup);
+			layout_dirty_ = true;
+		}
+
+		void hide_portrait_focus()
+		{
+			if (portrait_background_)
+			{
+				portrait_background_->set_visible(false);
+			}
+
+			if (portrait_target_)
+			{
+				portrait_target_->z_index(z_index_panel);
+				portrait_target_ = {};
+			}
+
+			layout_dirty_ = true;
+		}
+
+		[[nodiscard]] bool has_portrait_focus() const noexcept
+		{
+			return portrait_target_ != nullptr;
 		}
 
 		RV_WIDGET_FACTORY_DECLS
@@ -811,10 +861,23 @@ namespace rv
 		cursor_type frame_cursor_ = cursor_type::arrow;
 		cstd::int32_t next_panel_z_ = z_index_panel;
 
+		shared_ptr_t<portrait_background_element> portrait_background_;
+		shared_ptr_t<element> portrait_target_;
+
 		bool layout_dirty_ = true;
 		vector_2d<float> last_display_size_ = { };
 		gui_profile profile_ = { };
 	};
+
+	inline bool portrait_background_element::on_mouse_click()
+	{
+		if (const auto g = gui_.lock())
+		{
+			g->hide_portrait_focus();
+		}
+
+		return false;
+	}
 
 	// the gui directly, so the add_* factories can reach the gui through their weak back-pointer.
 	[[nodiscard]] inline shared_ptr_t<gui> make_gui(unique_ptr_t<gui_renderer> renderer, shared_ptr_t<input> input)

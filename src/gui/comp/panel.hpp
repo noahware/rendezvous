@@ -118,6 +118,44 @@ namespace rv
 			return *this;
 		}
 
+		panel& portrait_focus(const bool show)
+		{
+			if (const auto g = gui_.lock())
+			{
+				if (show)
+				{
+					g->show_portrait_focus(shared_from_this(), portrait_focus_blur_, portrait_focus_color_);
+				}
+				else
+				{
+					g->hide_portrait_focus();
+				}
+			}
+
+			return *this;
+		}
+
+		panel& portrait_focus_blur(const float sigma) noexcept
+		{
+			portrait_focus_blur_ = sigma;
+
+			return *this;
+		}
+
+		panel& portrait_focus_color(const color c) noexcept
+		{
+			portrait_focus_color_ = c;
+
+			return *this;
+		}
+
+		panel& auto_portrait_focus(const bool v) noexcept
+		{
+			auto_portrait_focus_ = v;
+
+			return *this;
+		}
+
 		bool on_mouse_click() override;
 
 		void update(const float dt) override;
@@ -159,5 +197,9 @@ namespace rv
 		bool lock_height_ = false;
 
 		bool scrollable_ = false;
+
+		float portrait_focus_blur_ = 8.f;
+		color portrait_focus_color_ = { 0, 0, 0, 0.3f };
+		bool auto_portrait_focus_ = false;
 	};
 }

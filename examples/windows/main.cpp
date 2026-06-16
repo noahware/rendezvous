@@ -966,6 +966,44 @@ cstd::int32_t main(int argc, char* argv[])
 		.background_color({ 0.3f, 0.5f, 0.9f, 0.6f })
 		.rounding(8.f);
 
+	auto& focus_panel = gui->add_panel();
+	focus_panel.set_declared_size({ rv::styled_size::px(300.f), rv::styled_size::px(200.f) });
+	focus_panel.draggable(true);
+	focus_panel.padding(16.f).gap(10.f)
+		.inset_top(rv::styled_size::px(340.f)).inset_left(rv::styled_size::px(700.f));
+	focus_panel.rounding(12.f).background_color({ 0.12f, 0.12f, 0.15f, 0.98f });
+	focus_panel.auto_portrait_focus(true)
+		.portrait_focus_blur(12.f)
+		.portrait_focus_color({ 0, 0, 0, 0.4f });
+
+	focus_panel.add_label("Auto Portrait Focus").text_size(18.f).text_color({ 0.9f, 0.9f, 0.95f, 1.f });
+	focus_panel.add_label("Click this panel to focus it.").text_size(13.f)
+		.text_color({ 0.7f, 0.7f, 0.75f, 0.9f });
+	focus_panel.add_label("Click outside to dismiss.").text_size(13.f)
+		.text_color({ 0.7f, 0.7f, 0.75f, 0.9f });
+
+	auto& manual_panel = gui->add_panel();
+	manual_panel.set_declared_size({ rv::styled_size::px(300.f), rv::styled_size::px(200.f) });
+	manual_panel.draggable(true);
+	manual_panel.padding(16.f).gap(10.f)
+		.inset_top(rv::styled_size::px(560.f)).inset_left(rv::styled_size::px(700.f));
+	manual_panel.rounding(12.f).background_color({ 0.12f, 0.12f, 0.15f, 0.98f });
+	manual_panel.portrait_focus_blur(10.f).portrait_focus_color({ 0, 0, 0, 0.35f });
+
+	manual_panel.add_label("Manual Portrait Focus").text_size(18.f).text_color({ 0.9f, 0.9f, 0.95f, 1.f });
+	manual_panel.add_label("Toggle with button below.").text_size(13.f)
+		.text_color({ 0.7f, 0.7f, 0.75f, 0.9f });
+
+	bool manual_focused = false;
+
+	auto& manual_toggle = manual_panel.add_button("Toggle Focus");
+	manual_toggle.background_color({ 0.3f, 0.5f, 0.9f, 1.f }).rounding(8.f);
+	manual_toggle.on_click([&manual_panel, &manual_focused]
+	{
+		manual_focused = !manual_focused;
+		manual_panel.portrait_focus(manual_focused);
+	});
+
 	rv::vector_2d<float> last_screen_size = screen_size;
 	MSG msg = { };
 

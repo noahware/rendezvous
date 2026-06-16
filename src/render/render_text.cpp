@@ -38,6 +38,7 @@ void rv::renderer::draw_text(const font &font, const position pos, const string_
 
     // Reserve worst case (every byte a visible glyph) and write glyph quads straight into the
     // pending buffers; trim the unused tail afterwards. No per-call heap allocation or copy.
+    const cstd::uint32_t packed = pack_color(col);
     const vertex_writer w = reserve_indexed(text.size() * 4, text.size() * 6, shader_type::default_shader);
 
     cstd::uint32_t prev_codepoint = 0;
@@ -48,7 +49,6 @@ void rv::renderer::draw_text(const font &font, const position pos, const string_
     {
         const cstd::uint32_t codepoint = decode_utf8(s, end);
 
-        // handle newlines
         if (codepoint == '\n')
         {
             pen = pos.x;
@@ -82,10 +82,10 @@ void rv::renderer::draw_text(const font &font, const position pos, const string_
 
             const cstd::uint32_t base = w.base_index + static_cast<cstd::uint32_t>(vcount);
 
-            w.vertices[vcount + 0] = vertex{.pos = {a.x, a.y}, .col = pack_color(col), .uv = {g.uv0.x, g.uv0.y}};
-            w.vertices[vcount + 1] = vertex{.pos = {b.x, a.y}, .col = pack_color(col), .uv = {g.uv1.x, g.uv0.y}};
-            w.vertices[vcount + 2] = vertex{.pos = {b.x, b.y}, .col = pack_color(col), .uv = {g.uv1.x, g.uv1.y}};
-            w.vertices[vcount + 3] = vertex{.pos = {a.x, b.y}, .col = pack_color(col), .uv = {g.uv0.x, g.uv1.y}};
+            w.vertices[vcount + 0] = vertex{.pos = {a.x, a.y}, .col = packed, .uv = {g.uv0.x, g.uv0.y}};
+            w.vertices[vcount + 1] = vertex{.pos = {b.x, a.y}, .col = packed, .uv = {g.uv1.x, g.uv0.y}};
+            w.vertices[vcount + 2] = vertex{.pos = {b.x, b.y}, .col = packed, .uv = {g.uv1.x, g.uv1.y}};
+            w.vertices[vcount + 3] = vertex{.pos = {a.x, b.y}, .col = packed, .uv = {g.uv0.x, g.uv1.y}};
 
             w.indices[icount + 0] = base;
             w.indices[icount + 1] = base + 1;
@@ -130,6 +130,8 @@ void rv::renderer::add_text_shadow(const font &font, const position pos, const s
 
     // Reserve worst case and write glyph-shadow quads directly into the pending buffers;
     // trim the unused tail afterwards. No per-call heap allocation or copy.
+    const cstd::uint32_t packed = pack_color(col);
+    const float cut_bg = cut_background ? 1.f : 0.f;
     const vertex_writer w = reserve_indexed(text.size() * 4, text.size() * 6, shader_type::text_shadow_shader);
 
     cstd::uint32_t prev_codepoint = 0;
@@ -180,16 +182,16 @@ void rv::renderer::add_text_shadow(const font &font, const position pos, const s
             const float v1 = g.uv1.y + shadow_blur * dv_per_pixel;
 
             const array_t<float, 8> data = {
-                shadow_blur, du_per_pixel, dv_per_pixel, cut_background ? 1.f : 0.f,
+                shadow_blur, du_per_pixel, dv_per_pixel, cut_bg,
                 g.uv0.x, g.uv0.y, g.uv1.x, g.uv1.y
             };
 
             const cstd::uint32_t base = w.base_index + static_cast<cstd::uint32_t>(vcount);
 
-            w.vertices[vcount + 0] = vertex{.pos = {a.x, a.y}, .col = pack_color(col), .uv = {u0, v0}, .custom_data = data};
-            w.vertices[vcount + 1] = vertex{.pos = {b.x, a.y}, .col = pack_color(col), .uv = {u1, v0}, .custom_data = data};
-            w.vertices[vcount + 2] = vertex{.pos = {b.x, b.y}, .col = pack_color(col), .uv = {u1, v1}, .custom_data = data};
-            w.vertices[vcount + 3] = vertex{.pos = {a.x, b.y}, .col = pack_color(col), .uv = {u0, v1}, .custom_data = data};
+            w.vertices[vcount + 0] = vertex{.pos = {a.x, a.y}, .col = packed, .uv = {u0, v0}, .custom_data = data};
+            w.vertices[vcount + 1] = vertex{.pos = {b.x, a.y}, .col = packed, .uv = {u1, v0}, .custom_data = data};
+            w.vertices[vcount + 2] = vertex{.pos = {b.x, b.y}, .col = packed, .uv = {u1, v1}, .custom_data = data};
+            w.vertices[vcount + 3] = vertex{.pos = {a.x, b.y}, .col = packed, .uv = {u0, v1}, .custom_data = data};
 
             w.indices[icount + 0] = base;
             w.indices[icount + 1] = base + 1;

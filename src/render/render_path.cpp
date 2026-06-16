@@ -21,6 +21,8 @@ void rv::renderer::draw_lined_path(const color col, const float thickness, const
 
     const float half = thickness * 0.5f;
     const color transparent{col.r, col.g, col.b, 0.f};
+    const cstd::uint32_t packed_col = pack_color(col);
+    const cstd::uint32_t packed_transparent = pack_color(transparent);
 
     const auto make_join = [join](const position previous, const position current, const position next) -> position
     {
@@ -82,10 +84,10 @@ void rv::renderer::draw_lined_path(const color col, const float thickness, const
         const auto core = current_join * half;
         const auto outer = current_join * (half + fringe_width);
 
-        push_vertex(vertex{.pos = to_ndc({current_pos.x + outer.x, current_pos.y + outer.y}), .col = pack_color(transparent)});
-        push_vertex(vertex{.pos = to_ndc({current_pos.x + core.x, current_pos.y + core.y}), .col = pack_color(col)});
-        push_vertex(vertex{.pos = to_ndc({current_pos.x - core.x, current_pos.y - core.y}), .col = pack_color(col)});
-        push_vertex(vertex{.pos = to_ndc({current_pos.x - outer.x, current_pos.y - outer.y}), .col = pack_color(transparent)});
+        push_vertex(vertex{.pos = to_ndc({current_pos.x + outer.x, current_pos.y + outer.y}), .col = packed_transparent});
+        push_vertex(vertex{.pos = to_ndc({current_pos.x + core.x, current_pos.y + core.y}), .col = packed_col});
+        push_vertex(vertex{.pos = to_ndc({current_pos.x - core.x, current_pos.y - core.y}), .col = packed_col});
+        push_vertex(vertex{.pos = to_ndc({current_pos.x - outer.x, current_pos.y - outer.y}), .col = packed_transparent});
     }
 
     for (cstd::size_t i = 0; i < segments; i++)
@@ -129,7 +131,7 @@ void rv::renderer::draw_lined_path(const color col, const float thickness, const
                 const float theta_start = phi + cstd::numbers::pi_f / 2.f;
 
                 const cstd::uint32_t center_idx = static_cast<cstd::uint32_t>(vcount);
-                push_vertex(vertex{.pos = to_ndc(p), .col = pack_color(col)});
+                push_vertex(vertex{.pos = to_ndc(p), .col = packed_col});
 
                 cstd::uint32_t prev_outer_idx = v_outer_start;
                 cstd::uint32_t prev_core_idx = v_core_start;
@@ -153,10 +155,10 @@ void rv::renderer::draw_lined_path(const color col, const float thickness, const
                         cur_outer_idx = static_cast<cstd::uint32_t>(vcount);
                         push_vertex(
                             vertex{.pos = to_ndc({p.x + cx * (half + fringe_width), p.y + cy * (half + fringe_width)}),
-                                   .col = pack_color(transparent)});
+                                   .col = packed_transparent});
 
                         cur_core_idx = static_cast<cstd::uint32_t>(vcount);
-                        push_vertex(vertex{.pos = to_ndc({p.x + cx * half, p.y + cy * half}), .col = pack_color(col)});
+                        push_vertex(vertex{.pos = to_ndc({p.x + cx * half, p.y + cy * half}), .col = packed_col});
                     }
 
                     push_index(prev_core_idx);
@@ -211,10 +213,10 @@ void rv::renderer::draw_lined_path(const color col, const float thickness, const
             const position cap_p0 = {p0.x - dir_start.x * fringe_width, p0.y - dir_start.y * fringe_width};
 
             const cstd::uint32_t v_start = static_cast<cstd::uint32_t>(vcount);
-            push_vertex(vertex{.pos = to_ndc({cap_p0.x + outer_s.x, cap_p0.y + outer_s.y}), .col = pack_color(transparent)});
-            push_vertex(vertex{.pos = to_ndc({cap_p0.x + core_s.x, cap_p0.y + core_s.y}), .col = pack_color(transparent)});
-            push_vertex(vertex{.pos = to_ndc({cap_p0.x - core_s.x, cap_p0.y - core_s.y}), .col = pack_color(transparent)});
-            push_vertex(vertex{.pos = to_ndc({cap_p0.x - outer_s.x, cap_p0.y - outer_s.y}), .col = pack_color(transparent)});
+            push_vertex(vertex{.pos = to_ndc({cap_p0.x + outer_s.x, cap_p0.y + outer_s.y}), .col = packed_transparent});
+            push_vertex(vertex{.pos = to_ndc({cap_p0.x + core_s.x, cap_p0.y + core_s.y}), .col = packed_transparent});
+            push_vertex(vertex{.pos = to_ndc({cap_p0.x - core_s.x, cap_p0.y - core_s.y}), .col = packed_transparent});
+            push_vertex(vertex{.pos = to_ndc({cap_p0.x - outer_s.x, cap_p0.y - outer_s.y}), .col = packed_transparent});
 
             const cstd::uint32_t idx = v_start;
             const cstd::uint32_t nxt = 0;
@@ -271,10 +273,10 @@ void rv::renderer::draw_lined_path(const color col, const float thickness, const
             const position cap_pe = {pe.x + dir_end.x * fringe_width, pe.y + dir_end.y * fringe_width};
 
             const cstd::uint32_t v_end = static_cast<cstd::uint32_t>(vcount);
-            push_vertex(vertex{.pos = to_ndc({cap_pe.x + outer_e.x, cap_pe.y + outer_e.y}), .col = pack_color(transparent)});
-            push_vertex(vertex{.pos = to_ndc({cap_pe.x + core_e.x, cap_pe.y + core_e.y}), .col = pack_color(transparent)});
-            push_vertex(vertex{.pos = to_ndc({cap_pe.x - core_e.x, cap_pe.y - core_e.y}), .col = pack_color(transparent)});
-            push_vertex(vertex{.pos = to_ndc({cap_pe.x - outer_e.x, cap_pe.y - outer_e.y}), .col = pack_color(transparent)});
+            push_vertex(vertex{.pos = to_ndc({cap_pe.x + outer_e.x, cap_pe.y + outer_e.y}), .col = packed_transparent});
+            push_vertex(vertex{.pos = to_ndc({cap_pe.x + core_e.x, cap_pe.y + core_e.y}), .col = packed_transparent});
+            push_vertex(vertex{.pos = to_ndc({cap_pe.x - core_e.x, cap_pe.y - core_e.y}), .col = packed_transparent});
+            push_vertex(vertex{.pos = to_ndc({cap_pe.x - outer_e.x, cap_pe.y - outer_e.y}), .col = packed_transparent});
 
             const cstd::uint32_t idx_end = static_cast<cstd::uint32_t>((n - 1) * 4);
             const cstd::uint32_t nxt_end = v_end;
@@ -334,6 +336,7 @@ void rv::renderer::draw_filled_path(const color col, const float fringe_width)
         return;
     }
 
+    const cstd::uint32_t packed_col = pack_color(col);
     const vector_t<cstd::uint32_t> indices = triangulate::execute(path_points_);
 
     if (!indices.empty())
@@ -343,7 +346,7 @@ void rv::renderer::draw_filled_path(const color col, const float fringe_width)
         cstd::size_t v = 0;
         for (const position &p : path_points_)
         {
-            w.vertices[v++] = vertex{.pos = to_ndc(p), .col = pack_color(col)};
+            w.vertices[v++] = vertex{.pos = to_ndc(p), .col = packed_col};
         }
 
         for (cstd::size_t k = 0; k < indices.size(); ++k)
@@ -368,13 +371,14 @@ void rv::renderer::draw_filled_path_monotone(const color col, const float baseli
         return;
     }
 
+    const cstd::uint32_t packed_col = pack_color(col);
     const vertex_writer w = reserve_indexed(n * 2, (n - 1) * 6, shader_type::default_shader);
 
     cstd::size_t v = 0;
     for (const position &p : path_points_)
     {
-        w.vertices[v++] = vertex{.pos = to_ndc(p), .col = pack_color(col)};
-        w.vertices[v++] = vertex{.pos = to_ndc(position{p.x, baseline_y}), .col = pack_color(col)};
+        w.vertices[v++] = vertex{.pos = to_ndc(p), .col = packed_col};
+        w.vertices[v++] = vertex{.pos = to_ndc(position{p.x, baseline_y}), .col = packed_col};
     }
 
     cstd::size_t k = 0;
@@ -411,6 +415,7 @@ void rv::renderer::draw_shadow_filled_path(const color col, const float shadow_b
         return;
     }
 
+    const cstd::uint32_t packed_col = pack_color(col);
     const vector_t<cstd::uint32_t> core_indices = triangulate::execute(path_points_);
     if (!core_indices.empty())
     {
@@ -419,7 +424,7 @@ void rv::renderer::draw_shadow_filled_path(const color col, const float shadow_b
         cstd::size_t v = 0;
         for (const position &p : path_points_)
         {
-            cw.vertices[v++] = vertex{.pos = to_ndc(p), .col = pack_color(col)};
+            cw.vertices[v++] = vertex{.pos = to_ndc(p), .col = packed_col};
         }
 
         for (cstd::size_t k = 0; k < core_indices.size(); ++k)
@@ -440,6 +445,7 @@ void rv::renderer::draw_shadow_filled_path(const color col, const float shadow_b
         const bool is_cw = area < 0.f;
 
         const color transparent{col.r, col.g, col.b, 0.f};
+        const cstd::uint32_t packed_transparent = pack_color(transparent);
 
         const vertex_writer w = reserve_indexed(n * 11, n * 21, shader_type::default_shader);
 
@@ -463,12 +469,12 @@ void rv::renderer::draw_shadow_filled_path(const color col, const float shadow_b
             }
 
             const cstd::uint32_t base = static_cast<cstd::uint32_t>(vcount);
-            push_vertex(vertex{.pos = to_ndc(p0), .col = pack_color(col)});
+            push_vertex(vertex{.pos = to_ndc(p0), .col = packed_col});
             push_vertex(
-                vertex{.pos = to_ndc({p0.x + norm.x * shadow_blur, p0.y + norm.y * shadow_blur}), .col = pack_color(transparent)});
-            push_vertex(vertex{.pos = to_ndc(p1), .col = pack_color(col)});
+                vertex{.pos = to_ndc({p0.x + norm.x * shadow_blur, p0.y + norm.y * shadow_blur}), .col = packed_transparent});
+            push_vertex(vertex{.pos = to_ndc(p1), .col = packed_col});
             push_vertex(
-                vertex{.pos = to_ndc({p1.x + norm.x * shadow_blur, p1.y + norm.y * shadow_blur}), .col = pack_color(transparent)});
+                vertex{.pos = to_ndc({p1.x + norm.x * shadow_blur, p1.y + norm.y * shadow_blur}), .col = packed_transparent});
 
             if (is_cw)
             {
@@ -513,11 +519,11 @@ void rv::renderer::draw_shadow_filled_path(const color col, const float shadow_b
 
                 const cstd::uint32_t cap_segments = 5;
                 const cstd::uint32_t center_idx = static_cast<cstd::uint32_t>(vcount);
-                push_vertex(vertex{.pos = to_ndc(p0), .col = pack_color(col)});
+                push_vertex(vertex{.pos = to_ndc(p0), .col = packed_col});
 
                 cstd::uint32_t prev_arc_idx = static_cast<cstd::uint32_t>(vcount);
                 push_vertex(vertex{.pos = to_ndc({p0.x + norm_prev.x * shadow_blur, p0.y + norm_prev.y * shadow_blur}),
-                                   .col = pack_color(transparent)});
+                                   .col = packed_transparent});
 
                 for (cstd::uint32_t j = 1; j <= cap_segments; j++)
                 {
@@ -527,7 +533,7 @@ void rv::renderer::draw_shadow_filled_path(const color col, const float shadow_b
 
                     const cstd::uint32_t cur_arc_idx = static_cast<cstd::uint32_t>(vcount);
                     push_vertex(
-                        vertex{.pos = to_ndc({p0.x + cx * shadow_blur, p0.y + cy * shadow_blur}), .col = pack_color(transparent)});
+                        vertex{.pos = to_ndc({p0.x + cx * shadow_blur, p0.y + cy * shadow_blur}), .col = packed_transparent});
 
                     if (is_cw)
                     {

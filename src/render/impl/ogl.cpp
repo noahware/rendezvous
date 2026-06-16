@@ -308,6 +308,34 @@ bool rv::ogl3_renderer::init_backend() noexcept
 	if (gl::GenVertexArrays && gl::BindVertexArray && gl::DeleteVertexArrays)
 	{
 		gl::GenVertexArrays(1, &vao_);
+		gl::BindVertexArray(vao_);
+
+		gl::BindBuffer(GL_ARRAY_BUFFER, vbo_);
+		gl::BindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_);
+
+		constexpr GLsizei stride = sizeof(vertex);
+
+		gl::EnableVertexAttribArray(0);
+		gl::VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride,
+		                        reinterpret_cast<const void*>(offsetof(vertex, pos)));
+
+		gl::EnableVertexAttribArray(1);
+		gl::VertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, stride,
+		                        reinterpret_cast<const void*>(offsetof(vertex, col)));
+
+		gl::EnableVertexAttribArray(2);
+		gl::VertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride,
+		                        reinterpret_cast<const void*>(offsetof(vertex, uv)));
+
+		gl::EnableVertexAttribArray(3);
+		gl::VertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride,
+		                        reinterpret_cast<const void*>(offsetof(vertex, custom_data)));
+
+		gl::EnableVertexAttribArray(4);
+		gl::VertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, stride,
+		                        reinterpret_cast<const void*>(offsetof(vertex, custom_data) + 16));
+
+		gl::BindVertexArray(0);
 	}
 
 	glEnable(GL_BLEND);
@@ -364,41 +392,51 @@ void rv::ogl_renderer::flush_pending_vertices() noexcept
 	if (vao_)
 	{
 		gl::BindVertexArray(vao_);
+
+		gl::BindBuffer(GL_ARRAY_BUFFER, vbo_);
+		gl::BufferData(GL_ARRAY_BUFFER,
+		               static_cast<GLsizeiptr>(pending_vertices_.size() * sizeof(vertex)),
+		               pending_vertices_.data(), GL_STREAM_DRAW);
+
+		gl::BindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_);
+		gl::BufferData(GL_ELEMENT_ARRAY_BUFFER,
+		               static_cast<GLsizeiptr>(adjusted_indices_.size() * sizeof(cstd::uint32_t)),
+		               adjusted_indices_.data(), GL_STREAM_DRAW);
 	}
+	else
+	{
+		gl::BindBuffer(GL_ARRAY_BUFFER, vbo_);
+		gl::BufferData(GL_ARRAY_BUFFER,
+		               static_cast<GLsizeiptr>(pending_vertices_.size() * sizeof(vertex)),
+		               pending_vertices_.data(), GL_STREAM_DRAW);
 
-	// upload vertex data (buffer orphaning for driver-managed double-buffering)
-	gl::BindBuffer(GL_ARRAY_BUFFER, vbo_);
-	gl::BufferData(GL_ARRAY_BUFFER,
-	               static_cast<GLsizeiptr>(pending_vertices_.size() * sizeof(vertex)),
-	               pending_vertices_.data(), GL_STREAM_DRAW);
+		gl::BindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_);
+		gl::BufferData(GL_ELEMENT_ARRAY_BUFFER,
+		               static_cast<GLsizeiptr>(adjusted_indices_.size() * sizeof(cstd::uint32_t)),
+		               adjusted_indices_.data(), GL_STREAM_DRAW);
 
-	// upload index data
-	gl::BindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_);
-	gl::BufferData(GL_ELEMENT_ARRAY_BUFFER,
-	               static_cast<GLsizeiptr>(adjusted_indices_.size() * sizeof(cstd::uint32_t)),
-	               adjusted_indices_.data(), GL_STREAM_DRAW);
+		constexpr GLsizei stride = sizeof(vertex);
 
-	constexpr GLsizei stride = sizeof(vertex);
+		gl::EnableVertexAttribArray(0);
+		gl::VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride,
+		                        reinterpret_cast<const void*>(offsetof(vertex, pos)));
 
-	gl::EnableVertexAttribArray(0);
-	gl::VertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride,
-	                        reinterpret_cast<const void*>(offsetof(vertex, pos)));
+		gl::EnableVertexAttribArray(1);
+		gl::VertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, stride,
+		                        reinterpret_cast<const void*>(offsetof(vertex, col)));
 
-	gl::EnableVertexAttribArray(1);
-	gl::VertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, stride,
-	                        reinterpret_cast<const void*>(offsetof(vertex, col)));
+		gl::EnableVertexAttribArray(2);
+		gl::VertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride,
+		                        reinterpret_cast<const void*>(offsetof(vertex, uv)));
 
-	gl::EnableVertexAttribArray(2);
-	gl::VertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride,
-	                        reinterpret_cast<const void*>(offsetof(vertex, uv)));
+		gl::EnableVertexAttribArray(3);
+		gl::VertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride,
+		                        reinterpret_cast<const void*>(offsetof(vertex, custom_data)));
 
-	gl::EnableVertexAttribArray(3);
-	gl::VertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, stride,
-	                        reinterpret_cast<const void*>(offsetof(vertex, custom_data)));
-
-	gl::EnableVertexAttribArray(4);
-	gl::VertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, stride,
-	                        reinterpret_cast<const void*>(offsetof(vertex, custom_data) + 16));
+		gl::EnableVertexAttribArray(4);
+		gl::VertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, stride,
+		                        reinterpret_cast<const void*>(offsetof(vertex, custom_data) + 16));
+	}
 
 	// batch iteration
 	shader_type last_shader = static_cast<shader_type>(0xFF);
@@ -431,7 +469,6 @@ void rv::ogl_renderer::flush_pending_vertices() noexcept
 		if (tex_id != last_tex_id)
 		{
 			last_tex_id = tex_id;
-			gl::ActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, tex_id);
 		}
 
@@ -480,19 +517,21 @@ void rv::ogl_renderer::flush_pending_vertices() noexcept
 		glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(batch.index_count), GL_UNSIGNED_INT, idx_offset);
 	}
 
-	gl::DisableVertexAttribArray(0);
-	gl::DisableVertexAttribArray(1);
-	gl::DisableVertexAttribArray(2);
-	gl::DisableVertexAttribArray(3);
-	gl::DisableVertexAttribArray(4);
-
 	if (vao_)
 	{
 		gl::BindVertexArray(0);
 	}
+	else
+	{
+		gl::DisableVertexAttribArray(0);
+		gl::DisableVertexAttribArray(1);
+		gl::DisableVertexAttribArray(2);
+		gl::DisableVertexAttribArray(3);
+		gl::DisableVertexAttribArray(4);
 
-	gl::BindBuffer(GL_ARRAY_BUFFER, 0);
-	gl::BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		gl::BindBuffer(GL_ARRAY_BUFFER, 0);
+		gl::BindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	}
 	gl::UseProgram(0);
 
 	if (pending_vertices_.size() > peak_vertex_count_)

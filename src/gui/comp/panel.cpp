@@ -9,11 +9,23 @@ namespace rv
 			return false;
 		}
 
-		// reaching here means the cursor is inside the panel (process_events only dispatches a click
-		// to a hovered element), so raise it above sibling panels for focus-to-front behaviour.
-		if (const auto g = gui_.lock())
+		if (auto_portrait_focus_ && z_index() < z_index_popup)
 		{
-			z_index(g->raise_panel());
+			if (const auto g = gui_.lock())
+			{
+				g->show_portrait_focus(shared_from_this(), portrait_focus_blur_, portrait_focus_color_);
+			}
+		}
+
+		// raise above sibling panels for focus-to-front behaviour.
+		// skip when in portrait focus (z >= popup layer) to avoid dropping it back into
+		// the panel band where the blur background would cover it.
+		if (z_index() < z_index_popup)
+		{
+			if (const auto g = gui_.lock())
+			{
+				z_index(g->raise_panel());
+			}
 		}
 
 		const position mouse = input_->mouse_pos();
