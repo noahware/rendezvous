@@ -116,6 +116,11 @@ namespace rv
 		                              float shadow_blur = 15.f, float shadow_spread = 0.f,
 		                              rounding_flags flags = rounding_flags_all,
 		                              bool cut_background = false) noexcept = 0;
+		virtual void draw_shadow_rect_multi_color(position min, position max, color col_tl, color col_tr,
+		                                          color col_br, color col_bl, float rounding = 0.f,
+		                                          float shadow_blur = 15.f, float shadow_spread = 0.f,
+		                                          rounding_flags flags = rounding_flags_all,
+		                                          bool cut_background = false) noexcept = 0;
 		virtual void draw_image(shared_ptr_t<gui_texture> tex, position min, position max, position uv_min = { 0.f, 0.f }, position uv_max = { 1.f, 1.f }, color tint = { 1.f, 1.f, 1.f, 1.f }) noexcept = 0;
 		virtual void draw_image_rounded(shared_ptr_t<gui_texture> tex, position min, position max, float rounding, rounding_flags flags = rounding_flags_all, position uv_min = { 0.f, 0.f }, position uv_max = { 1.f, 1.f }, color tint = { 1.f, 1.f, 1.f, 1.f }) noexcept = 0;
 		[[nodiscard]] virtual shared_ptr_t<gui_texture> load_texture(const string_t& path) = 0;
@@ -213,6 +218,14 @@ namespace rv
 		                      const rounding_flags flags, const bool cut_background) noexcept override
 		{
 			return renderer_->draw_shadow_rect(min, max, col, rounding, shadow_blur, shadow_spread, flags, cut_background);
+		}
+
+		void draw_shadow_rect_multi_color(const position min, const position max, const color col_tl, const color col_tr,
+		                                  const color col_br, const color col_bl, const float rounding,
+		                                  const float shadow_blur, const float shadow_spread,
+		                                  const rounding_flags flags, const bool cut_background) noexcept override
+		{
+			return renderer_->draw_shadow_rect_multi_color(min, max, col_tl, col_tr, col_br, col_bl, rounding, shadow_blur, shadow_spread, flags, cut_background);
 		}
 
 		void draw_image(shared_ptr_t<gui_texture> tex, const position min, const position max, const position uv_min,

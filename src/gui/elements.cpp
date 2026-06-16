@@ -70,12 +70,22 @@ namespace rv
 		const bool has_gradient = style_.background_gradient.has_value();
 		if (effective_bg.a > 0.001f || has_gradient)
 		{
-			const color shadow_col = style_.shadow_color.value_or(color{0.f, 0.f, 0.f, 0.f});
-			if (shadow_col.a > 0.001f)
+			const float shadow_blur = style_.shadow_blur.value_or(15.f);
+			const float shadow_spread = style_.shadow_spread.value_or(0.f);
+
+			if (style_.shadow_gradient)
 			{
-				const float shadow_blur = style_.shadow_blur.value_or(15.f);
-				const float shadow_spread = style_.shadow_spread.value_or(0.f);
-				renderer.draw_shadow_rect(min, max, shadow_col, effective_radii.max(), shadow_blur, shadow_spread);
+				color stl, str, sbr, sbl;
+				gradient_to_corners(*style_.shadow_gradient, stl, str, sbr, sbl);
+				renderer.draw_shadow_rect_multi_color(min, max, stl, str, sbr, sbl, effective_radii.max(), shadow_blur, shadow_spread);
+			}
+			else
+			{
+				const color shadow_col = style_.shadow_color.value_or(color{0.f, 0.f, 0.f, 0.f});
+				if (shadow_col.a > 0.001f)
+				{
+					renderer.draw_shadow_rect(min, max, shadow_col, effective_radii.max(), shadow_blur, shadow_spread);
+				}
 			}
 
 			if (has_gradient)

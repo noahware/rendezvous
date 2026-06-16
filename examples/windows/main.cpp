@@ -1038,6 +1038,12 @@ cstd::int32_t main(int argc, char* argv[])
 	grad_swatch_3.rounding(6.f).background_gradient({ 0.9f, 0.5f, 0.1f, 1.f }, { 0.9f, 0.1f, 0.5f, 1.f },
 	                                                 rv::gradient_direction::to_top_right);
 
+	auto& glow_swatch = gradient_panel.add_container();
+	glow_swatch.set_declared_size({ rv::styled_size::px(200.f), rv::styled_size::px(50.f) });
+	glow_swatch.rounding(10.f).background_color({ 0.08f, 0.08f, 0.10f, 1.f });
+	glow_swatch.shadow_gradient({ 0.2f, 0.5f, 1.f, 0.6f }, { 1.f, 0.3f, 0.6f, 0.6f },
+	                            rv::gradient_direction::to_right, 20.f, 4.f);
+
 	rv::vector_2d<float> last_screen_size = screen_size;
 	MSG msg = { };
 

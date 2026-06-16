@@ -630,6 +630,24 @@ namespace rv
 			return *this;
 		}
 
+		element& shadow_gradient(const color start, const color end,
+		                         const gradient_direction dir = gradient_direction::to_bottom,
+		                         const float blur = 15.f, const float spread = 0.f) noexcept
+		{
+			style_.shadow_gradient = gradient{ start, end, dir };
+			style_.shadow_blur = blur;
+			style_.shadow_spread = spread;
+
+			return *this;
+		}
+
+		element& clear_shadow_gradient() noexcept
+		{
+			style_.shadow_gradient = {};
+
+			return *this;
+		}
+
 		element& backdrop_blur(const float sigma) noexcept
 		{
 			style_.backdrop_blur = sigma;

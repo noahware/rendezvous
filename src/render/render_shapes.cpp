@@ -236,6 +236,54 @@ void rv::renderer::draw_shadow_rect(const position min, const position max, cons
     fill_sequential_indices(w, 6);
 }
 
+void rv::renderer::draw_shadow_rect_multi_color(const position min, const position max, const color col_tl,
+                                                const color col_tr, const color col_br, const color col_bl,
+                                                const float rounding, const float shadow_blur, const float shadow_spread,
+                                                const rounding_flags flags, const bool cut_background) noexcept
+{
+    const float width = max.x - min.x;
+    const float height = max.y - min.y;
+
+    const float effective_width = cstd::fmaxf(0.f, width + 2.f * shadow_spread);
+    const float effective_height = cstd::fmaxf(0.f, height + 2.f * shadow_spread);
+    const float effective_rounding = cstd::fmaxf(0.f, rounding + shadow_spread);
+
+    const float cx = min.x + width * 0.5f;
+    const float cy = min.y + height * 0.5f;
+
+    const float qw = (effective_width * 0.5f) + shadow_blur;
+    const float qh = (effective_height * 0.5f) + shadow_blur;
+
+    const ndc_position n0 = to_ndc({cx - qw, cy - qh});
+    const ndc_position n1 = to_ndc({cx + qw, cy + qh});
+
+    const float rtl = (flags & rounding_flags_top_left) ? effective_rounding : 0.f;
+    const float rtr = (flags & rounding_flags_top_right) ? effective_rounding : 0.f;
+    const float rbr = (flags & rounding_flags_bottom_right) ? effective_rounding : 0.f;
+    const float rbl = (flags & rounding_flags_bottom_left) ? effective_rounding : 0.f;
+
+    const array_t<float, 8> data =
+    {
+        effective_width, effective_height, cut_background ? 1.f : 0.f, shadow_blur, rtr, rbr, rbl, rtl
+    };
+
+    const cstd::uint32_t packed_tl = pack_color(col_tl);
+    const cstd::uint32_t packed_tr = pack_color(col_tr);
+    const cstd::uint32_t packed_br = pack_color(col_br);
+    const cstd::uint32_t packed_bl = pack_color(col_bl);
+
+    const vertex_writer w = reserve_indexed(6, 6, shader_type::shadow_shader);
+
+    w.vertices[0] = vertex{.pos = {n0.x, n0.y}, .col = packed_tl, .uv = {-qw, -qh}, .custom_data = data};
+    w.vertices[1] = vertex{.pos = {n1.x, n0.y}, .col = packed_tr, .uv = { qw, -qh}, .custom_data = data};
+    w.vertices[2] = vertex{.pos = {n0.x, n1.y}, .col = packed_bl, .uv = {-qw,  qh}, .custom_data = data};
+    w.vertices[3] = vertex{.pos = {n1.x, n0.y}, .col = packed_tr, .uv = { qw, -qh}, .custom_data = data};
+    w.vertices[4] = vertex{.pos = {n1.x, n1.y}, .col = packed_br, .uv = { qw,  qh}, .custom_data = data};
+    w.vertices[5] = vertex{.pos = {n0.x, n1.y}, .col = packed_bl, .uv = {-qw,  qh}, .custom_data = data};
+
+    fill_sequential_indices(w, 6);
+}
+
 void rv::renderer::draw_line(const position a, const position b, const color col, const float thickness) noexcept
 {
     add_path_point(a);

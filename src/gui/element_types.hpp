@@ -294,6 +294,7 @@ namespace rv
 		optional_t<bool> text_ellipsis;    // truncate overflowing single-line text with an ellipsis
 		optional_t<float> backdrop_blur;
 		optional_t<gradient> background_gradient;
+		optional_t<gradient> shadow_gradient;
 	};
 
 	// helper to resolve gap for the correct axis

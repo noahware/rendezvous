@@ -153,6 +153,7 @@ namespace rv
 		void draw_rect_filled(position min, position max, color col, corner_radii radii) noexcept;
 		void draw_rect_filled_multi_color(position min, position max, color col_tl, color col_tr, color col_br, color col_bl, corner_radii radii) noexcept;
 		void draw_shadow_rect(position min, position max, color col, float rounding = 0.f, float shadow_blur = 15.f, float shadow_spread = 0.f, rounding_flags flags = rounding_flags_all, bool cut_background = false) noexcept;
+		void draw_shadow_rect_multi_color(position min, position max, color col_tl, color col_tr, color col_br, color col_bl, float rounding = 0.f, float shadow_blur = 15.f, float shadow_spread = 0.f, rounding_flags flags = rounding_flags_all, bool cut_background = false) noexcept;
 
 		void draw_line(position a, position b, color col, float thickness = 1.f) noexcept;
 		void draw_shadow_line(position a, position b, color col, float thickness = 1.f, float shadow_blur = 15.f) noexcept;
