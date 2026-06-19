@@ -1,6 +1,7 @@
 #pragma once
 #include "position.hpp"
 #include "../input/input.hpp"
+#include "../util/string.hpp"
 
 // define this to use freetype font rendering
 // #define RV_USE_FREETYPE
@@ -176,6 +177,8 @@ namespace rv
 		void add_text_shadow(const font& font, position pos, string_view_t text, color col, float shadow_blur, float size = 0.f, bool cut_background = false) noexcept;
 		[[nodiscard]] position calc_text_size(const font& font, string_view_t text, float size = 0.f) const noexcept;
 
+		optional_t<font> add_font(span_t<const cstd::uint8_t> bytes, float pixel_height, span_t<const glyph_range> ranges, bool anti_aliased = true);
+		optional_t<font> add_font(const string_t& path, float pixel_height, span_t<const glyph_range> ranges, bool anti_aliased = true);
 		optional_t<font> add_font(span_t<const cstd::uint8_t> bytes, float pixel_height = 16.f, cstd::uint32_t min_char = 32, cstd::uint32_t max_char = 126, bool anti_aliased = true);
 		optional_t<font> add_font(const string_t& path, float pixel_height = 16.f, cstd::uint32_t min_char = 32, cstd::uint32_t max_char = 126, bool anti_aliased = true);
 

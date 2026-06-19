@@ -1,6 +1,7 @@
 #pragma once
 #include "../render/position.hpp"
 #include "../util/hash.hpp"
+#include "../util/string.hpp"
 #include "../util/types.hpp"
 #include "styled_size.hpp"
 #include "animation.hpp"
@@ -37,30 +38,30 @@ namespace rv
 	template <class T> class range_slider;
 
 	#define RV_WIDGET_FACTORY_DECLS                                                                 \
-		button& add_button(string_view_t text = {});                                              \
-		checkbox& add_checkbox(string_view_t label = {});                                         \
-		text_element& add_label(string_view_t text = {});                                         \
-		text_element& add_label(string_view_t text, shared_ptr_t<gui_font> font);                  \
-		text_box& add_text_input(string_view_t text = {});                                        \
-		text_box& add_text_area(string_view_t text = {});                                         \
+		button& add_button(string_view_t text = {});                                                  \
+		checkbox& add_checkbox(string_view_t label = {});                                             \
+		text_element& add_label(string_view_t text = {});                                             \
+		text_element& add_label(string_view_t text, shared_ptr_t<gui_font> font);                      \
+		text_box& add_text_input(string_view_t text = {});                                            \
+		text_box& add_text_area(string_view_t text = {});                                             \
 		slider<float>& add_slider(float mn = 0.f, float mx = 1.f, float v = 0.f);                 \
 		range_slider<float>& add_range_slider(float mn = 0.f, float mx = 1.f, float lo = 0.f, float hi = 1.f); \
 		combo_box& add_combo_box(vector_t<string_t> options = {});                                \
 		color_picker& add_color_picker(color initial = {});                                       \
 		panel& add_panel();                                                                       \
 		plot_lines& add_plot_lines();                                                             \
-		plot_lines& add_plot_var(string_view_t label, const float* value);                        \
+		plot_lines& add_plot_var(string_view_t label, const float* value);                            \
 		value_inspector& add_inspector();                                                         \
 		element& add_row();                                                                       \
 		element& add_column();                                                                    \
-		element& add_container(string_view_t title = {});                                    \
+		element& add_container(string_view_t title = {});                                            \
 		key_bind& add_key_bind(key initial_key = {});                                             \
 		tabs& add_tabs();                                                                         \
 		image& add_image(shared_ptr_t<gui_texture> tex = {});                                     \
 		separator& add_separator();                                                               \
 		progress_bar& add_progress_bar(float value = 0.f);                                        \
-		radio_button& add_radio_button(string_view_t label = {}, cstd::int32_t value = 0);        \
-		collapsing_header& add_collapsing_header(string_view_t label = {});                       \
+		radio_button& add_radio_button(string_view_t label = {}, cstd::int32_t value = 0);            \
+		collapsing_header& add_collapsing_header(string_view_t label = {});                           \
 		plot_histogram& add_plot_histogram();                                             \
 	multi_combo_box& add_multi_combo_box(vector_t<string_t> options = {});
 

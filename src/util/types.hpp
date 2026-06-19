@@ -17,6 +17,7 @@
 #include <type_traits>
 #include <cstring>
 #include <bit>
+#include <algorithm>
 
 namespace cstd
 {
@@ -167,6 +168,18 @@ namespace cstd
 	inline float fmodf(const float x, const float y)
 	{
 		return std::fmodf(x, y);
+	}
+
+	template <class It>
+	void sort(It first, It last)
+	{
+		std::sort(first, last);
+	}
+
+	template <class It>
+	It unique(It first, It last)
+	{
+		return std::unique(first, last);
 	}
 
 	template <class T, class Y>

@@ -73,22 +73,22 @@ namespace rv
 	// One macro with the bodies, expanded once for `element` and once for `gui`. The only thing
 	// that differs between the two is GUI (the owning gui) and PARENT (the element to attach to).
 	#define RV_WIDGET_FACTORY_DEFS(CLS, GUI, PARENT)                                                  \
-		inline button& CLS::add_button(const string_view_t text) {                                    \
+		inline button& CLS::add_button(const string_view_t text) {                                        \
 			auto g = GUI; auto w = g->make_child<button>(PARENT, default_button_size(), g->font());     \
 			w->text_size(default_text_size(*g)); if (!text.empty()) w->text(text); return *w; }        \
-		inline checkbox& CLS::add_checkbox(const string_view_t label) {                                \
+		inline checkbox& CLS::add_checkbox(const string_view_t label) {                                    \
 			auto g = GUI; auto w = g->make_child<checkbox>(PARENT, default_label_size(), g->font());     \
 			w->text_size(default_text_size(*g)); if (!label.empty()) w->label(label); return *w; }      \
-		inline text_element& CLS::add_label(const string_view_t text) {                                \
+		inline text_element& CLS::add_label(const string_view_t text) {                                    \
 			auto g = GUI; auto w = g->make_child<text_element>(PARENT, default_label_size(), g->font()); \
 			w->text_size(default_text_size(*g)); if (!text.empty()) w->content(text); return *w; }      \
-		inline text_element& CLS::add_label(const string_view_t text, shared_ptr_t<gui_font> font) {   \
+		inline text_element& CLS::add_label(const string_view_t text, shared_ptr_t<gui_font> font) {       \
 			auto g = GUI; auto w = g->make_child<text_element>(PARENT, default_label_size(), font ? font : g->font()); \
 			w->text_size(default_text_size(*g)); if (!text.empty()) w->content(text); return *w; }      \
-		inline text_box& CLS::add_text_input(const string_view_t text) {                               \
+		inline text_box& CLS::add_text_input(const string_view_t text) {                                   \
 			auto g = GUI; auto w = g->make_child<text_box>(PARENT, default_input_size(), g->font(), g->get_input()); \
 			w->text_size(default_text_size(*g)); if (!text.empty()) w->text(text); return *w; }        \
-		inline text_box& CLS::add_text_area(const string_view_t text) {                                \
+		inline text_box& CLS::add_text_area(const string_view_t text) {                                    \
 			auto g = GUI; auto w = g->make_child<text_box>(PARENT, default_area_size(), g->font(), g->get_input()); \
 			w->multiline(true).text_size(default_text_size(*g)); if (!text.empty()) w->text(text); return *w; } \
 		inline slider<float>& CLS::add_slider(const float mn, const float mx, const float v) {         \
@@ -111,7 +111,7 @@ namespace rv
 		inline plot_lines& CLS::add_plot_lines() {                                                     \
 			auto g = GUI; auto w = g->make_child<plot_lines>(PARENT, default_plot_size(), g->font(), g->get_input()); \
 			w->autoscale(); return *w; }                                                               \
-		inline plot_lines& CLS::add_plot_var(const string_view_t label, const float* value) {          \
+		inline plot_lines& CLS::add_plot_var(const string_view_t label, const float* value) {              \
 			auto g = GUI; auto w = g->make_child<plot_lines>(PARENT, default_plot_size(), g->font(), g->get_input()); \
 			w->capacity(300).bind(value).overlay(label); return *w; }                                  \
 		inline value_inspector& CLS::add_inspector() {                                                 \
@@ -123,7 +123,7 @@ namespace rv
 		inline element& CLS::add_column() {                                                            \
 			auto g = GUI; auto w = g->make_child<element>(PARENT, default_column_size());               \
 			w->direction(layout_direction::vertical).gap(default_gap(*g)); return *w; }                 \
-		inline element& CLS::add_container(const string_view_t title) {                                \
+		inline element& CLS::add_container(const string_view_t title) {                                    \
 			auto g = GUI; auto w = g->make_child<element>(PARENT, default_container_size());            \
 			style_as_container(*w, *g);                                                                 \
 			if (!title.empty()) { auto t = g->make_child<text_element>(w, default_label_size(), g->font()); t->content(title).text_size(default_title_size); } \
@@ -147,7 +147,7 @@ namespace rv
 			auto g = GUI; auto w = g->make_child<radio_button>(PARENT, default_radio_size(), g->font()); \
 			w->text_size(default_text_size(*g)); w->value(value);                                      \
 			if (!label.empty()) w->label(label); return *w; }                                          \
-		inline collapsing_header& CLS::add_collapsing_header(const string_view_t label) {              \
+		inline collapsing_header& CLS::add_collapsing_header(const string_view_t label) {                  \
 			auto g = GUI; auto w = g->make_child<collapsing_header>(PARENT, default_collapsing_header_size(), g->font(), g->get_input()); \
 			w->text_size(default_text_size(*g));                                                       \
 			if (!label.empty()) w->label(label); return *w; }                                          \

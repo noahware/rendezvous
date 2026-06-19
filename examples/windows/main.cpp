@@ -43,6 +43,8 @@ static cstd::int32_t demo_radio_value = 0;
 static float demo_progress = 0.35f;
 static string_t demo_name = "rendezvous";
 static string_t demo_notes = "A GPU-accelerated\n2D vector renderer.";
+static const string_t unicode_demo_text = reinterpret_cast<const char*>(u8"UTF-8: Hello 中文 简体中文 繁體中文");
+static const string_t unicode_input_text = reinterpret_cast<const char*>(u8"编辑中文 text");
 
 static float g_dbg_fps = 0.f;
 static float g_dbg_ms = 0.f;
@@ -499,7 +501,32 @@ cstd::int32_t main(int argc, char* argv[])
 
 	input = cstd::make_shared<rv::win32_input>();
 
-	auto font = renderer->add_font("C:\\Windows\\Fonts\\arial.ttf", 32.f);
+	rv::glyph_ranges_builder font_ranges;
+	font_ranges.add_basic_latin().add_text(unicode_demo_text).add_text(unicode_input_text);
+	const vector_t<rv::glyph_range> unicode_ranges = font_ranges.build();
+
+	const span_t<const rv::glyph_range> unicode_range_span(unicode_ranges.data(), unicode_ranges.size());
+	const char* cjk_font_paths[] =
+	{
+		"C:\\Windows\\Fonts\\msyh.ttc",
+		"C:\\Windows\\Fonts\\simsun.ttc",
+		nullptr,
+	};
+
+	optional_t<rv::font> font;
+	for (cstd::int32_t i = 0; !font && cjk_font_paths[i]; ++i)
+	{
+		font = renderer->add_font(cjk_font_paths[i], 32.f, unicode_range_span);
+		if (font && !font->has_glyph(0x4E2D))
+		{
+			font = {};
+		}
+	}
+
+	if (!font)
+	{
+		font = renderer->add_font("C:\\Windows\\Fonts\\arial.ttf", 32.f);
+	}
 
 	// icon font: Segoe MDL2 Assets ships with Windows. Bake a tight Private-Use range into its own
 	// atlas. An icon is just a font with special glyphs, so it is drawn as its own piece of text
@@ -572,6 +599,8 @@ cstd::int32_t main(int argc, char* argv[])
 		text_demo.add_label("Heading").text_size(24.f).text_color({ 0.4f, 0.7f, 1.f, 1.f });
 		auto& paragraph = text_demo.add_label("The quick brown fox jumps over the lazy dog. This paragraph demonstrates text wrapping in the rendezvous GUI framework.");
 		paragraph.set_declared_size({ rv::styled_size::fill(), rv::styled_size::auto_v() });
+		auto& unicode = text_demo.add_label(unicode_demo_text);
+		unicode.set_declared_size({ rv::styled_size::fill(), rv::styled_size::auto_v() });
 		auto& centered = text_demo.add_label("Center aligned");
 		centered.text_alignment(rv::text_align::center);
 		centered.set_declared_size({ rv::styled_size::fill(), rv::styled_size::auto_v() });
@@ -637,6 +666,9 @@ cstd::int32_t main(int argc, char* argv[])
 			.on_change([lbl = &name_label](const string_t& v) { lbl->content("Name: " + v); })
 			.on_submit([](const string_t& v) { LOG_INFO("submitted: {}", v); });
 		name_input.set_declared_size({ rv::styled_size::fill(), rv::styled_size::auto_v() });
+
+		auto& unicode_input = inputs.add_text_input(unicode_input_text);
+		unicode_input.set_declared_size({ rv::styled_size::fill(), rv::styled_size::auto_v() });
 
 		inputs.add_label("Notes (multiline):");
 		auto& notes_area = inputs.add_text_area("A GPU-accelerated\n2D vector renderer.");

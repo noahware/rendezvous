@@ -47,13 +47,11 @@ namespace rv
 	class font
 	{
 	public:
-		explicit font(shared_ptr_t<class texture> tex, const vector_t<struct glyph>& glyphs, const cstd::uint32_t min_char, const cstd::uint32_t max_char, const float baked_size,
+		explicit font(shared_ptr_t<class texture> tex, unordered_map_t<cstd::uint32_t, struct glyph> glyphs, const float baked_size,
 		              const float ascent, const float descent, const float line_height, const float line_gap,
 		              unordered_map_t<cstd::uint64_t, float> kerning_table = { })
 				:	texture_(cstd::move(tex)),
-					glyphs_(glyphs),
-					min_char_(min_char),
-					max_char_(max_char),
+					glyphs_(cstd::move(glyphs)),
 					baked_size_(baked_size),
 					ascent_(ascent),
 					descent_(descent),
@@ -61,17 +59,31 @@ namespace rv
 					line_gap_(line_gap),
 					kerning_table_(cstd::move(kerning_table)) { }
 
-		// a font owns exactly one atlas; a codepoint outside its baked range substitutes '?' (or the
-		// first glyph). Mixing scripts/icons means drawing separate strings, each with its own font.
 		[[nodiscard]] const struct glyph& glyph(const cstd::uint32_t c) const
 		{
-			if (c < min_char_ || max_char_ < c || glyphs_.empty())
+			const auto it = glyphs_.find(c);
+			if (it != glyphs_.end())
 			{
-				const cstd::uint32_t substitute = '?' >= min_char_ && '?' <= max_char_ ? '?' : min_char_;
-				return glyphs_[static_cast<cstd::size_t>(substitute - min_char_)];
+				return it->second;
 			}
 
-			return glyphs_[static_cast<cstd::size_t>(c - min_char_)];
+			const auto fallback = glyphs_.find('?');
+			if (fallback != glyphs_.end())
+			{
+				return fallback->second;
+			}
+
+			if (!glyphs_.empty())
+			{
+				return glyphs_.begin()->second;
+			}
+
+			return fallback_glyph_;
+		}
+
+		[[nodiscard]] bool has_glyph(const cstd::uint32_t c) const
+		{
+			return glyphs_.find(c) != glyphs_.end();
 		}
 
 		[[nodiscard]] float kerning(const cstd::uint32_t left, const cstd::uint32_t right) const
@@ -125,9 +137,8 @@ namespace rv
 	protected:
 		shared_ptr_t<class texture> texture_;
 
-		vector_t<struct glyph> glyphs_;
-		cstd::uint32_t min_char_;
-		cstd::uint32_t max_char_;
+		unordered_map_t<cstd::uint32_t, struct glyph> glyphs_;
+		struct glyph fallback_glyph_;
 		float baked_size_;
 		float ascent_;
 		float descent_;

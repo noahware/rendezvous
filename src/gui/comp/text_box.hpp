@@ -125,7 +125,7 @@ namespace rv
 		// accounting for padding/border insets and current scroll.
 		[[nodiscard]] position local_text_pos(const position mouse) const noexcept;
 
-		void set_text(const string_view_t value);
+		void set_text(string_view_t value);
 
 		void sync_text_out();
 
