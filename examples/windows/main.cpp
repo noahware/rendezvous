@@ -43,8 +43,8 @@ static cstd::int32_t demo_radio_value = 0;
 static float demo_progress = 0.35f;
 static string_t demo_name = "rendezvous";
 static string_t demo_notes = "A GPU-accelerated\n2D vector renderer.";
-static constexpr auto unicode_demo_text = u8"UTF-8: Hello 中文 日本語 한국어 Ελληνικά Кириллица";
-static constexpr auto unicode_input_text = u8"编辑中文 text";
+static const string_t unicode_demo_text = reinterpret_cast<const char*>(u8"UTF-8: Hello 中文 日本語 한국어 Ελληνικά Кириллица");
+static const string_t unicode_input_text = reinterpret_cast<const char*>(u8"编辑中文 text");
 
 static float g_dbg_fps = 0.f;
 static float g_dbg_ms = 0.f;

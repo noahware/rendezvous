@@ -202,9 +202,9 @@ namespace rv
 		return { mouse.x - origin_x + scroll_.x, mouse.y - origin_y + scroll_.y };
 	}
 
-	void text_box::set_text(const utf8_view value)
+	void text_box::set_text(const string_view_t value)
 	{
-		text_ = utf8_string(value);
+		text_ = string_t(value);
 		mark_layout_dirty();
 		buf_.chars.clear();
 

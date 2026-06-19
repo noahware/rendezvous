@@ -119,8 +119,8 @@ namespace rv
 		virtual void draw_image_rounded(shared_ptr_t<gui_texture> tex, position min, position max, float rounding, rounding_flags flags = rounding_flags_all, position uv_min = { 0.f, 0.f }, position uv_max = { 1.f, 1.f }, color tint = { 1.f, 1.f, 1.f, 1.f }) noexcept = 0;
 		[[nodiscard]] virtual shared_ptr_t<gui_texture> load_texture(const string_t& path) = 0;
 		[[nodiscard]] virtual shared_ptr_t<gui_texture> load_texture_from_memory(span_t<const cstd::uint8_t> encoded) = 0;
-		virtual void draw_text(const gui_font& font, position pos, utf8_view text, color col, float size = 0.f, float letter_spacing = 0.f) noexcept = 0;
-		virtual void add_text_shadow(const gui_font& font, position pos, utf8_view text, color col, float blur, float size = 0.f) noexcept = 0;
+		virtual void draw_text(const gui_font& font, position pos, string_view_t text, color col, float size = 0.f, float letter_spacing = 0.f) noexcept = 0;
+		virtual void add_text_shadow(const gui_font& font, position pos, string_view_t text, color col, float blur, float size = 0.f) noexcept = 0;
 		virtual void draw_line(position a, position b, color col, float thickness = 1.f) noexcept = 0;
 		virtual void add_path_point(position p) noexcept = 0;
 		virtual void draw_lined_path(color col, float thickness = 1.f, bool closed = true, float fringe = 1.f,
@@ -237,14 +237,14 @@ namespace rv
 			return tex ? cstd::make_shared<gui_texture_impl>(cstd::move(tex)) : nullptr;
 		}
 
-		void draw_text(const gui_font& gf, const position pos, const utf8_view text,
+		void draw_text(const gui_font& gf, const position pos, const string_view_t text,
 		               const color col, const float size, const float letter_spacing) noexcept override
 		{
 			const auto* impl = static_cast<const gui_font_impl*>(&gf);
 			renderer_->draw_text(impl->underlying(), pos, text, col, size, letter_spacing);
 		}
 
-		void add_text_shadow(const gui_font& gf, const position pos, const utf8_view text,
+		void add_text_shadow(const gui_font& gf, const position pos, const string_view_t text,
 		                     const color col, const float blur, const float size) noexcept override
 		{
 			const auto* impl = static_cast<const gui_font_impl*>(&gf);

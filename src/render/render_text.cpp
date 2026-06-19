@@ -15,10 +15,10 @@
 
 using rv::decode_utf8;
 
-void rv::renderer::draw_text(const font &font, const position pos, const utf8_view text_in, const color col,
+void rv::renderer::draw_text(const font &font, const position pos, const string_view_t text_in, const color col,
                              const float size, const float letter_spacing) noexcept
 {
-    const string_view_t text = text_in.view();
+    const string_view_t text = text_in;
     const shared_ptr_t<texture> font_texture = font.texture();
 
     if (text.empty() || !font_texture)
@@ -108,10 +108,10 @@ void rv::renderer::draw_text(const font &font, const position pos, const utf8_vi
     current_texture_ = default_texture_;
 }
 
-void rv::renderer::add_text_shadow(const font &font, const position pos, const utf8_view text_in, const color col,
+void rv::renderer::add_text_shadow(const font &font, const position pos, const string_view_t text_in, const color col,
                                    const float shadow_blur, const float size, const bool cut_background) noexcept
 {
-    const string_view_t text = text_in.view();
+    const string_view_t text = text_in;
     const shared_ptr_t<texture> font_texture = font.texture();
 
     if (text.empty() || !font_texture)
@@ -213,9 +213,9 @@ void rv::renderer::add_text_shadow(const font &font, const position pos, const u
     current_texture_ = default_texture_;
 }
 
-rv::position rv::renderer::calc_text_size(const font &font, const utf8_view text_in, const float size) const noexcept
+rv::position rv::renderer::calc_text_size(const font &font, const string_view_t text_in, const float size) const noexcept
 {
-    const string_view_t text = text_in.view();
+    const string_view_t text = text_in;
     if (text.empty() || !font.texture())
     {
         return {0.f, 0.f};

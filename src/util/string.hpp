@@ -25,75 +25,6 @@ namespace rv
 	template <cstd::size_t N>
 	fixed_string(const char(&)[N]) -> fixed_string<N>;
 
-	struct utf8_view
-	{
-		const char* data_ = "";
-		cstd::size_t size_ = 0;
-
-		utf8_view() noexcept = default;
-
-		utf8_view(const char* text) noexcept
-			: data_(text ? text : ""), size_(text ? std::char_traits<char>::length(text) : 0) { }
-
-		utf8_view(const char* text, const cstd::size_t size) noexcept
-			: data_(text ? text : ""), size_(text ? size : 0) { }
-
-		utf8_view(const string_t& text) noexcept
-			: data_(text.data()), size_(text.size()) { }
-
-		utf8_view(const string_view_t text) noexcept
-			: data_(text.data()), size_(text.size()) { }
-
-		utf8_view(const char8_t* text) noexcept
-			: data_(reinterpret_cast<const char*>(text)), size_(0)
-		{
-			if (!text)
-			{
-				data_ = "";
-				return;
-			}
-
-			while (text[size_] != u8'\0')
-			{
-				++size_;
-			}
-		}
-
-		utf8_view(const std::u8string_view text) noexcept
-			: data_(reinterpret_cast<const char*>(text.data())), size_(text.size()) { }
-
-		[[nodiscard]] string_view_t view() const noexcept
-		{
-			return { data_, size_ };
-		}
-
-		[[nodiscard]] bool empty() const noexcept
-		{
-			return size_ == 0;
-		}
-
-		[[nodiscard]] const char* data() const noexcept
-		{
-			return data_;
-		}
-
-		[[nodiscard]] cstd::size_t size() const noexcept
-		{
-			return size_;
-		}
-
-		operator string_view_t() const noexcept
-		{
-			return view();
-		}
-	};
-
-	inline string_t utf8_string(const utf8_view text)
-	{
-		const string_view_t view = text.view();
-		return { view.data(), view.size() };
-	}
-
 	inline cstd::uint32_t decode_utf8(const char*& s, const char* end) noexcept
 	{
 		const cstd::uint8_t c0 = static_cast<cstd::uint8_t>(*s);
@@ -214,11 +145,10 @@ namespace rv
 			return add_range(range.first, range.last);
 		}
 
-		glyph_ranges_builder& add_text(const utf8_view text)
+		glyph_ranges_builder& add_text(const string_view_t text)
 		{
-			const string_view_t view = text.view();
-			const char* s = view.data();
-			const char* const end = s + view.size();
+			const char* s = text.data();
+			const char* const end = s + text.size();
 
 			while (s < end)
 			{

@@ -106,9 +106,9 @@ namespace rv
 			return *this;
 		}
 
-		multi_combo_box& placeholder(const utf8_view text)
+		multi_combo_box& placeholder(const string_view_t text)
 		{
-			placeholder_ = utf8_string(text);
+			placeholder_ = string_t(text);
 
 			return *this;
 		}

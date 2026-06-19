@@ -55,7 +55,7 @@ namespace rv
 		}
 	}
 
-	element& tabs::add_tab(const utf8_view label)
+	element& tabs::add_tab(const string_view_t label)
 	{
 		const cstd::int32_t index = static_cast<cstd::int32_t>(panels_.size());
 
