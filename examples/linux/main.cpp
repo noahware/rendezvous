@@ -44,7 +44,7 @@ static rv::key demo_toggle_key = rv::key::none;
 static float demo_anim_speed = 1.f;
 static string_t demo_name = "rendezvous";
 static string_t demo_notes = "A GPU-accelerated\n2D vector renderer.";
-static const string_t unicode_demo_text = reinterpret_cast<const char*>(u8"UTF-8: Hello 中文 日本語 한국어 Ελληνικά Кириллица");
+static const string_t unicode_demo_text = reinterpret_cast<const char*>(u8"UTF-8: Hello 中文 简体中文 繁體中文");
 static const string_t unicode_input_text = reinterpret_cast<const char*>(u8"编辑中文 text");
 
 static float g_dbg_fps = 0.f;
@@ -390,23 +390,26 @@ int main(int argc, char* argv[])
 	font_ranges.add_basic_latin().add_text(unicode_demo_text).add_text(unicode_input_text);
 	const vector_t<rv::glyph_range> unicode_ranges = font_ranges.build();
 
-	vector_t<rv::font_file_source> ui_font_sources =
-	{
-		{ "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", unicode_ranges },
-		{ "/usr/share/fonts/TTF/DejaVuSans.ttf", unicode_ranges },
-		{ "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", unicode_ranges },
-		{ "/usr/share/fonts/liberation-sans/LiberationSans-Regular.ttf", unicode_ranges },
-		{ "/usr/share/fonts/noto/NotoSans-Regular.ttf", unicode_ranges },
-		{ "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", unicode_ranges },
-		{ "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc", unicode_ranges },
-		{ "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc", unicode_ranges },
-		{ "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", unicode_ranges },
+	const span_t<const rv::glyph_range> unicode_range_span(unicode_ranges.data(), unicode_ranges.size());
+	const char* cjk_font_paths[] = {
+		"/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+		"/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+		"/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
+		"/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+		nullptr
 	};
 
-	optional_t<rv::font> font = renderer->add_font(ui_font_sources, 32.f);
-	if (font)
+	optional_t<rv::font> font;
+	for (cstd::int32_t i = 0; !font && cjk_font_paths[i]; ++i)
 	{
-		LOG_INFO("loaded merged UTF-8 font set");
+		font = renderer->add_font(cjk_font_paths[i], 32.f, unicode_range_span);
+		if (font && font->has_glyph(0x4E2D))
+		{
+			LOG_INFO("loaded font: {}", cjk_font_paths[i]);
+			break;
+		}
+
+		font = {};
 	}
 
 	const char* font_paths[] = {

@@ -267,9 +267,9 @@ rv::position rv::renderer::calc_text_size(const font &font, const string_view_t 
 
 namespace
 {
-    vector_t<rv::glyph_range> resolved_ranges(const vector_t<rv::glyph_range>& ranges)
+    vector_t<rv::glyph_range> resolved_ranges(const span_t<const rv::glyph_range> ranges)
     {
-        return ranges.empty() ? rv::make_glyph_ranges(32, 126) : ranges;
+        return ranges.empty() ? rv::make_glyph_ranges(32, 126) : vector_t<rv::glyph_range>(ranges.begin(), ranges.end());
     }
 
     void append_codepoints(vector_t<cstd::uint32_t>& out, const vector_t<rv::glyph_range>& ranges)
@@ -310,8 +310,8 @@ namespace
             return ranges;
         }
 
-        std::sort(cps.begin(), cps.end());
-        cps.erase(std::unique(cps.begin(), cps.end()), cps.end());
+        cstd::sort(cps.begin(), cps.end());
+        cps.erase(cstd::unique(cps.begin(), cps.end()), cps.end());
 
         cstd::uint32_t first = cps[0];
         cstd::uint32_t last = cps[0];
@@ -340,16 +340,25 @@ namespace
     }
 }
 
-optional_t<rv::font> rv::renderer::add_font(const span_t<const font_memory_source> input_sources, const float pixel_height,
-                                            const bool anti_aliased)
+optional_t<rv::font> rv::renderer::add_font(const span_t<const cstd::uint8_t> bytes, const float pixel_height,
+                                            const span_t<const glyph_range> input_ranges, const bool anti_aliased)
 {
-    if (input_sources.empty())
+    if (bytes.empty())
     {
         return {};
     }
 
     constexpr cstd::uint32_t glyph_padding = 2;
     unordered_map_t<cstd::uint32_t, bool> covered;
+
+    struct font_input
+    {
+        span_t<const cstd::uint8_t> bytes;
+        vector_t<glyph_range> ranges;
+    };
+
+    const vector_t<glyph_range> ranges = resolved_ranges(input_ranges);
+    const array_t<font_input, 1> input_sources = { font_input{ bytes, ranges } };
 
 #ifdef RV_USE_FREETYPE
     FT_Library library = nullptr;
@@ -804,44 +813,20 @@ optional_t<rv::font> rv::renderer::add_font(const span_t<const font_memory_sourc
 #endif
 }
 
-optional_t<rv::font> rv::renderer::add_font(const span_t<const font_file_source> sources, const float pixel_height, const bool anti_aliased)
-{
-    vector_t<vector_t<cstd::uint8_t>> buffers;
-    vector_t<vector_t<glyph_range>> ranges;
-
-    buffers.reserve(sources.size());
-    ranges.reserve(sources.size());
-
-    for (const auto& source : sources)
-    {
-        vector_t<cstd::uint8_t> buffer = read_file(source.path);
-        if (buffer.empty())
-        {
-            continue;
-        }
-
-        buffers.push_back(cstd::move(buffer));
-        ranges.push_back(source.ranges);
-    }
-
-    vector_t<font_memory_source> memory_sources;
-    memory_sources.reserve(buffers.size());
-
-    for (cstd::size_t i = 0; i < buffers.size(); ++i)
-    {
-        memory_sources.push_back({ span_t<const cstd::uint8_t>(buffers[i].data(), buffers[i].size()), ranges[i] });
-    }
-
-    return add_font(span_t<const font_memory_source>(memory_sources.data(), memory_sources.size()), pixel_height, anti_aliased);
-}
-
 optional_t<rv::font> rv::renderer::add_font(const span_t<const cstd::uint8_t> bytes, const float pixel_height,
                                             const cstd::uint32_t min_char, const cstd::uint32_t max_char, const bool anti_aliased)
 {
-    const font_memory_source source{ bytes, make_glyph_ranges(min_char, max_char) };
-    const array_t<font_memory_source, 1> sources = { source };
+    const vector_t<glyph_range> ranges = make_glyph_ranges(min_char, max_char);
 
-    return add_font(span_t<const font_memory_source>(sources.data(), sources.size()), pixel_height, anti_aliased);
+    return add_font(bytes, pixel_height, span_t<const glyph_range>(ranges.data(), ranges.size()), anti_aliased);
+}
+
+optional_t<rv::font> rv::renderer::add_font(const string_t& path, const float pixel_height,
+                                            const span_t<const glyph_range> ranges, const bool anti_aliased)
+{
+    const vector_t<cstd::uint8_t> buffer = read_file(path);
+
+    return add_font(buffer, pixel_height, ranges, anti_aliased);
 }
 
 optional_t<rv::font> rv::renderer::add_font(const string_t& path, const float pixel_height, const cstd::uint32_t min_char,

@@ -173,8 +173,8 @@ namespace rv
 				return ranges;
 			}
 
-			std::sort(cps.begin(), cps.end());
-			cps.erase(std::unique(cps.begin(), cps.end()), cps.end());
+			cstd::sort(cps.begin(), cps.end());
+			cps.erase(cstd::unique(cps.begin(), cps.end()), cps.end());
 
 			cstd::uint32_t first = cps[0];
 			cstd::uint32_t last = cps[0];

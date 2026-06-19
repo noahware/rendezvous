@@ -170,6 +170,18 @@ namespace cstd
 		return std::fmodf(x, y);
 	}
 
+	template <class It>
+	void sort(It first, It last)
+	{
+		std::sort(first, last);
+	}
+
+	template <class It>
+	It unique(It first, It last)
+	{
+		return std::unique(first, last);
+	}
+
 	template <class T, class Y>
 	[[nodiscard]] constexpr T bit_cast(const Y& object) noexcept
 	{

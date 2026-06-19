@@ -43,7 +43,7 @@ static cstd::int32_t demo_radio_value = 0;
 static float demo_progress = 0.35f;
 static string_t demo_name = "rendezvous";
 static string_t demo_notes = "A GPU-accelerated\n2D vector renderer.";
-static const string_t unicode_demo_text = reinterpret_cast<const char*>(u8"UTF-8: Hello 中文 日本語 한국어 Ελληνικά Кириллица");
+static const string_t unicode_demo_text = reinterpret_cast<const char*>(u8"UTF-8: Hello 中文 简体中文 繁體中文");
 static const string_t unicode_input_text = reinterpret_cast<const char*>(u8"编辑中文 text");
 
 static float g_dbg_fps = 0.f;
@@ -505,16 +505,24 @@ cstd::int32_t main(int argc, char* argv[])
 	font_ranges.add_basic_latin().add_text(unicode_demo_text).add_text(unicode_input_text);
 	const vector_t<rv::glyph_range> unicode_ranges = font_ranges.build();
 
-	vector_t<rv::font_file_source> ui_font_sources =
+	const span_t<const rv::glyph_range> unicode_range_span(unicode_ranges.data(), unicode_ranges.size());
+	const char* cjk_font_paths[] =
 	{
-		{ "C:\\Windows\\Fonts\\segoeui.ttf", unicode_ranges },
-		{ "C:\\Windows\\Fonts\\msyh.ttc", unicode_ranges },
-		{ "C:\\Windows\\Fonts\\simsun.ttc", unicode_ranges },
-		{ "C:\\Windows\\Fonts\\malgun.ttf", unicode_ranges },
-		{ "C:\\Windows\\Fonts\\msgothic.ttc", unicode_ranges },
+		"C:\\Windows\\Fonts\\msyh.ttc",
+		"C:\\Windows\\Fonts\\simsun.ttc",
+		nullptr,
 	};
 
-	auto font = renderer->add_font(ui_font_sources, 32.f);
+	optional_t<rv::font> font;
+	for (cstd::int32_t i = 0; !font && cjk_font_paths[i]; ++i)
+	{
+		font = renderer->add_font(cjk_font_paths[i], 32.f, unicode_range_span);
+		if (font && !font->has_glyph(0x4E2D))
+		{
+			font = {};
+		}
+	}
+
 	if (!font)
 	{
 		font = renderer->add_font("C:\\Windows\\Fonts\\arial.ttf", 32.f);
