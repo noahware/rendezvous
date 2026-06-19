@@ -38,7 +38,7 @@ namespace rv
 		// caller can populate it directly: tabs.add_tab("Settings").add_checkbox("Enable").
 		// Must be called while the tabs widget is attached to the tree (the add_tabs() factory
 		// guarantees this) so the new panel inherits the gui back-pointer. Defined in tabs.cpp.
-		element& add_tab(string_view_t label);
+		element& add_tab(utf8_view label);
 
 		// Tab strip on top (horizontal) or on the left (vertical). Re-flows immediately.
 		tabs& bar_side(const tab_side side) noexcept

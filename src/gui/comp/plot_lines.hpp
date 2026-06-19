@@ -73,9 +73,9 @@ namespace rv
 			return *this;
 		}
 
-		plot_lines& overlay(const string_view_t text)
+		plot_lines& overlay(const utf8_view text)
 		{
-			overlay_ = string_t(text);
+			overlay_ = utf8_string(text);
 
 			return *this;
 		}

@@ -15,9 +15,10 @@
 
 using rv::decode_utf8;
 
-void rv::renderer::draw_text(const font &font, const position pos, const string_view_t text, const color col,
+void rv::renderer::draw_text(const font &font, const position pos, const utf8_view text_in, const color col,
                              const float size, const float letter_spacing) noexcept
 {
+    const string_view_t text = text_in.view();
     const shared_ptr_t<texture> font_texture = font.texture();
 
     if (text.empty() || !font_texture)
@@ -107,9 +108,10 @@ void rv::renderer::draw_text(const font &font, const position pos, const string_
     current_texture_ = default_texture_;
 }
 
-void rv::renderer::add_text_shadow(const font &font, const position pos, const string_view_t text, const color col,
+void rv::renderer::add_text_shadow(const font &font, const position pos, const utf8_view text_in, const color col,
                                    const float shadow_blur, const float size, const bool cut_background) noexcept
 {
+    const string_view_t text = text_in.view();
     const shared_ptr_t<texture> font_texture = font.texture();
 
     if (text.empty() || !font_texture)
@@ -211,8 +213,9 @@ void rv::renderer::add_text_shadow(const font &font, const position pos, const s
     current_texture_ = default_texture_;
 }
 
-rv::position rv::renderer::calc_text_size(const font &font, const string_view_t text, const float size) const noexcept
+rv::position rv::renderer::calc_text_size(const font &font, const utf8_view text_in, const float size) const noexcept
 {
+    const string_view_t text = text_in.view();
     if (text.empty() || !font.texture())
     {
         return {0.f, 0.f};
@@ -262,17 +265,91 @@ rv::position rv::renderer::calc_text_size(const font &font, const string_view_t 
     return {max_width, static_cast<float>(lines) * font.line_height() * scale};
 }
 
-optional_t<rv::font> rv::renderer::add_font(const span_t<const cstd::uint8_t> bytes, const float pixel_height,
-                                            const cstd::uint32_t min_char, const cstd::uint32_t max_char, const bool anti_aliased)
+namespace
 {
-    // guard against empty/unreadable font data, stbtt/freetype dereference the
-    // pointer unconditionally, so an empty buffer would crash.
-    if (bytes.empty())
+    vector_t<rv::glyph_range> resolved_ranges(const vector_t<rv::glyph_range>& ranges)
+    {
+        return ranges.empty() ? rv::make_glyph_ranges(32, 126) : ranges;
+    }
+
+    void append_codepoints(vector_t<cstd::uint32_t>& out, const vector_t<rv::glyph_range>& ranges)
+    {
+        for (auto range : ranges)
+        {
+            if (range.first > range.last || range.first > 0x10FFFF)
+            {
+                continue;
+            }
+
+            if (range.last > 0x10FFFF)
+            {
+                range.last = 0x10FFFF;
+            }
+
+            for (cstd::uint32_t cp = range.first; ; ++cp)
+            {
+                if (cp < 0xD800 || cp > 0xDFFF)
+                {
+                    out.push_back(cp);
+                }
+
+                if (cp == range.last)
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    vector_t<rv::glyph_range> compact_codepoints(vector_t<cstd::uint32_t> cps)
+    {
+        vector_t<rv::glyph_range> ranges;
+
+        if (cps.empty())
+        {
+            return ranges;
+        }
+
+        std::sort(cps.begin(), cps.end());
+        cps.erase(std::unique(cps.begin(), cps.end()), cps.end());
+
+        cstd::uint32_t first = cps[0];
+        cstd::uint32_t last = cps[0];
+
+        for (cstd::size_t i = 1; i < cps.size(); ++i)
+        {
+            const cstd::uint32_t cp = cps[i];
+
+            if (cp == last + 1)
+            {
+                last = cp;
+                continue;
+            }
+
+            ranges.push_back({ first, last });
+            first = last = cp;
+        }
+
+        ranges.push_back({ first, last });
+        return ranges;
+    }
+
+    cstd::uint64_t kerning_key(const cstd::uint32_t left, const cstd::uint32_t right) noexcept
+    {
+        return (static_cast<cstd::uint64_t>(left) << 32) | static_cast<cstd::uint64_t>(right);
+    }
+}
+
+optional_t<rv::font> rv::renderer::add_font(const span_t<const font_memory_source> input_sources, const float pixel_height,
+                                            const bool anti_aliased)
+{
+    if (input_sources.empty())
     {
         return {};
     }
 
     constexpr cstd::uint32_t glyph_padding = 2;
+    unordered_map_t<cstd::uint32_t, bool> covered;
 
 #ifdef RV_USE_FREETYPE
     FT_Library library = nullptr;
@@ -281,31 +358,68 @@ optional_t<rv::font> rv::renderer::add_font(const span_t<const cstd::uint8_t> by
         return {};
     }
 
-    FT_Face face = nullptr;
-    if (FT_New_Memory_Face(library, bytes.data(), static_cast<FT_Long>(bytes.size()), 0, &face))
+    struct ft_source
+    {
+        FT_Face face = nullptr;
+        vector_t<glyph_range> ranges;
+    };
+
+    vector_t<ft_source> sources;
+
+    for (const auto& input : input_sources)
+    {
+        if (input.bytes.empty())
+        {
+            continue;
+        }
+
+        FT_Face face = nullptr;
+        if (FT_New_Memory_Face(library, input.bytes.data(), static_cast<FT_Long>(input.bytes.size()), 0, &face))
+        {
+            continue;
+        }
+
+        FT_Size_RequestRec req = {};
+        req.type = FT_SIZE_REQUEST_TYPE_REAL_DIM;
+        req.height = static_cast<FT_Long>(pixel_height * 64.0f);
+        FT_Request_Size(face, &req);
+
+        vector_t<cstd::uint32_t> wanted;
+        append_codepoints(wanted, resolved_ranges(input.ranges));
+
+        vector_t<cstd::uint32_t> supported;
+        for (const cstd::uint32_t cp : wanted)
+        {
+            if (covered.find(cp) == covered.end() && FT_Get_Char_Index(face, cp) != 0)
+            {
+                covered[cp] = true;
+                supported.push_back(cp);
+            }
+        }
+
+        vector_t<glyph_range> ranges = compact_codepoints(cstd::move(supported));
+        if (ranges.empty())
+        {
+            FT_Done_Face(face);
+            continue;
+        }
+
+        sources.push_back({ face, cstd::move(ranges) });
+    }
+
+    if (sources.empty())
     {
         FT_Done_FreeType(library);
         return {};
     }
-    
-    FT_Size_RequestRec req = {};
-    req.type = FT_SIZE_REQUEST_TYPE_REAL_DIM;
-    req.width = 0;
-    req.height = static_cast<FT_Long>(pixel_height * 64.0f);
-    req.horiResolution = 0;
-    req.vertResolution = 0;
-
-    FT_Request_Size(face, &req);
 
 #define RV_FT_CEIL(X) (((X + 63) & -64) / 64)
 
-    const float ft_ascent = static_cast<float>(RV_FT_CEIL(face->size->metrics.ascender));
-    const float ft_descent = static_cast<float>(RV_FT_CEIL(face->size->metrics.descender));
-    const float ft_line_height = static_cast<float>(RV_FT_CEIL(face->size->metrics.height));
-    const float ft_line_gap = static_cast<float>(RV_FT_CEIL(face->size->metrics.height - face->size->metrics.ascender + face->size->metrics.descender));
-    
-    const cstd::size_t glyph_count = static_cast<cstd::size_t>(max_char - min_char + 1);
-    vector_t<glyph> glyphs(glyph_count);
+    FT_Face metric_face = sources[0].face;
+    const float ft_ascent = static_cast<float>(RV_FT_CEIL(metric_face->size->metrics.ascender));
+    const float ft_descent = static_cast<float>(RV_FT_CEIL(metric_face->size->metrics.descender));
+    const float ft_line_height = static_cast<float>(RV_FT_CEIL(metric_face->size->metrics.height));
+    const float ft_line_gap = static_cast<float>(RV_FT_CEIL(metric_face->size->metrics.height - metric_face->size->metrics.ascender + metric_face->size->metrics.descender));
 
     const cstd::int32_t load_flags =
         anti_aliased ? (FT_LOAD_RENDER | FT_LOAD_TARGET_LIGHT) : (FT_LOAD_RENDER | FT_LOAD_TARGET_MONO | FT_LOAD_MONOCHROME);
@@ -313,72 +427,99 @@ optional_t<rv::font> rv::renderer::add_font(const span_t<const cstd::uint8_t> by
     cstd::uint32_t width = 256;
     cstd::uint32_t height = 256;
     vector_t<cstd::uint8_t> coverage;
+    unordered_map_t<cstd::uint32_t, glyph> glyphs;
 
     bool atlas_ok = false;
     while (!atlas_ok && width <= 8192)
     {
         coverage.assign(static_cast<cstd::size_t>(width) * height, 0);
+        glyphs.clear();
 
         cstd::uint32_t pen_x = glyph_padding;
         cstd::uint32_t pen_y = glyph_padding;
         cstd::uint32_t row_height = 0;
-        
         bool overflow = false;
-        for (cstd::size_t i = 0; i < glyph_count; i++)
+
+        for (const auto& source : sources)
         {
-            const cstd::uint32_t c = min_char + static_cast<cstd::uint32_t>(i);
-            if (FT_Load_Char(face, c, load_flags))
+            for (const glyph_range range : source.ranges)
             {
-                continue;
-            }
-
-            FT_Bitmap *bitmap = &face->glyph->bitmap;
-            if (pen_x + bitmap->width + glyph_padding > width)
-            {
-                pen_x = glyph_padding;
-                pen_y += row_height + glyph_padding;
-                row_height = 0;
-            }
-            
-            if (bitmap->rows > row_height)
-            {
-                row_height = bitmap->rows;
-            }
-            
-            if (pen_y + bitmap->rows + glyph_padding > height)
-            {
-                overflow = true;
-                break;
-            }
-
-            for (cstd::uint32_t row = 0; row < bitmap->rows; row++)
-            {
-                for (cstd::uint32_t col = 0; col < bitmap->width; col++)
+                for (cstd::uint32_t cp = range.first; ; ++cp)
                 {
-                    if (bitmap->pixel_mode == FT_PIXEL_MODE_MONO)
+                    if (FT_Load_Char(source.face, cp, load_flags))
                     {
-                        const cstd::uint8_t byte = bitmap->buffer[row * bitmap->pitch + (col / 8)];
-                        const bool bit = (byte & (1 << (7 - (col % 8)))) != 0;
-                        coverage[(pen_y + row) * width + (pen_x + col)] = bit ? 0xFF : 0;
+                        if (cp == range.last)
+                        {
+                            break;
+                        }
+
+                        continue;
                     }
-                    else
+
+                    FT_Bitmap* bitmap = &source.face->glyph->bitmap;
+                    if (pen_x + bitmap->width + glyph_padding > width)
                     {
-                        coverage[(pen_y + row) * width + (pen_x + col)] = bitmap->buffer[row * bitmap->pitch + col];
+                        pen_x = glyph_padding;
+                        pen_y += row_height + glyph_padding;
+                        row_height = 0;
                     }
+
+                    if (bitmap->rows > row_height)
+                    {
+                        row_height = bitmap->rows;
+                    }
+
+                    if (pen_y + bitmap->rows + glyph_padding > height)
+                    {
+                        overflow = true;
+                        break;
+                    }
+
+                    for (cstd::uint32_t row = 0; row < bitmap->rows; row++)
+                    {
+                        for (cstd::uint32_t col = 0; col < bitmap->width; col++)
+                        {
+                            if (bitmap->pixel_mode == FT_PIXEL_MODE_MONO)
+                            {
+                                const cstd::uint8_t byte = bitmap->buffer[row * bitmap->pitch + (col / 8)];
+                                const bool bit = (byte & (1 << (7 - (col % 8)))) != 0;
+                                coverage[(pen_y + row) * width + (pen_x + col)] = bit ? 0xFF : 0;
+                            }
+                            else
+                            {
+                                coverage[(pen_y + row) * width + (pen_x + col)] = bitmap->buffer[row * bitmap->pitch + col];
+                            }
+                        }
+                    }
+
+                    glyph g;
+                    g.uv0 = { static_cast<float>(pen_x) / static_cast<float>(width),
+                              static_cast<float>(pen_y) / static_cast<float>(height) };
+                    g.uv1 = { static_cast<float>(pen_x + bitmap->width) / static_cast<float>(width),
+                              static_cast<float>(pen_y + bitmap->rows) / static_cast<float>(height) };
+                    g.size = { static_cast<float>(bitmap->width), static_cast<float>(bitmap->rows) };
+                    g.bearing = { static_cast<float>(source.face->glyph->bitmap_left), -static_cast<float>(source.face->glyph->bitmap_top) };
+                    g.advance = static_cast<float>(RV_FT_CEIL(source.face->glyph->advance.x));
+                    glyphs[cp] = g;
+
+                    pen_x += bitmap->width + glyph_padding;
+
+                    if (cp == range.last)
+                    {
+                        break;
+                    }
+                }
+
+                if (overflow)
+                {
+                    break;
                 }
             }
 
-            glyph &g = glyphs[i];
-            g.uv0 = {static_cast<float>(pen_x) / static_cast<float>(width),
-                     static_cast<float>(pen_y) / static_cast<float>(height)};
-            g.uv1 = {static_cast<float>(pen_x + bitmap->width) / static_cast<float>(width),
-                     static_cast<float>(pen_y + bitmap->rows) / static_cast<float>(height)};
-            g.size = {static_cast<float>(bitmap->width), static_cast<float>(bitmap->rows)};
-            
-            g.bearing = {static_cast<float>(face->glyph->bitmap_left), -static_cast<float>(face->glyph->bitmap_top)};
-            g.advance = static_cast<float>(RV_FT_CEIL(face->glyph->advance.x));
-
-            pen_x += bitmap->width + glyph_padding;
+            if (overflow)
+            {
+                break;
+            }
         }
 
         if (!overflow)
@@ -389,22 +530,20 @@ optional_t<rv::font> rv::renderer::add_font(const span_t<const cstd::uint8_t> by
         {
             width *= 2;
             height *= 2;
-
-            // reset glyphs for re-rasterization
-            for (auto &g : glyphs)
-            {
-                g = {};
-            }
         }
     }
 
-    if (!atlas_ok)
+    if (!atlas_ok || glyphs.empty())
     {
-        FT_Done_Face(face);
+        for (const auto& source : sources)
+        {
+            FT_Done_Face(source.face);
+        }
+
         FT_Done_FreeType(library);
         return {};
     }
-    
+
     vector_t<cstd::uint8_t> rgba(static_cast<cstd::size_t>(width) * height * 4, 0);
     for (cstd::size_t i = 0; i < coverage.size(); i++)
     {
@@ -416,57 +555,96 @@ optional_t<rv::font> rv::renderer::add_font(const span_t<const cstd::uint8_t> by
     }
 
     const auto texture = create_texture(rgba, width, height);
-    
-    FT_Done_Face(face);
+
+    for (const auto& source : sources)
+    {
+        FT_Done_Face(source.face);
+    }
+
     FT_Done_FreeType(library);
-    
+
     if (!texture)
     {
         return {};
     }
-    
+
     unordered_map_t<cstd::uint64_t, float> kerning_table;
 
-    return font{texture,   glyphs,     min_char,       max_char,    pixel_height,
-                ft_ascent, ft_descent, ft_line_height, ft_line_gap, cstd::move(kerning_table)};
+    return font{ texture, cstd::move(glyphs), pixel_height, ft_ascent, ft_descent, ft_line_height, ft_line_gap, cstd::move(kerning_table) };
 
 #undef RV_FT_CEIL
 #else
-    stbtt_fontinfo info = {};
-    if (!stbtt_InitFont(&info, bytes.data(), stbtt_GetFontOffsetForIndex(bytes.data(), 0)))
+    struct stb_source
+    {
+        span_t<const cstd::uint8_t> bytes;
+        stbtt_fontinfo info = {};
+        vector_t<glyph_range> ranges;
+        vector_t<vector_t<stbtt_packedchar>> packed_chars;
+        vector_t<stbtt_pack_range> pack_ranges;
+    };
+
+    vector_t<stb_source> sources;
+
+    for (const auto& input : input_sources)
+    {
+        if (input.bytes.empty())
+        {
+            continue;
+        }
+
+        stbtt_fontinfo info = {};
+        if (!stbtt_InitFont(&info, input.bytes.data(), stbtt_GetFontOffsetForIndex(input.bytes.data(), 0)))
+        {
+            continue;
+        }
+
+        vector_t<cstd::uint32_t> wanted;
+        append_codepoints(wanted, resolved_ranges(input.ranges));
+
+        vector_t<cstd::uint32_t> supported;
+        for (const cstd::uint32_t cp : wanted)
+        {
+            if (covered.find(cp) == covered.end() && stbtt_FindGlyphIndex(&info, static_cast<cstd::int32_t>(cp)) != 0)
+            {
+                covered[cp] = true;
+                supported.push_back(cp);
+            }
+        }
+
+        vector_t<glyph_range> ranges = compact_codepoints(cstd::move(supported));
+        if (!ranges.empty())
+        {
+            sources.push_back({ input.bytes, info, cstd::move(ranges) });
+        }
+    }
+
+    if (sources.empty())
     {
         return {};
     }
 
-    const float scale = stbtt_ScaleForPixelHeight(&info, pixel_height);
-
+    const float metric_scale = stbtt_ScaleForPixelHeight(&sources[0].info, pixel_height);
     cstd::int32_t raw_ascent = 0;
     cstd::int32_t raw_descent = 0;
     cstd::int32_t raw_line_gap = 0;
+    stbtt_GetFontVMetrics(&sources[0].info, &raw_ascent, &raw_descent, &raw_line_gap);
 
-    stbtt_GetFontVMetrics(&info, &raw_ascent, &raw_descent, &raw_line_gap);
-
-    const float stb_ascent = static_cast<float>(raw_ascent) * scale;
-    const float stb_descent = static_cast<float>(raw_descent) * scale;
-    const float stb_line_gap = static_cast<float>(raw_line_gap) * scale;
+    const float stb_ascent = static_cast<float>(raw_ascent) * metric_scale;
+    const float stb_descent = static_cast<float>(raw_descent) * metric_scale;
+    const float stb_line_gap = static_cast<float>(raw_line_gap) * metric_scale;
     const float stb_line_height = stb_ascent - stb_descent + stb_line_gap;
 
-    const cstd::size_t glyph_count = static_cast<cstd::size_t>(max_char - min_char + 1);
-    
     cstd::uint32_t width = 256;
     cstd::uint32_t height = 256;
-    
     vector_t<cstd::uint8_t> coverage;
-    vector_t<stbtt_packedchar> packed_chars(glyph_count);
+    const cstd::uint32_t oversample = anti_aliased ? 2 : 1;
 
     bool atlas_ok = false;
-    const cstd::uint32_t oversample = anti_aliased ? 2 : 1;
     while (!atlas_ok && width <= 8192)
     {
         coverage.assign(static_cast<cstd::size_t>(width) * height, 0);
 
         stbtt_pack_context pack_ctx = {};
-
         if (!stbtt_PackBegin(&pack_ctx, coverage.data(), static_cast<cstd::int32_t>(width), static_cast<cstd::int32_t>(height), 0,
                              static_cast<cstd::int32_t>(glyph_padding), nullptr))
         {
@@ -477,16 +655,40 @@ optional_t<rv::font> rv::renderer::add_font(const span_t<const cstd::uint8_t> by
 
         stbtt_PackSetOversampling(&pack_ctx, oversample, oversample);
 
-        stbtt_pack_range range = {};
-        range.font_size = pixel_height;
-        range.first_unicode_codepoint_in_range = static_cast<cstd::int32_t>(min_char);
-        range.num_chars = static_cast<cstd::int32_t>(glyph_count);
-        range.chardata_for_range = packed_chars.data();
+        bool overflow = false;
+        for (auto& source : sources)
+        {
+            source.packed_chars.clear();
+            source.pack_ranges.clear();
+            source.packed_chars.reserve(source.ranges.size());
+            source.pack_ranges.reserve(source.ranges.size());
 
-        const cstd::int32_t pack_result = stbtt_PackFontRanges(&pack_ctx, bytes.data(), 0, &range, 1);
+            for (const glyph_range range : source.ranges)
+            {
+                source.packed_chars.emplace_back(static_cast<cstd::size_t>(range.last - range.first + 1));
+            }
+
+            for (cstd::size_t i = 0; i < source.ranges.size(); ++i)
+            {
+                const glyph_range range = source.ranges[i];
+                stbtt_pack_range pack_range = {};
+                pack_range.font_size = pixel_height;
+                pack_range.first_unicode_codepoint_in_range = static_cast<cstd::int32_t>(range.first);
+                pack_range.num_chars = static_cast<cstd::int32_t>(range.last - range.first + 1);
+                pack_range.chardata_for_range = source.packed_chars[i].data();
+                source.pack_ranges.push_back(pack_range);
+            }
+
+            if (!stbtt_PackFontRanges(&pack_ctx, source.bytes.data(), 0, source.pack_ranges.data(), static_cast<cstd::int32_t>(source.pack_ranges.size())))
+            {
+                overflow = true;
+                break;
+            }
+        }
+
         stbtt_PackEnd(&pack_ctx);
 
-        if (pack_result)
+        if (!overflow)
         {
             atlas_ok = true;
         }
@@ -511,11 +713,9 @@ optional_t<rv::font> rv::renderer::add_font(const span_t<const cstd::uint8_t> by
     }
 
     vector_t<cstd::uint8_t> rgba(static_cast<cstd::size_t>(width) * height * 4, 0);
-
     for (cstd::size_t i = 0; i < coverage.size(); i++)
     {
         const cstd::size_t c = i * 4;
-
         rgba[c] = 0xFF;
         rgba[c + 1] = 0xFF;
         rgba[c + 2] = 0xFF;
@@ -528,54 +728,123 @@ optional_t<rv::font> rv::renderer::add_font(const span_t<const cstd::uint8_t> by
         return {};
     }
 
-    vector_t<glyph> glyphs(glyph_count);
-
-    for (cstd::size_t i = 0; i < glyph_count; i++)
+    unordered_map_t<cstd::uint32_t, glyph> glyphs;
+    for (const auto& source : sources)
     {
-        const stbtt_packedchar &pc = packed_chars[i];
-        glyph &g = glyphs[i];
-
-        stbtt_aligned_quad q = {};
-        float dummy_x = 0.f, dummy_y = 0.f;
-        stbtt_GetPackedQuad(packed_chars.data(), static_cast<cstd::int32_t>(width), static_cast<cstd::int32_t>(height), static_cast<cstd::int32_t>(i), &dummy_x,
-                            &dummy_y, &q, 0);
-
-        g.uv0 = {q.s0, q.t0};
-        g.uv1 = {q.s1, q.t1};
-        g.bearing = {q.x0, q.y0};
-        g.size = {q.x1 - q.x0, q.y1 - q.y0};
-        g.advance = pc.xadvance;
-    }
-
-    unordered_map_t<cstd::uint64_t, float> kerning_table;
-
-    for (cstd::uint32_t left = min_char; left <= max_char; left++)
-    {
-        const cstd::int32_t left_glyph = stbtt_FindGlyphIndex(&info, static_cast<cstd::int32_t>(left));
-        if (!left_glyph)
-            continue;
-
-        for (cstd::uint32_t right = min_char; right <= max_char; right++)
+        for (cstd::size_t range_idx = 0; range_idx < source.ranges.size(); ++range_idx)
         {
-            const cstd::int32_t right_glyph = stbtt_FindGlyphIndex(&info, static_cast<cstd::int32_t>(right));
-            if (!right_glyph)
-                continue;
+            const glyph_range range = source.ranges[range_idx];
+            const auto& packed_chars = source.packed_chars[range_idx];
 
-            const cstd::int32_t kern = stbtt_GetGlyphKernAdvance(&info, left_glyph, right_glyph);
-            if (kern != 0)
+            for (cstd::uint32_t cp = range.first; ; ++cp)
             {
-                const cstd::uint64_t key = (static_cast<cstd::uint64_t>(left) << 32) | static_cast<cstd::uint64_t>(right);
-                kerning_table[key] = static_cast<float>(kern) * scale;
+                const cstd::int32_t idx = static_cast<cstd::int32_t>(cp - range.first);
+                const stbtt_packedchar& pc = packed_chars[static_cast<cstd::size_t>(idx)];
+
+                stbtt_aligned_quad q = {};
+                float dummy_x = 0.f;
+                float dummy_y = 0.f;
+                stbtt_GetPackedQuad(packed_chars.data(), static_cast<cstd::int32_t>(width), static_cast<cstd::int32_t>(height), idx, &dummy_x, &dummy_y, &q, 0);
+
+                glyph g;
+                g.uv0 = { q.s0, q.t0 };
+                g.uv1 = { q.s1, q.t1 };
+                g.bearing = { q.x0, q.y0 };
+                g.size = { q.x1 - q.x0, q.y1 - q.y0 };
+                g.advance = pc.xadvance;
+                glyphs[cp] = g;
+
+                if (cp == range.last)
+                {
+                    break;
+                }
             }
         }
     }
 
-    return font{texture, glyphs, min_char, max_char, pixel_height, stb_ascent, stb_descent, stb_line_height, 
-                stb_line_gap, cstd::move(kerning_table)};
+    unordered_map_t<cstd::uint64_t, float> kerning_table;
+    constexpr cstd::size_t kerning_pair_limit = 512;
+
+    for (const auto& source : sources)
+    {
+        vector_t<cstd::uint32_t> cps;
+        append_codepoints(cps, source.ranges);
+        if (cps.size() > kerning_pair_limit)
+        {
+            continue;
+        }
+
+        const float scale = stbtt_ScaleForPixelHeight(&source.info, pixel_height);
+        for (const cstd::uint32_t left : cps)
+        {
+            const cstd::int32_t left_glyph = stbtt_FindGlyphIndex(&source.info, static_cast<cstd::int32_t>(left));
+            if (!left_glyph)
+            {
+                continue;
+            }
+
+            for (const cstd::uint32_t right : cps)
+            {
+                const cstd::int32_t right_glyph = stbtt_FindGlyphIndex(&source.info, static_cast<cstd::int32_t>(right));
+                if (!right_glyph)
+                {
+                    continue;
+                }
+
+                const cstd::int32_t kern = stbtt_GetGlyphKernAdvance(&source.info, left_glyph, right_glyph);
+                if (kern != 0)
+                {
+                    kerning_table[kerning_key(left, right)] = static_cast<float>(kern) * scale;
+                }
+            }
+        }
+    }
+
+    return font{ texture, cstd::move(glyphs), pixel_height, stb_ascent, stb_descent, stb_line_height, stb_line_gap, cstd::move(kerning_table) };
 #endif
 }
 
-optional_t<rv::font> rv::renderer::add_font(const string_t &path, const float pixel_height, const cstd::uint32_t min_char,
+optional_t<rv::font> rv::renderer::add_font(const span_t<const font_file_source> sources, const float pixel_height, const bool anti_aliased)
+{
+    vector_t<vector_t<cstd::uint8_t>> buffers;
+    vector_t<vector_t<glyph_range>> ranges;
+
+    buffers.reserve(sources.size());
+    ranges.reserve(sources.size());
+
+    for (const auto& source : sources)
+    {
+        vector_t<cstd::uint8_t> buffer = read_file(source.path);
+        if (buffer.empty())
+        {
+            continue;
+        }
+
+        buffers.push_back(cstd::move(buffer));
+        ranges.push_back(source.ranges);
+    }
+
+    vector_t<font_memory_source> memory_sources;
+    memory_sources.reserve(buffers.size());
+
+    for (cstd::size_t i = 0; i < buffers.size(); ++i)
+    {
+        memory_sources.push_back({ span_t<const cstd::uint8_t>(buffers[i].data(), buffers[i].size()), ranges[i] });
+    }
+
+    return add_font(span_t<const font_memory_source>(memory_sources.data(), memory_sources.size()), pixel_height, anti_aliased);
+}
+
+optional_t<rv::font> rv::renderer::add_font(const span_t<const cstd::uint8_t> bytes, const float pixel_height,
+                                            const cstd::uint32_t min_char, const cstd::uint32_t max_char, const bool anti_aliased)
+{
+    const font_memory_source source{ bytes, make_glyph_ranges(min_char, max_char) };
+    const array_t<font_memory_source, 1> sources = { source };
+
+    return add_font(span_t<const font_memory_source>(sources.data(), sources.size()), pixel_height, anti_aliased);
+}
+
+optional_t<rv::font> rv::renderer::add_font(const string_t& path, const float pixel_height, const cstd::uint32_t min_char,
                                             const cstd::uint32_t max_char, const bool anti_aliased)
 {
     const vector_t<cstd::uint8_t> buffer = read_file(path);

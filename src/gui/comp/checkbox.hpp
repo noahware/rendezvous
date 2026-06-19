@@ -23,9 +23,9 @@ namespace rv
 			init_defaults();
 		}
 
-		checkbox& label(const string_view_t text)
+		checkbox& label(const utf8_view text)
 		{
-			label_ = string_t(text);
+			label_ = utf8_string(text);
 			mark_layout_dirty();
 
 			return *this;

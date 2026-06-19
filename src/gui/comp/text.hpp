@@ -14,9 +14,9 @@ namespace rv
 		explicit text_element(const element_size size, shared_ptr_t<gui_font> font) noexcept
 			: element(size), font_(cstd::move(font)) { }
 
-		text_element& content(const string_view_t text)
+		text_element& content(const utf8_view text)
 		{
-			text_ = string_t(text);
+			text_ = utf8_string(text);
 			wrap_cache_valid_ = false;
 			mark_layout_dirty();
 			return *this;

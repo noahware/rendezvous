@@ -16,17 +16,17 @@ namespace rv
 		}
 
 		template <class T>
-		value_inspector& watch(const string_view_t name, const T* ptr)
+		value_inspector& watch(const utf8_view name, const T* ptr)
 		{
-			entries_.push_back({ string_t(name), [ptr]() -> string_t { return format_value(*ptr); } });
+			entries_.push_back({ utf8_string(name), [ptr]() -> string_t { return format_value(*ptr); } });
 			mark_layout_dirty();
 
 			return *this;
 		}
 
-		value_inspector& watch(const string_view_t name, function_t<string_t()> getter)
+		value_inspector& watch(const utf8_view name, function_t<string_t()> getter)
 		{
-			entries_.push_back({ string_t(name), cstd::move(getter) });
+			entries_.push_back({ utf8_string(name), cstd::move(getter) });
 			mark_layout_dirty();
 
 			return *this;

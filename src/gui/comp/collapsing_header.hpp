@@ -14,9 +14,9 @@ namespace rv
 
 		collapsing_header(element_size size, shared_ptr_t<gui_font> font, shared_ptr_t<input> input) noexcept;
 
-		collapsing_header& label(const string_view_t text)
+		collapsing_header& label(const utf8_view text)
 		{
-			label_ = string_t(text);
+			label_ = utf8_string(text);
 
 			return *this;
 		}

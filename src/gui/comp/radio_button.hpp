@@ -23,9 +23,9 @@ namespace rv
 			init_defaults();
 		}
 
-		radio_button& label(const string_view_t text)
+		radio_button& label(const utf8_view text)
 		{
-			label_ = string_t(text);
+			label_ = utf8_string(text);
 			mark_layout_dirty();
 
 			return *this;

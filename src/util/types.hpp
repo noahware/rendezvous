@@ -17,6 +17,7 @@
 #include <type_traits>
 #include <cstring>
 #include <bit>
+#include <algorithm>
 
 namespace cstd
 {

@@ -23,9 +23,9 @@ namespace rv
 			init_defaults();
 		}
 
-		button& text(const string_view_t text)
+		button& text(const utf8_view text)
 		{
-			text_ = string_t(text);
+			text_ = utf8_string(text);
 
 			return *this;
 		}
